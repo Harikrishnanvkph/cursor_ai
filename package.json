@@ -60,6 +60,7 @@
     "date-fns": "4.1.0",
     "dompurify": "^3.4.3",
     "embla-carousel-react": "8.5.1",
+    "geist": "^1.9.0",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "immer": "latest",

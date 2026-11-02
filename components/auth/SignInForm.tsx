@@ -36,7 +36,7 @@ export function SignInForm() {
 
   useEffect(() => {
     if (!loading && user) {
-      const defaultRedirect = user.is_admin ? '/admin' : '/'
+      const defaultRedirect = user.is_admin ? '/admin' : '/board'
       const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || defaultRedirect
       sessionStorage.removeItem('redirectAfterSignIn')
       sessionStorage.removeItem('logged_out_from_oauth')

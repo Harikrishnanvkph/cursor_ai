@@ -44,7 +44,9 @@ class DataService {
         ...options,
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
+          // Only send a JSON content type when there is a body: on bodiless GETs it forces a CORS
+          // preflight (an extra round-trip) for no benefit.
+          ...(options.body ? { 'Content-Type': 'application/json' } : {}),
           ...options.headers,
         },
         signal: controller.signal,

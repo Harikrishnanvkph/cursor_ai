@@ -7,11 +7,17 @@ import ConsoleSilencer from '@/components/ConsoleSilencer'
 import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
-  title: 'AI Chartor — AI-Powered Charts & Infographic Studio',
+  title: 'AIChartor',
   description: 'Create interactive charts and infographics with natural language AI and our powerful Advanced Editor canvas.',
   metadataBase: new URL('https://aichartor.com'),
   icons: {
-    icon: '/favicon.png',
+    icon: [
+      { url: '/svg/aichartor-icon-top-rounded.svg', type: 'image/svg+xml' },
+      { url: '/images/aichartor-icon-top-rounded.png', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/images/aichartor-icon-top-rounded.png', type: 'image/png' },
+    ],
   },
 }
 

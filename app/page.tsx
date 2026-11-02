@@ -1,473 +1,2544 @@
-import React, { Suspense } from "react"
+"use client"
+
+import React, { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { SiteHeader } from "@/components/site-header"
+import { useAuth } from "@/components/auth/AuthProvider"
+import { useTheme } from "next-themes"
+import { HomeNewNavbar } from "@/components/home-new/home-new-navbar"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { HeroAuthCta } from "@/components/home/hero-auth-cta"
-import { WelcomeBanner } from "@/components/home/welcome-banner"
-import {
-  ArrowRight,
-  BarChart3,
-  Edit3,
-  LayoutDashboard,
-  MessageSquare,
-  Play,
-  Share2,
-  Sparkles,
-  Download,
-  Wand2,
-  TrendingUp,
-  Palette,
-  Cloud,
-  CheckCircle,
-  ArrowUpRight,
-  Layers,
-  PieChart,
-  LineChart,
-  BarChart4,
-  Brain,
-  Rocket,
-  Target,
-  Zap,
-  MousePointerClick
-} from "lucide-react"
+import { Sparkles, Sliders, LayoutDashboard, ArrowRight, ArrowUp, Layers, PanelLeft, Share2, Settings, Palette, AlertTriangle, CheckCircle2, RefreshCw, Maximize2, Database, Layout, Grid, MessageSquare, MousePointer2, Pencil, Minus, ArrowLeftRight, Square, Circle, Triangle, Star, Hexagon, Heart, Cloud, Plus, Type, Lock, Copy, Trash2, MoreHorizontal, BarChart2, PieChart, FolderOpen, Save, TrendingUp, ChevronLeft, ChevronRight, AlignLeft, CircleDot, Target, Box, Filter, Gauge, LayoutGrid, Activity, Download, Check, Zap, ChevronDown } from "lucide-react"
+import { useGeoLocation } from "@/hooks/useGeoLocation"
+import { RegionSelector } from "@/components/pricing/RegionSelector"
+import { initiateCheckout } from "@/lib/payment-client"
+import { GeistSans } from "geist/font/sans"
 
-export default function HomePage() {
+// Gemini-style four-pointed star icon
+function GeminiIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M14 2C14 8.627 8.627 14 2 14C8.627 14 14 19.373 14 26C14 19.373 19.373 14 26 14C19.373 14 14 8.627 14 2Z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
 
-  const capabilities = [
+const TABS = [
+  { id: "ai-chat", label: "AI Chat", icon: GeminiIcon },
+  { id: "editor", label: "Advanced Editor", icon: Sliders },
+  { id: "board", label: "Board", icon: LayoutDashboard },
+]
+
+const SUBTITLES: Record<string, string> = {
+  "ai-chat": "Prompt in. Chart out. Instantly.",
+  "editor": "Colors, fonts, layouts — full control.",
+  "board": "Arrange charts into a shareable canvas.",
+}// ── AI CHAT BENTO ──────────────────────────────────────────
+function AiChatBento() {
+  return (
+    /* Responsive container: natural height on mobile/tablet, fixed height on desktop */
+    <div className="flex flex-col lg:flex-row gap-4 lg:h-[600px]">
+
+      {/* ── LEFT COLUMN — W:35% ── */}
+      <div className="flex flex-col gap-4 lg:w-[35%]">
+
+        {/* Card 1 — H:35% — Pull Realtime Data */}
+        <div className="lg:flex-[35] rounded-2xl bg-slate-950 border border-slate-800 p-5 sm:p-6 flex flex-col justify-between overflow-hidden relative min-h-[170px] sm:min-h-[180px]">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent pointer-events-none" />
+
+          <div className="relative z-10 max-w-[65%] sm:max-w-[60%]">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 tracking-wider uppercase bg-indigo-500/10 px-2 py-0.5 rounded">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live Connect
+            </span>
+            <h2 className="mt-2 text-lg xs:text-xl font-semibold text-slate-100 leading-snug tracking-wide">
+              Pull Realtime Data<br />on any topic
+            </h2>
+          </div>
+
+          {/* Realtime clock chart illustration positioned on the right */}
+          <div className="absolute right-1 sm:right-2 bottom-1 sm:bottom-2 w-[110px] h-[110px] xs:w-[130px] xs:h-[130px] sm:w-[150px] sm:h-[150px] lg:w-[160px] lg:h-[160px] z-10 flex items-center justify-center pointer-events-none">
+            <img
+              src="/realtime-clock-chart.png"
+              alt="Realtime clock chart"
+              className="w-full h-full object-contain dark:brightness-110 dark:contrast-110"
+            />
+          </div>
+        </div>
+
+        {/* Card 2 — H:65% — NLP Chat */}
+        <div className="lg:flex-[65] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex flex-col gap-4 overflow-hidden min-h-[220px]">
+          <div>
+            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 tracking-wider uppercase bg-indigo-100 dark:bg-indigo-950/40 px-2 py-0.5 rounded">Conversational</span>
+            <p className="mt-2 text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-200 leading-snug">
+              Experience Natural Language Prompt to Create and Modify chart as you go
+            </p>
+          </div>
+
+          {/* Chat bubbles container */}
+          <div className="flex flex-col gap-3 mt-1">
+            {/* AI greeting */}
+            <div className="self-start flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-600 dark:text-slate-300 shadow-sm max-w-[90%] sm:max-w-[85%] md:max-w-[75%] lg:max-w-[85%]">
+              <GeminiIcon className="w-3 h-3 text-indigo-500 shrink-0" />
+              <span>How can I help you?</span>
+            </div>
+
+            {/* User message */}
+            <div className="self-end bg-indigo-600 rounded-xl px-3.5 py-2 text-xs text-white max-w-[90%] sm:max-w-[85%] md:max-w-[75%] lg:max-w-[85%] shadow-sm shadow-indigo-500/10">
+              Give me top 10 Billionaires
+            </div>
+
+            {/* AI response */}
+            <div className="self-start flex gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-[90%] sm:max-w-[85%] md:max-w-[75%] lg:max-w-[85%] shadow-sm">
+              <GeminiIcon className="w-3 h-3 text-indigo-500 shrink-0 mt-0.5" />
+              <span>
+                Here is the top 10 richest people in the world, based on Bloomberg data. Elon Musk leads with $619 billion...
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── RIGHT COLUMN — W:65% ── */}
+      <div className="flex flex-col gap-4 lg:flex-1">
+
+        {/* Card 3 — H:65% — Prompt to Create */}
+        <div className="lg:flex-[65] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 md:p-6 flex flex-col overflow-hidden min-h-[340px] sm:min-h-[380px] md:min-h-[420px] lg:min-h-0">
+
+          {/* Title */}
+          <h3 className="text-base xs:text-lg sm:text-xl font-semibold text-slate-900 dark:text-white leading-snug tracking-tight mb-3">
+            Prompt To Create <span className='bg-clip-text font-bold text-transparent bg-gradient-to-b from-indigo-500 to-purple-500'>Stunning Charts, Infographic Templates</span>
+          </h3>
+
+          {/* Mosaic container with floating prompt bar */}
+          <div className="relative flex-1 min-h-[260px] xs:min-h-[290px] sm:min-h-[320px] lg:min-h-0">
+
+            {/* Floating prompt bar — overlays on top of the mosaic */}
+            <div className="absolute top-[38%] left-[4%] right-[4%] sm:left-[8%] sm:right-[8%] z-10 flex items-center gap-2 sm:gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-xl shadow-slate-200/80 dark:shadow-slate-950/80">
+              <Sparkles className="w-4 h-4 text-indigo-500 shrink-0 animate-pulse" />
+              <span className="flex-1 text-[11px] xs:text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono font-semibold truncate">
+                Show top 10 highest-grossing Hollywood films...
+              </span>
+              <button className="shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center transition-colors shadow-md shadow-indigo-500/20">
+                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+              </button>
+            </div>
+
+            {/* Tightly packed mosaic — 3 columns with tuned flex ratios */}
+            <div className="flex gap-1.5 h-full">
+
+              {/* LEFT COLUMN (~38%) — 16:9 on top, 1:1 + 4:5 on bottom */}
+              <div className="flex-[38] flex flex-col gap-1.5">
+                <div className="flex-[49] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                  <img
+                    src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/fifa%202026.jpg"
+                    alt="FIFA 2026 Men World Ranking"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+                {/* Bottom row — 1:1 (flex-5) + 4:5 (flex-4) */}
+                <div className="flex-[51] flex gap-1.5">
+                  <div className="flex-[5] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                    <img
+                      src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/august_visa_transactions.png"
+                      alt="August VISA Transactions"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="flex-[4] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                    <img
+                      src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/last-6-month-spending.png"
+                      alt="Last 6 Month Spending"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* CENTER COLUMN (~25%) — 9:16 tall portrait spanning full height */}
+              <div className="flex-[25] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                <img
+                  src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/august-visa-card-transactions.png"
+                  alt="August VISA Card Transactions"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              </div>
+
+              {/* RIGHT COLUMN (~34%) — 4:3 on top, 3:2 + 1:2 on bottom */}
+              <div className="flex-[34] flex flex-col gap-1.5">
+                {/* 4:3 — flex-[59] gives ~59% height → width/height ≈ 4:3 */}
+                <div className="flex-[59] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                  <img
+                    src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/highest-grossing-hollywood-films.png"
+                    alt="Highest Grossing Hollywood Films"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+                {/* Bottom row — 3:2 (flex-3) + 1:2 (flex-1) */}
+                <div className="flex-[41] flex gap-1.5">
+                  <div className="flex-[3] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                    <img
+                      src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/top-10-billionaires-2026.png"
+                      alt="Top 10 Billionaires in 2026"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="flex-[1] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                    <img
+                      src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/my-study-interests-tall.png"
+                      alt="My Study Interests"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:flex-[35] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 overflow-hidden min-h-[120px]">
+          <div className="flex-none">
+            <h3 className="mt-1 sm:mt-2 text-lg xs:text-xl font-semibold text-slate-900 dark:text-white leading-snug">
+              Generate Images<br className="hidden xs:inline" /> For Endpoints<br className="hidden xs:inline" /> Increase Productivity
+            </h3>
+          </div>
+          {/* GPU export share line chart illustration */}
+          <div className="w-full sm:flex-1 sm:max-w-[330px] flex items-center justify-end sm:ml-auto">
+            <img
+              src="/gpu-export-share.png"
+              alt="GPU Export Share"
+              className="max-h-[140px] sm:max-h-none w-auto sm:w-full h-auto object-contain dark:brightness-105"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── DECORATE DESIGN BENTO CARD ────────────────────────────
+function DecorateDesignCard() {
+  const { theme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const isDark = mounted ? (resolvedTheme === "dark" || theme === "dark") : false
+
+  return (
+    <div className={`rounded-2xl border p-5 sm:p-6 md:p-8 flex flex-col md:flex-row gap-6 justify-between items-stretch min-h-[340px] overflow-hidden relative w-full text-left transition-colors duration-300 ${isDark
+      ? "bg-slate-900 border-slate-800 text-white shadow-none"
+      : "bg-slate-50 border-slate-200 text-slate-900 shadow-none"
+      }`}>
+      {isDark && (
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 via-purple-500/5 to-transparent pointer-events-none" />
+      )}
+
+      {/* Left column: Context details & Visual HTML Previews */}
+      <div className="flex-1 z-10 flex flex-col justify-between max-w-full md:max-w-md">
+        <div>
+          <h3 className={`text-lg sm:text-xl font-semibold leading-snug ${isDark ? "text-white" : "text-slate-900"}`}>
+            Add Visual Depth with Shapes &amp; Overlays
+          </h3>
+        </div>
+
+        {/* Header for Floating Context Boxes */}
+        <div className={`mt-3 text-[11px] font-bold tracking-wider uppercase font-mono px-1 ${isDark ? "text-indigo-300" : "text-indigo-700"
+          }`}>
+          Custom Overlays with Text, Image, &amp; SVG
+        </div>
+
+        {/* Floating Visual Context Elements directly under Title */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1.5 flex-1">
+          {/* 1st Floating Graphic: Text Callout Overlay */}
+          <div className="relative py-4 sm:py-6 px-3 sm:px-4 flex flex-col items-center justify-center min-h-[200px] sm:min-h-[220px] h-full overflow-hidden">
+            {/* Floating 2-row toolbar preview */}
+            <div className="flex flex-col items-center gap-1.5 mb-4 scale-[0.95] xs:scale-100 sm:scale-[1.05] transform-gpu">
+              <div className="flex items-center gap-1.5 bg-white text-slate-800 px-2.5 py-1 rounded-xl text-[10px] font-semibold shadow-md border border-slate-200">
+                <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md font-bold">Edit</span>
+                <span className="font-bold">B</span>
+                <Palette className="w-3 h-3 text-slate-600" />
+                <span className="font-mono text-[9px]">Arial</span>
+                <MoreHorizontal className="w-3 h-3 text-slate-600" />
+              </div>
+              <div className="flex items-center gap-1.5 bg-white text-slate-700 px-2 py-0.5 rounded-lg text-[9px] shadow-sm border border-slate-200">
+                <Lock className="w-3 h-3" />
+                <Copy className="w-3 h-3" />
+                <Trash2 className="w-3 h-3" />
+                <MoreHorizontal className="w-3 h-3" />
+              </div>
+            </div>
+
+            {/* Rotated text callout box */}
+            <div className={`relative transform -rotate-6 border-2 border-dashed px-4 py-2 rounded-lg text-center shadow-md transition-colors ${isDark
+              ? "border-indigo-400 bg-indigo-500/15 text-white"
+              : "border-indigo-500 bg-indigo-50/80 text-indigo-950"
+              }`}>
+              {/* Top rotation pin */}
+              <div className={`absolute -top-4 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full border-2 bg-white ${isDark ? "border-indigo-400" : "border-indigo-500"
+                }`} />
+              <div className={`absolute -top-4 left-1/2 -translate-x-1/2 w-0.5 h-4 ${isDark ? "bg-indigo-400" : "bg-indigo-500"
+                }`} />
+              <span className={`text-sm font-extrabold tracking-wider font-sans antialiased ${isDark ? "text-white" : "text-indigo-950"
+                }`}>
+                AIChartor
+              </span>
+              {/* Corner resize handles */}
+              <div className={`absolute -top-1.5 -left-1.5 w-2 h-2 rounded-xs ${isDark ? "bg-indigo-400" : "bg-indigo-500"}`} />
+              <div className={`absolute -top-1.5 -right-1.5 w-2 h-2 rounded-xs ${isDark ? "bg-indigo-400" : "bg-indigo-500"}`} />
+              <div className={`absolute -bottom-1.5 -left-1.5 w-2 h-2 rounded-xs ${isDark ? "bg-indigo-400" : "bg-indigo-500"}`} />
+              <div className={`absolute -bottom-1.5 -right-1.5 w-2 h-2 rounded-xs ${isDark ? "bg-indigo-400" : "bg-indigo-500"}`} />
+            </div>
+          </div>
+
+          {/* 2nd Floating Graphic: Image & Diagram Overlay with Free Dragging */}
+          <div className="relative p-3 sm:p-4 min-h-[200px] sm:min-h-[220px] h-full overflow-hidden flex flex-col justify-end">
+            {/* Simple background bar chart series */}
+            <div className="flex items-end justify-between gap-2 h-28 w-full px-2 opacity-50">
+              <div className="w-full bg-sky-400/80 rounded-t h-[60%]" />
+              <div className="w-full bg-rose-400/80 rounded-t h-[90%]" />
+              <div className="w-full bg-teal-400/80 rounded-t h-[40%]" />
+              <div className="w-full bg-amber-400/80 rounded-t h-[75%]" />
+              <div className="w-full bg-purple-400/80 rounded-t h-[35%]" />
+            </div>
+
+            {/* Overlaid Diagram Graphic with dashed selection border */}
+            <div className={`absolute top-5 right-4 sm:right-5 w-28 sm:w-32 h-22 sm:h-24 border-2 border-dashed bg-white rounded-lg p-1 flex flex-col items-center justify-center shadow-2xl ${isDark ? "border-indigo-400" : "border-indigo-500"
+              }`}>
+              {/* Mini action bar above image */}
+              <div className="absolute -top-4 right-1 bg-white text-slate-700 px-1.5 py-0.5 rounded text-[8px] flex items-center gap-1 shadow-md border border-slate-200 z-10">
+                <Lock className="w-2.5 h-2.5" />
+                <Copy className="w-2.5 h-2.5" />
+                <Trash2 className="w-2.5 h-2.5" />
+              </div>
+              {/* Actual User-provided Infographic Image */}
+              <img
+                src="/overlay-infographic.jpg"
+                alt="Infographic Overlay"
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover rounded-md"
+              />
+
+              {/* Hand Pointer Drag Icon at bottom right */}
+              <div className="absolute -bottom-3 -right-3 bg-amber-500 text-slate-950 rounded-full p-1.5 shadow-lg border-2 border-amber-300 z-10 hover:scale-110 transition-transform duration-200 cursor-pointer">
+                <MousePointer2 className="w-4 h-4 fill-slate-950 stroke-slate-950" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right column: Shapes Toolbar Preview */}
+      <div className="flex flex-col gap-2 shrink-0 w-full sm:w-[260px] self-center md:self-auto justify-center">
+        <div className={`text-[11px] font-bold tracking-wider uppercase font-mono px-1 ${isDark ? "text-indigo-300" : "text-indigo-700"
+          }`}>
+          Vector Shape Tools
+        </div>
+
+        <div className={`w-full backdrop-blur-md transform-gpu rounded-xl border flex flex-col p-3.5 relative overflow-hidden transition-colors ${isDark
+          ? "bg-slate-950/70 border-slate-800/90 shadow-2xl"
+          : "bg-slate-50 border-slate-200/90 shadow-md"
+          }`}>
+          {/* Visual Toolbar Grid */}
+          <div className="space-y-3 font-mono">
+            {/* TOOLS */}
+            <div>
+              <div className={`mb-1.5 text-[8.5px] font-bold tracking-wider ${isDark ? "text-slate-500" : "text-slate-600"
+                }`}>TOOLS</div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg font-sans text-[10px] font-bold shadow-xs transition-colors ${isDark
+                  ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                  : "bg-white border border-slate-300/80 text-slate-900"
+                  }`}>
+                  <MousePointer2 className={`w-3 h-3 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                  <span>Select</span>
+                </div>
+                <div className={`flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-lg font-sans text-[10px] font-bold shadow-xs transition-colors ${isDark
+                  ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                  : "bg-white border border-slate-300/80 text-slate-900"
+                  }`}>
+                  <Layers className={`w-3 h-3 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                  <span>Marquee</span>
+                </div>
+                <div className={`flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-lg font-sans text-[10px] font-bold shadow-xs transition-colors ${isDark
+                  ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                  : "bg-white border border-slate-300/80 text-slate-900"
+                  }`}>
+                  <Pencil className={`w-3 h-3 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                  <span>Draw</span>
+                </div>
+              </div>
+            </div>
+
+            {/* LINES */}
+            <div>
+              <div className={`mb-1.5 text-[8.5px] font-bold tracking-wider ${isDark ? "text-slate-500" : "text-slate-600"
+                }`}>LINES</div>
+              <div className="flex gap-1.5">
+                {[Minus, ArrowRight, ArrowLeftRight, Grid].map((IconComp, idx) => (
+                  <div key={idx} className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isDark
+                    ? "bg-indigo-600/20 border border-indigo-500/30 text-indigo-200"
+                    : "bg-white border border-slate-300/80 text-slate-800"
+                    }`}>
+                    <IconComp className="w-3.5 h-3.5" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* SHAPES */}
+            <div>
+              <div className={`mb-1.5 text-[8.5px] font-bold tracking-wider ${isDark ? "text-slate-500" : "text-slate-600"
+                }`}>SHAPES</div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[Square, Circle, Triangle, Star, Hexagon, Heart, Cloud, MessageSquare, Palette, Sparkles].map((ShapeComp, idx) => (
+                  <div key={idx} className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isDark
+                    ? "bg-indigo-600/20 border border-indigo-500/30 text-indigo-200"
+                    : "bg-white border border-slate-300/80 text-slate-800"
+                    }`}>
+                    <ShapeComp className="w-3.5 h-3.5" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ANNOTATIONS & OVERLAYS */}
+            <div className={`pt-2 border-t flex items-center justify-between opacity-90 ${isDark ? "border-slate-800/80" : "border-slate-200"
+              }`}>
+              <span className={`text-[8px] font-bold tracking-wider ${isDark ? "text-slate-500" : "text-slate-600"
+                }`}>ANNOTATIONS &amp; OVERLAYS</span>
+              <div className={`flex items-center gap-1 text-[8.5px] font-sans font-bold px-2 py-0.5 rounded-full border transition-colors ${isDark
+                ? "text-indigo-300 bg-indigo-500/10 border-indigo-500/20"
+                : "text-indigo-700 bg-indigo-50 border-indigo-200/80"
+                }`}>
+                <Plus className="w-2.5 h-2.5" />
+                <span>15+ More Available</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── ADVANCED EDITOR BENTO ──────────────────────────────────
+function AdvancedControlsCard() {
+  const [activeTab, setActiveTab] = useState<"chart" | "template">("chart")
+
+  return (
+    <div className="w-full flex flex-col items-center text-center font-sans p-2">
+      {/* Top Header Text - Fixed Height for exact cross-column alignment */}
+      <div className="min-h-8 flex items-center justify-center max-w-md mx-auto mb-2 sm:mb-3">
+        <h3 className="text-lg xs:text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Flexible Display Modes
+        </h3>
+      </div>
+
+      {/* Connected Segmented Pill Switcher [ Chart | Template ] - Zero-jiggle geometry */}
+      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
+        <button
+          onClick={() => setActiveTab("chart")}
+          className={`h-7 sm:h-8 px-4 sm:px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "chart"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Chart
+        </button>
+        <button
+          onClick={() => setActiveTab("template")}
+          className={`h-7 sm:h-8 px-4 sm:px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "template"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Template
+        </button>
+      </div>
+
+      {/* Main Preview Box - Outer line removed! Smooth fixed-frame display */}
+      <div className="w-full max-w-md h-[210px] sm:h-[240px] flex items-center justify-center relative overflow-hidden">
+        <div className="w-full max-w-[260px] sm:max-w-[280px] h-[190px] sm:h-[210px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-center justify-center p-2.5 relative overflow-hidden group transition-all duration-300">
+          <div className="w-full h-full flex items-center justify-center">
+            <img
+              key={activeTab}
+              src={activeTab === "chart" ? "/smartphone-chart.png" : "/smartphone-template.png"}
+              alt={activeTab === "chart" ? "Standalone Chart View" : "Infographic Template View"}
+              className="w-full h-full object-contain rounded-lg animate-in fade-in duration-200"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EditorOptionsCard() {
+  const [activeMenu, setActiveMenu] = useState<"general" | "datasets" | "appearance" | "scales" | "decorations" | "templates" | "more">("general")
+
+  const menuItems = [
     {
-      icon: Brain,
-      title: "Conversational AI",
-      description: "Simply describe your data story. Our AI understands context, suggests optimal chart types, and creates publication-ready visualizations instantly.",
-      gradient: "from-blue-500 to-cyan-400",
-      bgGlow: "bg-blue-500/10"
+      id: "general",
+      label: "General",
+      icon: Sliders,
+      desc: (
+        <span>
+          Switch modes between <strong className="font-semibold text-white">Chart</strong> or <strong className="font-semibold text-white">Template</strong> editor. Choose <strong className="font-semibold text-white">Standard</strong> or <strong className="font-semibold text-white">3D chart</strong> types, configure canvas <strong className="font-semibold text-white">Dimensions &amp; Padding</strong>, toggle basic elements like <strong className="font-semibold text-white">Borders &amp; Legends</strong>, or use <strong className="font-semibold text-white">Quick Tools</strong> to sort and filter data.
+        </span>
+      )
     },
     {
-      icon: Edit3,
-      title: "Advanced Editor",
-      description: "Fine-tune every detail with our comprehensive visual editor. Adjust datasets, styling, animations, overlays, and responsive behavior.",
-      gradient: "from-purple-500 to-pink-400",
-      bgGlow: "bg-purple-500/10"
+      id: "datasets",
+      label: "Datasets",
+      icon: Database,
+      desc: (
+        <span>
+          Edit raw cell values in the <strong className="font-semibold text-white">Spreadsheet</strong>. Map columns to <strong className="font-semibold text-white">Axes</strong>, adjust active <strong className="font-semibold text-white">Series</strong>, and customize individual series <strong className="font-semibold text-white">Colors</strong> and <strong className="font-semibold text-white">Label Offsets</strong>.
+        </span>
+      )
     },
     {
-      icon: LayoutDashboard,
-      title: "Smart Dashboard",
-      description: "Organize, manage, and analyze all your charts in one place. Track usage, share publicly, and maintain version history.",
-      gradient: "from-emerald-500 to-teal-400",
-      bgGlow: "bg-emerald-500/10"
+      id: "appearance",
+      label: "Appearance",
+      icon: Palette,
+      desc: (
+        <span>
+          Style canvas <strong className="font-semibold text-white">Backgrounds</strong> (solids, gradients, images), format <strong className="font-semibold text-white">Titles &amp; Subtitles</strong>, configure the <strong className="font-semibold text-white">Legend</strong> layout, adjust bar/line <strong className="font-semibold text-white">Styling</strong>, and customize <strong className="font-semibold text-white">Data Labels</strong>.
+        </span>
+      )
     },
     {
+      id: "scales",
+      label: "Scales",
+      icon: Grid,
+      desc: (
+        <span>
+          Fine-tune Cartesian <strong className="font-semibold text-white">X-Axis</strong> &amp; <strong className="font-semibold text-white">Y-Axis</strong> gridlines and boundaries, configure circular <strong className="font-semibold text-white">Radial Scales</strong> (radar rings), or customize pie <strong className="font-semibold text-white">Arc Angles</strong> and <strong className="font-semibold text-white">Inner Cutouts</strong>.
+        </span>
+      )
+    },
+    {
+      id: "decorations",
+      label: "Decorations",
+      icon: Layers,
+      desc: (
+        <span>
+          Activate the vector <strong className="font-semibold text-white">Drawing Canvas</strong> to add custom <strong className="font-semibold text-white">Shapes</strong> (arrows, rects, stars), place rich <strong className="font-semibold text-white">Text Callouts</strong>, overlay image uploads, and manage element layering.
+        </span>
+      )
+    },
+    {
+      id: "templates",
+      label: "Templates",
+      icon: Layout,
+      desc: (
+        <span>
+          Select from a gallery of <strong className="font-semibold text-white">Infographic Layouts</strong> to wrap your chart with pre-structured template content, headlines, footer citations, and metadata cards.
+        </span>
+      )
+    },
+    {
+      id: "more",
+      label: "More",
+      icon: Settings,
+      desc: (
+        <span>
+          Configure interactive hover <strong className="font-semibold text-white">Tooltips</strong>, customize brand <strong className="font-semibold text-white">Watermarks</strong>, tweak chart <strong className="font-semibold text-white">Animations</strong> (easings/durations), and inspect or edit the raw <strong className="font-semibold text-white">JSON Payload</strong> directly.
+        </span>
+      )
+    }
+  ]
+
+  const activeItem = menuItems.find(item => item.id === activeMenu) || menuItems[0]
+
+  return (
+    <div className="rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row gap-5 sm:gap-6 justify-between items-stretch min-h-[340px] overflow-hidden relative w-full text-left">
+      <div className="absolute inset-0 bg-white/5 pointer-events-none" />
+
+      {/* Left side: Context details */}
+      <div className="flex-1 z-10 flex flex-col justify-between max-w-full sm:max-w-sm">
+        <div>
+          <h3 className="text-lg sm:text-xl font-semibold text-white leading-snug">
+            Effortlessly Configure Charts &amp; Templates with Complete Control
+          </h3>
+        </div>
+
+        {/* Dynamic Detail Card describing selected option */}
+        <div className="mt-5 sm:mt-6 bg-white/10 border border-white/15 rounded-xl p-3.5 sm:p-4 transition-all duration-300 min-h-[85px] flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-1.5">
+            <activeItem.icon className="w-4 h-4 text-white" />
+            <span className="text-xs font-bold text-white font-sans antialiased">{activeItem.label} Tools</span>
+          </div>
+          <div className="text-[11.5px] text-blue-100/90 leading-relaxed font-sans antialiased">
+            {activeItem.desc}
+          </div>
+        </div>
+      </div>
+
+      {/* Right side: Glassy Text UI Navigation */}
+      <div className="w-full sm:w-[220px] md:w-[240px] bg-slate-950/20 backdrop-blur-md rounded-xl border border-white/10 flex flex-col shrink-0 p-3 sm:p-3.5 relative overflow-hidden transition-all duration-300">
+        {/* Navigation list */}
+        <div className="flex-1 flex flex-col gap-1">
+          {menuItems.map((item) => {
+            const isSelected = activeMenu === item.id
+            const IconComp = item.icon
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveMenu(item.id as any)}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs font-medium font-sans antialiased transition-all duration-200 ${isSelected
+                  ? "bg-white/20 text-white border border-white/20 shadow-lg scale-[1.01]"
+                  : "text-white/70 hover:text-white hover:bg-white/5 border border-transparent"
+                  }`}
+              >
+                <IconComp className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-white" : "text-white/60"}`} />
+                <span className="flex-1 truncate">{item.label}</span>
+                {isSelected && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UnlimitedFreeEditorCard() {
+  const [activeTab, setActiveTab] = useState<"unlimited" | "tools" | "free">("unlimited")
+
+  const infoConfig = {
+    unlimited: {
+      title: "Unlimited Canvas Edits",
+      desc: "Customize, restyle, and refine your charts without session lockouts or edit quotas. Enjoy unrestricted dataset updates and infinite revisions.",
+      icon: Zap,
+      accentColor: "text-emerald-600 dark:text-emerald-400",
+      iconBg: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+      detail: "∞ Uncapped Editing Sessions & Free Projects"
+    },
+    tools: {
+      title: "Complete Visual Studio",
+      desc: "Access all 17+ chart types, multi-zone infographic templates, spreadsheet grids, custom dual-axis scales, and vector shapes with zero locked tools.",
+      icon: Sliders,
+      accentColor: "text-blue-600 dark:text-blue-400",
+      iconBg: "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
+      detail: "All 17+ Chart Types & Infographic Zones Included"
+    },
+    free: {
+      title: "Zero Paywalls & Watermarks",
+      desc: "Export clean, presentation-ready visualizations without forced watermarks or surprise upgrade gates. 100% free to design, download, and present.",
+      icon: CheckCircle2,
+      accentColor: "text-violet-600 dark:text-violet-400",
+      iconBg: "bg-violet-500/10 border-violet-500/20 text-violet-600 dark:text-violet-400",
+      detail: "No Watermarks • No Paywalls • No Card Required"
+    }
+  }
+
+  const activeData = infoConfig[activeTab]
+  const IconComp = activeData.icon
+
+  return (
+    <div className="w-full flex flex-col items-center text-center font-sans p-2">
+      {/* Top Header Title - Fixed Height for exact cross-column alignment */}
+      <div className="min-h-8 flex items-center justify-center max-w-md mx-auto mb-2 sm:mb-3">
+        <h3 className="text-lg xs:text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Unlimited Free Usage
+        </h3>
+      </div>
+
+      {/* Connected Segmented Pill Switcher [ Unlimited Edits | Full Toolkit | Zero Paywalls ] - Zero-jiggle geometry */}
+      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none max-w-full overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("unlimited")}
+          className={`h-7 sm:h-8 px-2.5 xs:px-3 sm:px-3.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "unlimited"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Unlimited Edits
+        </button>
+        <button
+          onClick={() => setActiveTab("tools")}
+          className={`h-7 sm:h-8 px-2.5 xs:px-3 sm:px-3.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "tools"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Full Toolkit
+        </button>
+        <button
+          onClick={() => setActiveTab("free")}
+          className={`h-7 sm:h-8 px-2.5 xs:px-3 sm:px-3.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "free"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Zero Paywalls
+        </button>
+      </div>
+
+      {/* Main Preview Box Directly Below - Fixed Height */}
+      <div className="w-full max-w-md h-[210px] sm:h-[240px] flex items-center justify-center relative">
+        <div className="w-full h-[190px] sm:h-[210px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between text-center relative overflow-hidden transition-all duration-300">
+          <div key={activeTab} className="w-full h-full flex flex-col justify-between animate-in fade-in duration-200">
+            {/* Clean top header: Icon pill + concise single-line title */}
+            <div className="flex items-center justify-center gap-2 sm:gap-2.5 pt-0.5">
+              <div className={`p-1 sm:p-1.5 rounded-lg border ${activeData.iconBg}`}>
+                <IconComp className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </div>
+              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+                {activeData.title}
+              </span>
+            </div>
+
+            {/* Airy descriptive paragraph */}
+            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium px-2 sm:px-3 my-auto max-w-sm mx-auto">
+              {activeData.desc}
+            </p>
+
+            {/* Bottom Highlight Monospace Badge */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 sm:p-2.5 shadow-2xs">
+              <span className={`text-[9.5px] xs:text-[10px] sm:text-[10.5px] font-mono font-semibold block ${activeData.accentColor}`}>
+                {activeData.detail}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CloudExportShareCard() {
+  const [activeTab, setActiveTab] = useState<"save" | "export" | "share">("save")
+
+  const infoConfig = {
+    save: {
+      title: "Cloud Sync & Storage",
+      desc: "Save charts securely to Supabase cloud storage for instant retrieval anytime across your devices.",
+      icon: Cloud,
+      accentColor: "text-teal-600 dark:text-teal-400",
+      iconBg: "bg-teal-500/10 border-teal-500/20 text-teal-600 dark:text-teal-400",
+      detail: "Synced across all devices & team workspaces"
+    },
+    export: {
+      title: "High-Res Export",
+      desc: "Export high-resolution PNG, SVG vector graphics, or interactive HTML embeds in pristine fidelity.",
+      icon: Download,
+      accentColor: "text-indigo-600 dark:text-indigo-400",
+      iconBg: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
+      detail: "Supports 4K PNG, Vector SVG & Standalone HTML"
+    },
+    share: {
+      title: "Instant Live Share",
+      desc: "Generate public share links or embed interactive live charts anywhere with a single click.",
       icon: Share2,
-      title: "Universal Export",
-      description: "Export as PNG, responsive HTML, or embed codes. Perfect for presentations, websites, dashboards, and marketing materials.",
-      gradient: "from-orange-500 to-amber-400",
-      bgGlow: "bg-orange-500/10"
+      accentColor: "text-sky-600 dark:text-sky-400",
+      iconBg: "bg-sky-500/10 border-sky-500/20 text-sky-600 dark:text-sky-400",
+      detail: "Public web link & iframe embed code ready"
     }
-  ]
+  }
 
-  const chartTypes = [
-    { icon: BarChart4, name: "Bar Charts", color: "from-blue-500 to-blue-600", bg: "bg-blue-50" },
-    { icon: LineChart, name: "Line Charts", color: "from-emerald-500 to-emerald-600", bg: "bg-emerald-50" },
-    { icon: PieChart, name: "Pie Charts", color: "from-purple-500 to-purple-600", bg: "bg-purple-50" },
-    { icon: TrendingUp, name: "Area Charts", color: "from-orange-500 to-orange-600", bg: "bg-orange-50" },
-    { icon: Target, name: "Radar Charts", color: "from-pink-500 to-pink-600", bg: "bg-pink-50" },
-    { icon: Layers, name: "Mixed Charts", color: "from-indigo-500 to-indigo-600", bg: "bg-indigo-50" }
-  ]
+  const activeData = infoConfig[activeTab]
+  const IconComp = activeData.icon
 
-  const workflow = [
+  return (
+    <div className="w-full flex flex-col items-center text-center font-sans p-2">
+      {/* Top Header Title - Fixed Height for exact cross-column alignment */}
+      <div className="min-h-8 flex items-center justify-center max-w-md mx-auto mb-2 sm:mb-3">
+        <h3 className="text-lg xs:text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Save, Share &amp; Export
+        </h3>
+      </div>
+
+      {/* Connected Segmented Pill Switcher [ Save | Export | Share ] - Zero-jiggle geometry */}
+      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none max-w-full overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("save")}
+          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "save"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Save
+        </button>
+        <button
+          onClick={() => setActiveTab("export")}
+          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "export"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Export
+        </button>
+        <button
+          onClick={() => setActiveTab("share")}
+          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "share"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Share
+        </button>
+      </div>
+
+      {/* Main Preview Box Directly Below - Fixed Height */}
+      <div className="w-full max-w-md h-[210px] sm:h-[240px] flex items-center justify-center relative">
+        <div className="w-full h-[190px] sm:h-[210px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between text-center relative overflow-hidden transition-all duration-300">
+          <div key={activeTab} className="w-full h-full flex flex-col justify-between animate-in fade-in duration-200">
+            {/* Clean top header: Icon pill + concise single-line title */}
+            <div className="flex items-center justify-center gap-2 sm:gap-2.5 pt-0.5">
+              <div className={`p-1 sm:p-1.5 rounded-lg border ${activeData.iconBg}`}>
+                <IconComp className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </div>
+              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+                {activeData.title}
+              </span>
+            </div>
+
+            {/* Airy descriptive paragraph */}
+            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium px-2 sm:px-3 my-auto max-w-sm mx-auto">
+              {activeData.desc}
+            </p>
+
+            {/* Bottom Highlight Monospace Badge */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 sm:p-2.5 shadow-2xs">
+              <span className={`text-[9.5px] xs:text-[10px] sm:text-[10.5px] font-mono font-semibold block ${activeData.accentColor}`}>
+                {activeData.detail}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── PRICING SECTION ─────────────────────────────────────────
+function PricingSection() {
+  const { user } = useAuth()
+  const { region, isIndia, currencySymbol, setRegion } = useGeoLocation()
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly")
+  const [isUpgrading, setIsUpgrading] = useState(false)
+
+  const isProUser = user?.subscription_tier === "pro"
+
+  const handleProClick = async () => {
+    if (!user) {
+      window.location.href = "/signin"
+      return
+    }
+    if (isProUser) return
+
+    setIsUpgrading(true)
+    try {
+      await initiateCheckout({
+        planTier: "pro",
+        billingCycle,
+        regionOverride: region,
+        user,
+        onError: (err) => {
+          console.error("Payment error:", err)
+          setIsUpgrading(false)
+        },
+      })
+    } catch (err) {
+      console.error("Checkout initiation error:", err)
+      setIsUpgrading(false)
+    }
+  }
+
+  const plans = [
     {
-      step: "01",
-      title: "Describe Your Vision",
-      description: "Tell our AI what you want to visualize. Upload CSV data, paste text, or simply describe your chart in natural language.",
-      icon: MessageSquare,
-      color: "from-blue-500 to-blue-600"
+      id: "free",
+      name: "Free",
+      badge: "Free Forever",
+      description: "Essential AI charting tools with complete, unlimited access to our Advanced Editor.",
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      features: [
+        "Complete Access to Advanced Editor page/tool",
+        "10 AI credits per month",
+        "Maximum 10 cloud saving",
+        "Standard PNG & Web Export",
+        "Community Templates & Design Presets",
+      ],
+      cta: user ? (isProUser ? "Included in Pro" : "Current Plan") : "Get Started Free",
+      isCurrent: !isProUser && !!user,
+      isPopular: false,
     },
     {
-      step: "02",
-      title: "AI Creates & You Refine",
-      description: "Watch as AI generates your chart instantly. Then use our advanced editor to perfect colors, layouts, animations, and interactive elements.",
-      icon: Wand2,
-      color: "from-purple-500 to-purple-600"
+      id: "pro",
+      name: "Pro",
+      badge: "Most Popular",
+      description: "Supercharged AI generation, 3x cloud saves, and priority speed for pros and creators.",
+      monthlyPrice: isIndia ? 399 : 5,
+      yearlyPrice: isIndia ? 332 : 4,
+      features: [
+        "Complete Access to Advanced Editor page/tool",
+        "50 AI credits per month",
+        "Maximum 30 cloud saving",
+        "High-Res 4K PNG, SVG & Live HTML Export",
+        "Multi-Zone Templates & Custom Presets",
+        "Priority AI Prompt Processing",
+      ],
+      cta: isProUser ? "Current Plan" : "Upgrade to Pro",
+      isCurrent: isProUser,
+      isPopular: true,
     },
-    {
-      step: "03",
-      title: "Export & Share",
-      description: "Download high-quality images, get responsive HTML code, or share via public links. Your charts work everywhere, on any device.",
-      icon: Rocket,
-      color: "from-emerald-500 to-emerald-600"
-    }
-  ]
-
-  const stats = [
-    { number: "10+", label: "Chart Types", icon: BarChart3 },
-    { number: "50+", label: "Customizations", icon: Palette },
-    { number: "3", label: "Export Formats", icon: Download },
-    { number: "∞", label: "Possibilities", icon: Sparkles }
   ]
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
-      <SiteHeader />
+    <div id="pricing" className="mt-20 sm:mt-24 pt-8 sm:pt-12 font-sans max-w-7xl mx-auto px-2 sm:px-4 scroll-mt-20">
+      {/* Header */}
+      <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+        <h2 className="text-2xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Simple, Transparent Pricing
+        </h2>
+        <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 font-normal leading-relaxed">
+          Choose the right plan to unlock full AI charting power, pro infographic templates, vector decorations, and high-res exports.
+        </p>
 
-{/* Welcome popup — client island (handles auth + OAuth redirect) */}
-      <Suspense>
-        <WelcomeBanner />
-      </Suspense>
+        {/* Billing Switcher */}
+        <div className="mt-6 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs select-none max-w-full">
+          <button
+            onClick={() => setBillingCycle("monthly")}
+            className={`px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${billingCycle === "monthly"
+              ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setBillingCycle("yearly")}
+            className={`flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${billingCycle === "yearly"
+              ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+          >
+            <span>Yearly</span>
+            <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+              Save 20%
+            </span>
+          </button>
+        </div>
 
-          {/* ─── HERO SECTION ─── */}
-          <section className="relative overflow-hidden bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-300">
-            {/* Animated background orbs */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="animate-float-slow absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/20 blur-[100px]"></div>
-              <div className="animate-float-medium absolute top-1/3 right-0 w-[350px] h-[350px] rounded-full bg-purple-500/10 dark:bg-purple-600/20 blur-[100px]"></div>
-              <div className="animate-float-fast absolute bottom-0 left-1/3 w-[300px] h-[300px] rounded-full bg-cyan-400/10 dark:bg-cyan-500/15 blur-[100px]"></div>
-              {/* Grid pattern */}
-              <div 
-                className="absolute inset-0 transition-opacity duration-300"
-                style={{
-                  backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px)`,
-                  backgroundSize: '60px 60px'
-                }}
-              ></div>
-              <div 
-                className="absolute inset-0 opacity-0 dark:opacity-100 transition-opacity duration-300"
-                style={{
-                  backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`,
-                  backgroundSize: '60px 60px'
-                }}
-              ></div>
-            </div>
+        {/* Region Switcher */}
+        <div className="mt-4 flex justify-center">
+          <RegionSelector
+            variant="compact"
+            region={region}
+            onSelectRegion={setRegion}
+          />
+        </div>
+      </div>
 
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-28 sm:pb-32">
-              <div className="text-center space-y-8">
-                {/* Badge */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-slate-800 border border-indigo-100 dark:border-slate-700 text-indigo-600 dark:text-indigo-300 text-sm font-medium transition-colors">
-                  <Sparkles className="w-4 h-4" />
-                  AI-Powered Chart Creation Platform
-                  <ArrowRight className="w-3 h-3 ml-1" />
+      {/* Pricing Cards Grid (Max-4xl centered 2-card layout) */}
+      <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-stretch">
+        {plans.map((plan) => {
+          const price = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice
+          return (
+            <div
+              key={plan.name}
+              className={`rounded-2xl p-6 sm:p-8 flex flex-col justify-between relative transition-all duration-300 ${plan.isPopular
+                ? "bg-slate-900 text-white dark:bg-slate-900/90 border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10 md:scale-102"
+                : "bg-white dark:bg-slate-900/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-md"
+                }`}
+            >
+              {plan.isPopular && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full shadow-md">
+                  {plan.badge}
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold">{plan.name}</h3>
+                  {!plan.isPopular && (
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                      {plan.badge}
+                    </span>
+                  )}
                 </div>
 
-                {/* Headline */}
-                <h1 className="text-4xl xs:text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold tracking-tight leading-[1.05]">
-                  <span className="block text-slate-900 dark:text-white transition-colors">Transform Data Into</span>
-                  <span className="block bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 dark:from-indigo-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent animate-gradient-x">
-                    Stunning Visuals
-                  </span>
-                </h1>
-
-                {/* Subtitle */}
-                <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400 leading-relaxed transition-colors">
-                  Create professional charts in seconds with AI, then perfect them with our advanced editor.
-                  From natural language to publication-ready visualizations.
+                <p className={`mt-2 text-xs leading-relaxed ${plan.isPopular ? "text-slate-300" : "text-slate-500 dark:text-slate-400"}`}>
+                  {plan.description}
                 </p>
 
-                {/* CTA buttons */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                  <Button asChild size="lg" className="px-8 py-6 text-base font-semibold bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:via-purple-600 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-300 transform hover:-translate-y-0.5 rounded-xl">
-                    <Link href="/landing">
-                      <Play className="w-5 h-5 mr-2" />
-                      Start Creating with AI
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </Link>
-                  </Button>
-
-                  <HeroAuthCta />
-                </div>
-
-                {/* Trust indicators */}
-                <div className="flex items-center justify-center gap-6 text-slate-500 text-sm pt-2">
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    No credit card required
-                  </span>
-                  <span className="hidden sm:flex items-center gap-1.5">
-                    <Zap className="w-4 h-4 text-amber-400" />
-                    Charts in seconds
-                  </span>
-                  <span className="hidden md:flex items-center gap-1.5">
-                    <Cloud className="w-4 h-4 text-cyan-400" />
-                    Cloud sync included
+                <div className="mt-6 flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold tracking-tight">{currencySymbol}{price}</span>
+                  <span className={`text-xs font-medium ${plan.isPopular ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>
+                    / month {billingCycle === "yearly" && price > 0 ? "(billed annually)" : ""}
                   </span>
                 </div>
-              </div>
-            </div>
 
-            {/* Curved bottom separator */}
-            <div className="absolute bottom-0 left-0 right-0">
-              <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full text-white dark:text-slate-950 transition-colors duration-300">
-                <path d="M0 60L1440 60L1440 0C1440 0 1080 40 720 40C360 40 0 0 0 0L0 60Z" fill="currentColor"/>
-              </svg>
-            </div>
-          </section>
-
-          {/* ─── STATS SECTION (Glassmorphism) ─── */}
-          <section className="py-16 sm:py-20 bg-white dark:bg-slate-950 transition-colors duration-300 relative">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                {stats.map((stat, index) => (
-                  <div
-                    key={index}
-                    className="group relative p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 border border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-100/50 dark:hover:shadow-indigo-900/20 hover:-translate-y-1"
-                  >
-                    <div className="text-center space-y-3">
-                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/50 group-hover:scale-110 transition-transform duration-300">
-                        <stat.icon className="w-6 h-6" />
-                      </div>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">{stat.number}</div>
-                      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</div>
-                    </div>
+                {plan.id === "pro" && (
+                  <div className="mt-2 text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
+                    <span>{isIndia ? "🇮🇳 Razorpay (UPI & Cards)" : "🌐 Dodo Payments (Global Cards)"}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
+                )}
 
-          {/* ─── CHART TYPES SHOWCASE ─── */}
-          <section className="py-20 sm:py-24 bg-gradient-to-b from-white via-slate-50/80 to-white dark:from-slate-950 dark:via-slate-900/50 dark:to-slate-950 transition-colors duration-300">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-14">
-                <Badge className="mb-4 px-4 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-200/50 dark:border-indigo-500/20 font-medium transition-colors">
-                  Comprehensive Chart Library
-                </Badge>
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight transition-colors">
-                  Every Chart Type You Need
-                </h2>
-                <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto transition-colors">
-                  From simple bar charts to complex mixed visualizations. Our AI understands your data and suggests the perfect chart type.
-                </p>
+                <ul className="mt-8 space-y-3">
+                  {plan.features.map((feat, idx) => (
+                    <li key={idx} className="flex items-start gap-2.5 text-xs">
+                      <Check className={`w-4 h-4 shrink-0 mt-0.5 ${plan.isPopular ? "text-indigo-400" : "text-indigo-600 dark:text-indigo-400"}`} />
+                      <span className={plan.isPopular ? "text-slate-200 font-medium" : "text-slate-700 dark:text-slate-300 font-medium"}>
+                        {feat}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
-                {chartTypes.map((chart, index) => (
+              <div className="mt-8 pt-4">
+                {plan.id === "free" ? (
                   <Link
-                    key={index}
-                    href="/landing"
-                    className="group cursor-pointer block"
+                    href={user ? "/editor" : "/signin"}
+                    className={`block text-center w-full py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                      plan.isCurrent
+                        ? "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-default"
+                        : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 active:scale-98"
+                    }`}
                   >
-                    <div className={`relative rounded-2xl p-6 sm:p-8 ${chart.bg} dark:bg-slate-900 border border-transparent dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 transition-all duration-300 hover:shadow-xl hover:-translate-y-2`}>
-                      <div className="text-center space-y-3">
-                        <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${chart.color} text-white shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-                          <chart.icon className="w-7 h-7" />
-                        </div>
-                        <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm transition-colors">{chart.name}</h3>
-                      </div>
-                    </div>
+                    {plan.cta}
                   </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* ─── CAPABILITIES BENTO GRID ─── */}
-          <section className="py-20 sm:py-24 bg-white dark:bg-slate-950 transition-colors duration-300">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-14">
-                <Badge className="mb-4 px-4 py-1.5 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200/50 dark:border-purple-500/20 font-medium transition-colors">
-                  Platform Capabilities
-                </Badge>
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight transition-colors">
-                  Everything You Need in One Platform
-                </h2>
-                <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto transition-colors">
-                  Combine the power of AI with professional design tools for the complete data visualization workflow.
-                </p>
-              </div>
-
-              {/* Bento Grid: 2 large on top, 2 below */}
-              <div className="grid md:grid-cols-2 gap-5 sm:gap-6">
-                {capabilities.map((cap, index) => (
-                  <div
-                    key={index}
-                    className={`group relative rounded-3xl border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-950/50 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 hover:-translate-y-1 ${index < 2 ? 'p-8 sm:p-10' : 'p-7 sm:p-9'}`}
+                ) : (
+                  <button
+                    onClick={handleProClick}
+                    disabled={isProUser || isUpgrading}
+                    className={`w-full py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                      isProUser
+                        ? "bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 cursor-default"
+                        : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-98 cursor-pointer"
+                    }`}
                   >
-                    {/* Top gradient accent */}
-                    <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${cap.gradient}`}></div>
-
-                    {/* Glow on hover */}
-                    <div className={`absolute top-0 right-0 w-32 h-32 ${cap.bgGlow} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
-
-                    <div className="relative space-y-4">
-                      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br ${cap.gradient} text-white shadow-lg`}>
-                        <cap.icon className="w-6 h-6" />
-                      </div>
-                      <h3 className={`font-bold text-slate-900 dark:text-white transition-colors ${index < 2 ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'}`}>
-                        {cap.title}
-                      </h3>
-                      <p className="text-slate-500 dark:text-slate-400 leading-relaxed transition-colors">
-                        {cap.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                    {isUpgrading ? "Upgrading..." : plan.cta}
+                  </button>
+                )}
               </div>
             </div>
-          </section>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
-          {/* ─── WORKFLOW TIMELINE ─── */}
-          <section className="py-20 sm:py-24 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 transition-colors duration-300 relative overflow-hidden">
-            {/* Subtle background decoration */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-indigo-50 dark:bg-indigo-950/30 blur-[120px] opacity-50 dark:opacity-30"></div>
+// ── SITE FOOTER ─────────────────────────────────────────────
+function SiteFooter() {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    pages: false,
+    company: false,
+  })
+
+  const toggleSection = (section: string) => {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  const sections = [
+    {
+      id: "pages",
+      title: "Pages",
+      links: [
+        { label: "AI Chart Generator", href: "/landing", isBold: true },
+        { label: "Advanced Chart Editor", href: "/editor", isBold: true },
+        { label: "Dashboard", href: "/board", isBold: true },
+        { label: "Documentation", href: "/documentation" },
+        { label: "Upcoming Enhancements", href: "#upcoming" },
+      ],
+    },
+    {
+      id: "company",
+      title: "Company",
+      links: [
+        { label: "About Us", href: "/about" },
+        { label: "Privacy Policy", href: "/privacy" },
+        { label: "Terms of Service", href: "/terms" },
+        { label: "Contact Support", href: "#" },
+      ],
+    },
+  ]
+
+  return (
+    <footer className="mt-28 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 font-sans text-slate-600 dark:text-slate-400 text-xs antialiased">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+
+        {/* Main Grid: Stacked on Mobile, 4 Columns on Tablet & Desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
+
+          {/* Brand & Mission (Spans 2 columns on md/lg screens) */}
+          <div className="md:col-span-2 space-y-4 text-left">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md">
+                <GeminiIcon className="w-4 h-4" />
+              </div>
+              <span className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                AIChartor
+              </span>
             </div>
 
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-16">
-                <Badge className="mb-4 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-500/20 font-medium transition-colors">
-                  Simple Workflow
-                </Badge>
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight transition-colors">
-                  From Idea to Impact in Minutes
-                </h2>
-                <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto transition-colors">
-                  Our streamlined process gets you from raw data to polished visualizations faster than ever before.
-                </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
+              The AI-powered charting &amp; infographic platform. Transform raw data into publication-ready charts, interactive templates, and custom vector graphic stories in seconds.
+            </p>
+          </div>
+
+          {/* Mobile Accordion / Tablet & Desktop Open Column Views */}
+          {sections.map((sec) => {
+            const isOpen = openSections[sec.id]
+            return (
+              <div key={sec.id} className="border-b md:border-b-0 border-slate-200 dark:border-slate-800 pb-4 md:pb-0">
+                {/* Mobile Accordion Header */}
+                <button
+                  onClick={() => toggleSection(sec.id)}
+                  className="w-full flex items-center justify-between py-2 md:py-0 md:cursor-default text-left font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white"
+                >
+                  <span>{sec.title}</span>
+                  <ChevronDown className={`w-4 h-4 md:hidden transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {/* Content Links: Collapsible on Mobile (<md), Always Open on Tablet & Desktop (md:) */}
+                <ul className={`mt-3 space-y-2 font-medium transition-all duration-200 overflow-hidden ${isOpen ? "block max-h-96 opacity-100" : "hidden md:block max-h-96 md:opacity-100"}`}>
+                  {sec.links.map((link, idx) => (
+                    <li key={idx}>
+                      <a
+                        href={link.href}
+                        className={`transition-colors inline-block py-1 sm:py-0.5 ${
+                          link.isBold
+                            ? "font-bold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
+                            : "hover:text-indigo-600 dark:hover:text-indigo-400"
+                        }`}
+                      >
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </div>
+            )
+          })}
 
-              <div className="grid md:grid-cols-3 gap-5 lg:gap-8 relative">
-                {/* Connection line (desktop) */}
-                <div className="hidden md:block absolute top-20 left-[20%] right-[20%] h-0.5">
-                  <div className="w-full h-full bg-gradient-to-r from-blue-300 via-purple-300 to-emerald-300 dark:from-blue-600 dark:via-purple-600 dark:to-emerald-600 rounded-full"></div>
-                </div>
+        </div>
 
-                {workflow.map((step, index) => (
-                  <div key={index} className="relative">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 dark:border-slate-800 hover:shadow-xl dark:hover:shadow-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 hover:-translate-y-2 text-center">
-                      {/* Step number circle */}
-                      <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${step.color} text-white shadow-lg mb-6`}>
-                        <step.icon className="w-7 h-7" />
-                      </div>
+        {/* Bottom copyright & theme bar */}
+        <div className="mt-12 lg:mt-16 pt-8 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 font-medium text-slate-500 dark:text-slate-400 text-center sm:text-left">
+          <p>© {new Date().getFullYear()} AIChartor. All rights reserved.</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Theme</span>
+            <ThemeToggle className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 shadow-sm transition-colors" />
+          </div>
+        </div>
 
-                      <div className="inline-block px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase mb-3 transition-colors">
-                        Step {step.step}
-                      </div>
+      </div>
+    </footer>
+  )
+}
 
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3 transition-colors">{step.title}</h3>
-                      <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-sm transition-colors">{step.description}</p>
-                    </div>
-                  </div>
-                ))}
+function EditorWorkspaceHubCard() {
+  return (
+    <div className="rounded-2xl bg-gradient-to-br from-sky-600 to-teal-600 p-6 flex flex-col justify-between min-h-[340px] overflow-hidden relative group text-white">
+      <div className="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
+
+      <div>
+        <h3 className="text-xl font-semibold leading-snug text-white">
+          All-in-One Charting Studio
+        </h3>
+        <p className="mt-2 text-xs leading-relaxed font-sans text-sky-100">
+          A complete workspace to transform raw data into polished, publication-ready charts and visual stories.
+        </p>
+      </div>
+
+      {/* Structured Feature List */}
+      <div className="mt-4 flex-1 flex flex-col justify-between relative space-y-2.5 font-sans">
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/15 border border-white/20 text-white hover:bg-white/25 transition-colors">
+          <Database className="w-4 h-4 shrink-0 text-sky-200" />
+          <div className="text-xs font-semibold text-white">Dataset &amp; Series Control</div>
+        </div>
+
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/15 border border-white/20 text-white hover:bg-white/25 transition-colors">
+          <Palette className="w-4 h-4 shrink-0 text-sky-200" />
+          <div className="text-xs font-semibold text-white">Aesthetics &amp; Typography</div>
+        </div>
+
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/15 border border-white/20 text-white hover:bg-white/25 transition-colors">
+          <Grid className="w-4 h-4 shrink-0 text-sky-200" />
+          <div className="text-xs font-semibold text-white">Scales, Grids &amp; Layouts</div>
+        </div>
+
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/15 border border-white/20 text-white hover:bg-white/25 transition-colors">
+          <Layers className="w-4 h-4 shrink-0 text-sky-200" />
+          <div className="text-xs font-semibold text-white">Vector Canvas &amp; Overlays</div>
+        </div>
+
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/15 border border-white/20 text-white hover:bg-white/25 transition-colors">
+          <MoreHorizontal className="w-4 h-4 shrink-0 text-sky-200" />
+          <div className="text-xs font-semibold text-white">More Options &amp; Utilities</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CloudControlsHubCard() {
+  const { theme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const isDark = mounted ? (resolvedTheme === "dark" || theme === "dark") : false
+
+  return (
+    <div className={`rounded-2xl border p-6 flex flex-col justify-between min-h-[340px] overflow-hidden relative group transition-colors duration-300 ${isDark
+      ? "bg-slate-900 border-slate-800 text-white shadow-none"
+      : "bg-slate-50 border-slate-200 text-slate-900 shadow-none"
+      }`}>
+      {isDark && (
+        <div className="absolute inset-0 bg-gradient-to-b from-sky-500/10 via-indigo-500/5 to-transparent pointer-events-none" />
+      )}
+
+      <div>
+        <h3 className={`text-lg font-semibold leading-snug ${isDark ? "text-white" : "text-slate-900"}`}>
+          Modes, Presets &amp; Cloud Sync
+        </h3>
+        <p className={`mt-2 text-xs leading-relaxed font-sans ${isDark ? "text-slate-400" : "text-slate-700 font-normal"}`}>
+          Switch chart modes, pick from 20+ chart types, apply template presets, and seamlessly save, share, or load cloud charts.
+        </p>
+      </div>
+
+      {/* Feature Grid Graphic */}
+      <div className="mt-4 flex-1 flex flex-col justify-between relative font-sans">
+        <div className="flex-1 flex flex-col justify-around py-1 space-y-3">
+          {/* Row 1: Chart Modes & Types */}
+          <div>
+            <div className={`text-[8.5px] font-mono font-bold tracking-wider uppercase mb-1.5 ${isDark ? "text-slate-500" : "text-slate-600"
+              }`}>CHART MODES &amp; TYPES</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${isDark
+                ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                : "bg-white border border-slate-200 text-slate-900 shadow-2xs hover:bg-indigo-50/60 hover:border-indigo-300"
+                }`}>
+                <BarChart2 className={`w-4 h-4 shrink-0 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                <span className="truncate">Chart &amp; 3D Mode</span>
               </div>
-            </div>
-          </section>
-
-          {/* ─── CTA SECTION ─── */}
-          <section className="relative overflow-hidden">
-            <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 py-20 sm:py-24">
-              {/* Decorative elements */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="animate-float-slow absolute top-10 left-[10%] w-3 h-3 rounded-full bg-white/20"></div>
-                <div className="animate-float-medium absolute top-20 right-[15%] w-2 h-2 rounded-full bg-white/30"></div>
-                <div className="animate-float-fast absolute bottom-20 left-[20%] w-4 h-4 rounded-full bg-white/10"></div>
-                <div className="animate-float-medium absolute bottom-10 right-[25%] w-2 h-2 rounded-full bg-white/20"></div>
-                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.08), transparent 50%)' }}></div>
-                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 70% 80%, rgba(255,255,255,0.05), transparent 50%)' }}></div>
-              </div>
-
-              <div className="relative max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-                <div className="space-y-8">
-                  <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight">
-                    Ready to Transform
-                    <br />
-                    <span className="text-indigo-200">Your Data?</span>
-                  </h2>
-
-                  <p className="text-lg sm:text-xl text-indigo-200 max-w-2xl mx-auto leading-relaxed">
-                    Join thousands of teams creating stunning visualizations with Chartography.in.
-                    Start your journey from data to insights today.
-                  </p>
-
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-                    <Button asChild size="lg" className="px-8 py-6 text-base font-semibold bg-white text-indigo-700 hover:bg-indigo-50 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 rounded-xl">
-                      <Link href="/landing">
-                        <Sparkles className="w-5 h-5 mr-2" />
-                        Start Creating Now
-                        <ArrowUpRight className="w-5 h-5 ml-2" />
-                      </Link>
-                    </Button>
-
-                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-slate-800 border-2 border-slate-700 text-white hover:text-white hover:bg-slate-700 transition-all duration-300 rounded-xl">
-                      <Link href="/editor">
-                        <Edit3 className="w-5 h-5 mr-2" />
-                        Explore Editor
-                      </Link>
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-center gap-6 text-indigo-200 text-sm pt-4">
-                    <span className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      Free to start
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      No setup required
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      Export anywhere
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ─── FOOTER ─── */}
-          <footer className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300 border-t border-slate-200 dark:border-transparent">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-              <div className="grid md:grid-cols-4 gap-10">
-                {/* Brand */}
-                <div className="md:col-span-2">
-                  <div className="flex items-center space-x-3 mb-5">
-                    <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
-                    <span className="text-2xl font-bold">Chartography.in</span>
-                  </div>
-                  <p className="text-slate-500 dark:text-slate-400 max-w-md leading-relaxed text-sm transition-colors">
-                    Transform your data into stunning visualizations with the power of AI and professional design tools.
-                    Create, customize, and share charts that tell your story.
-                  </p>
-                </div>
-
-                {/* Quick Links */}
-                <div>
-                  <h3 className="font-semibold mb-5 text-slate-900 dark:text-slate-200 transition-colors">Platform</h3>
-                  <div className="space-y-3">
-                    <Link href="/landing" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">AI Chat</Link>
-                    <Link href="/editor" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Advanced Editor</Link>
-                    <Link href="/board" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Dashboard</Link>
-                    <Link href="/documentation" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Documentation</Link>
-                  </div>
-                </div>
-
-                {/* Resources */}
-                <div>
-                  <h3 className="font-semibold mb-5 text-slate-900 dark:text-slate-200 transition-colors">Resources</h3>
-                  <div className="space-y-3">
-                    <Link href="/pricing" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Pricing</Link>
-                    <Link href="/about" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">About</Link>
-                    <Link href="/signin" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Sign In</Link>
-                    <Link href="/signup" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Sign Up</Link>
-                    <Link href="/terms" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Terms of Service</Link>
-                    <Link href="/privacy" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Privacy Policy</Link>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-200 dark:border-slate-800 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 transition-colors">
-                <div className="text-slate-500 dark:text-slate-400 text-sm transition-colors">
-                  © {new Date().getFullYear()} Chartography.in. All rights reserved.
-                </div>
-                <div className="flex items-center gap-3">
-                  <ThemeToggle className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 shadow-sm transition-colors" />
-                  <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
-                    All systems operational
-                  </Badge>
-                </div>
+              <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${isDark
+                ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                : "bg-white border border-slate-200 text-slate-900 shadow-2xs hover:bg-indigo-50/60 hover:border-indigo-300"
+                }`}>
+                <PieChart className={`w-4 h-4 shrink-0 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                <span className="truncate">20+ Chart Types</span>
               </div>
             </div>
-          </footer>
+          </div>
+
+          {/* Row 2: Template Presets & Layouts */}
+          <div>
+            <div className={`text-[8.5px] font-mono font-bold tracking-wider uppercase mb-1.5 ${isDark ? "text-slate-500" : "text-slate-600"
+              }`}>TEMPLATES &amp; PRESETS</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${isDark
+                ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                : "bg-white border border-slate-200 text-slate-900 shadow-2xs hover:bg-indigo-50/60 hover:border-indigo-300"
+                }`}>
+                <Layout className={`w-4 h-4 shrink-0 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                <span className="truncate">Template Layouts</span>
+              </div>
+              <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${isDark
+                ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                : "bg-white border border-slate-200 text-slate-900 shadow-2xs hover:bg-indigo-50/60 hover:border-indigo-300"
+                }`}>
+                <Sparkles className={`w-4 h-4 shrink-0 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                <span className="truncate">Design Presets</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3: Cloud Sync, Save & Share */}
+          <div>
+            <div className={`text-[8.5px] font-mono font-bold tracking-wider uppercase mb-1.5 ${isDark ? "text-slate-500" : "text-slate-600"
+              }`}>CLOUD &amp; EXPORT</div>
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] font-semibold transition-colors ${isDark
+                ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                : "bg-white border border-slate-200 text-slate-900 shadow-2xs hover:bg-indigo-50/60 hover:border-indigo-300"
+                }`}>
+                <Save className={`w-3.5 h-3.5 shrink-0 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                <span className="truncate">Save</span>
+              </div>
+              <div className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] font-semibold transition-colors ${isDark
+                ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                : "bg-white border border-slate-200 text-slate-900 shadow-2xs hover:bg-indigo-50/60 hover:border-indigo-300"
+                }`}>
+                <FolderOpen className={`w-3.5 h-3.5 shrink-0 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                <span className="truncate">Load Cloud</span>
+              </div>
+              <div className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] font-semibold transition-colors ${isDark
+                ? "bg-indigo-600/25 border border-indigo-500/40 text-indigo-200"
+                : "bg-white border border-slate-200 text-slate-900 shadow-2xs hover:bg-indigo-50/60 hover:border-indigo-300"
+                }`}>
+                <Share2 className={`w-3.5 h-3.5 shrink-0 ${isDark ? "text-indigo-300" : "text-indigo-600"}`} />
+                <span className="truncate">Share</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EditorBento() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      {/* Card 1: Decorate Design - Shapes & Overlays (md:col-span-2 lg:col-span-2) */}
+      <div className="md:col-span-2 lg:col-span-2 flex">
+        <DecorateDesignCard />
+      </div>
+
+      {/* Card 2: Editor Workspace Hub (col-span-1) */}
+      <div className="col-span-1 md:col-span-1 flex">
+        <EditorWorkspaceHubCard />
+      </div>
+
+      {/* Card 3: Cloud & Controls Hub (col-span-1) */}
+      <div className="col-span-1 md:col-span-1 flex">
+        <CloudControlsHubCard />
+      </div>
+
+      {/* Card 4: Aspect Ratio & Viewport Resizer (md:col-span-2 lg:col-span-2) */}
+      <div className="md:col-span-2 lg:col-span-2 flex">
+        <EditorOptionsCard />
+      </div>
+
+    </div>
+  )
+}
+
+// ── BOARD BENTO ────────────────────────────────────────────
+function BoardBento() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+
+      {/* Left Tile: Canvas (2/3 width, full height) */}
+      <div className="lg:col-span-2 rounded-2xl bg-gradient-to-br from-sky-600 to-teal-600 p-5 sm:p-6 md:p-7 flex flex-col justify-between min-h-[360px] overflow-hidden relative">
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
+        <div>
+          <LayoutDashboard className="w-6 h-6 text-sky-200 mb-3" />
+          <h3 className="text-xl md:text-2xl font-semibold text-white leading-snug whitespace-normal break-words">
+            One Interface to View all your creations and Assets
+          </h3>
+          <p className="mt-2 text-sky-100 text-xs md:text-sm leading-relaxed max-w-xl">
+            Access, search, filter, and manage all your charts, templates, and visual assets in one centralized dashboard.
+          </p>
+        </div>
+        {/* Glossy Animated Dashboard Mockup (90% Match to Dashboard Image 1) */}
+        <div className="mt-5 rounded-2xl bg-slate-50/95 border border-white/30 p-3 shadow-2xl backdrop-blur-md relative overflow-hidden group/dash">
+          {/* Subtle Ambient Glass Shimmer */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/dash:animate-[shimmer_2s_infinite] pointer-events-none" />
+
+          {/* Top Bar Navigation Mockup */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-200/80 text-slate-800">
+            {/* Header Title + Tabs */}
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-sm bg-gradient-to-br from-violet-600 to-indigo-600 shadow-xs animate-pulse" />
+              <span className="text-[11px] font-extrabold text-slate-900 tracking-tight">Dashboard</span>
+              <div className="hidden sm:flex items-center gap-1 ml-2 bg-slate-200/60 p-0.5 rounded-lg text-[9px] font-bold text-slate-700">
+                <span className="bg-white text-violet-700 px-1.5 py-0.5 rounded-md shadow-2xs">Single Chart <span className="text-[8px] bg-violet-100 text-violet-800 px-1 rounded-full ml-0.5">248</span></span>
+                <span className="px-1.5 py-0.5 text-slate-500">Group Chart</span>
+                <span className="px-1.5 py-0.5 text-slate-500">Templates</span>
+              </div>
+            </div>
+
+            {/* Top Right Action Pills */}
+            <div className="flex items-center gap-1">
+              <div className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[8.5px] font-bold text-slate-700 shadow-2xs">My Charts</div>
+              <div className="px-2 py-0.5 rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[8.5px] font-extrabold shadow-xs flex items-center gap-1">
+                <span>+ AI</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Dashboard Layout Grid: 2 Left Cards + Right Sidebar */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+            {/* Left Content Area (8 Cols on sm+) - 2 Charts Grid */}
+            <div className="col-span-1 sm:col-span-8 space-y-2">
+              {/* Filter / Search Bar Row */}
+              <div className="flex items-center justify-between gap-1.5 bg-white p-1.5 rounded-lg border border-slate-200/80 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-slate-400 text-[9px] flex-1 px-1">
+                  <span>🔍</span>
+                  <span className="text-slate-400 font-medium truncate">Search charts...</span>
+                </div>
+                <div className="flex items-center gap-1 text-[8px] font-semibold text-slate-600 shrink-0">
+                  <span className="px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200">Type</span>
+                  <span className="px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200">Sort</span>
+                </div>
+              </div>
+
+              {/* 2 Chart Tiles Grid (Simple Clean Charts) */}
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
+                {/* Tile 1: Product Score Simple Bar Chart */}
+                <div className="bg-white rounded-xl border border-slate-200/90 p-2 shadow-2xs flex flex-col justify-between relative overflow-hidden group/tile1 hover:border-slate-300 transition-colors">
+                  <div className="text-[9.5px] font-bold text-slate-800 tracking-tight">Product Score</div>
+
+                  {/* Very Simple Clean Bar Chart Graphic */}
+                  <div className="my-1.5 h-16 bg-slate-50 rounded-lg border border-slate-100 p-1 flex items-end justify-between gap-1">
+                    <div className="w-1/6 bg-indigo-300 rounded-t-xs h-[30%] transition-all duration-300 group-hover/tile1:bg-indigo-400" />
+                    <div className="w-1/6 bg-indigo-400 rounded-t-xs h-[50%] transition-all duration-300 group-hover/tile1:bg-indigo-500" />
+                    <div className="w-1/6 bg-indigo-400 rounded-t-xs h-[75%] transition-all duration-300 group-hover/tile1:bg-indigo-500" />
+                    <div className="w-1/6 bg-indigo-500 rounded-t-xs h-[65%] transition-all duration-300 group-hover/tile1:bg-indigo-600" />
+                    <div className="w-1/6 bg-indigo-500 rounded-t-xs h-[85%] transition-all duration-300 group-hover/tile1:bg-indigo-600" />
+                    <div className="w-1/6 bg-indigo-600 rounded-t-xs h-[100%]" />
+                  </div>
+
+                  {/* Tile Footer Pills */}
+                  <div className="flex items-center justify-between pt-0.5 text-[7.5px] text-slate-400">
+                    <span className="bg-slate-100 text-slate-600 font-bold px-1 py-0.5 rounded border border-slate-200">bar</span>
+                    <span>800 × 600</span>
+                  </div>
+                </div>
+
+                {/* Tile 2: Revenue Today Simple Line Chart */}
+                <div className="bg-white rounded-xl border border-slate-200/90 p-2 shadow-2xs flex flex-col justify-between relative overflow-hidden group/tile2 hover:border-slate-300 transition-colors">
+                  <div className="text-[9.5px] font-bold text-slate-800 tracking-tight">Revenue Today</div>
+
+                  {/* Very Simple Clean Line Chart Graphic */}
+                  <div className="my-1.5 h-16 bg-slate-50 rounded-lg border border-slate-100 p-1.5 flex items-center justify-center relative overflow-hidden">
+                    <svg className="w-full h-full overflow-visible" viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      {/* Area Fill Gradient under line */}
+                      <path d="M 5 30 Q 25 10 45 22 T 85 8 L 85 35 L 5 35 Z" className="fill-sky-500/10" />
+                      {/* Smooth Line Path */}
+                      <path d="M 5 30 Q 25 10 45 22 T 85 8" className="stroke-sky-500 stroke-[2.5] stroke-linecap-round stroke-linejoin-round" />
+                      {/* Line Points */}
+                      <circle cx="5" cy="30" r="2" className="fill-white stroke-sky-500 stroke-[1.5]" />
+                      <circle cx="25" cy="14" r="2" className="fill-white stroke-sky-500 stroke-[1.5]" />
+                      <circle cx="45" cy="22" r="2" className="fill-white stroke-sky-500 stroke-[1.5]" />
+                      <circle cx="65" cy="16" r="2" className="fill-white stroke-sky-500 stroke-[1.5]" />
+                      <circle cx="85" cy="8" r="2" className="fill-white stroke-sky-500 stroke-[1.5]" />
+                    </svg>
+                  </div>
+
+                  {/* Tile Footer Pills */}
+                  <div className="flex items-center justify-between pt-0.5 text-[7.5px] text-slate-400">
+                    <span className="bg-slate-100 text-slate-600 font-bold px-1 py-0.5 rounded border border-slate-200">line</span>
+                    <span>800 × 900</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Sidebar Area (4 Cols on sm+) - About + Chart Types */}
+            <div className="col-span-1 sm:col-span-4 space-y-2">
+              {/* About Single Charts Card */}
+              <div className="bg-white rounded-xl border border-slate-200/90 p-2 shadow-2xs space-y-1.5">
+                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">About Single Charts</div>
+                <div className="space-y-1 text-[8px] text-slate-600">
+                  <div className="flex justify-between"><span>Total Created</span><span className="font-extrabold text-slate-900">248</span></div>
+                  <div className="flex justify-between"><span>Active this week</span><span className="font-extrabold text-slate-900">34</span></div>
+                  <div className="flex justify-between"><span>Weekly Average</span><span className="font-extrabold text-slate-900">28 avg</span></div>
+                </div>
+              </div>
+
+              {/* Chart Types Breakdown */}
+              <div className="bg-white rounded-xl border border-slate-200/90 p-2 shadow-2xs space-y-1.5">
+                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Chart Types</div>
+                {/* Progress Bar */}
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                  <div className="w-[42%] bg-violet-600" />
+                  <div className="w-[28%] bg-sky-500" />
+                  <div className="w-[18%] bg-emerald-500" />
+                  <div className="w-[12%] bg-amber-400" />
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-[7.5px] font-semibold text-slate-700 pt-0.5">
+                  <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-violet-600" />Bar (42%)</div>
+                  <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-500" />Line (28%)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column: 2 Stacked Cards (1/3 width, Height Ratio 2:1) */}
+      <div className="lg:col-span-1 flex flex-col gap-4">
+        {/* Top Right Card: Share, Preview, Download & Navigate (Height Ratio 2) */}
+        <div className="flex-[2] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between overflow-hidden min-h-[220px]">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Share2 className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+              <div className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Live Actions</span>
+              </div>
+            </div>
+
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white leading-snug">
+              Share, Preview, Download &amp; Navigate
+            </h3>
+            <p className="mt-1.5 text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
+              Share live public URLs, instantly preview charts, download high-res exports, and navigate your creations seamlessly.
+            </p>
+
+            {/* Quick Action Badges */}
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 mt-4 text-[10.5px] font-semibold">
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-2xs">
+                <Share2 className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                <span className="truncate">Share &amp; Embed</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-2xs">
+                <Maximize2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span className="truncate">Quick Preview</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-2xs">
+                <Save className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="truncate">Export Designs</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-2xs">
+                <FolderOpen className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span className="truncate">Navigate &amp; Edit</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Right Card: Quick Tiles to View Your Design Trend (Height Ratio 1, Pure Text) */}
+        <div className="flex-[1] rounded-2xl bg-slate-900 dark:bg-slate-800 p-5 flex flex-col justify-between overflow-hidden min-h-[110px]">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="text-lg font-semibold text-white leading-snug">
+                Quick Tiles to View Your Design Trend
+              </h3>
+              <TrendingUp className="w-4 h-4 text-violet-400 shrink-0" />
+            </div>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              Monitor chart creation metrics, active weekly designs, and visual category trends at a glance.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── CHART RENDERER HELPER ──────────────────────────────────
+function ChartRenderer({ type, mode }: { type: string; mode: "single" | "grouped" }) {
+  if (mode === "single") {
+    const singleImages: Record<string, { src: string; title: string }> = {
+      bar: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/top-5-trending-investment-options-2026.png",
+        title: "Top 5 Trending Investment Options 2026"
+      },
+      donut: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/most-visited-countries-in-the-world-2026.png",
+        title: "Most Visited Countries in the World (2026)"
+      },
+      waterfall: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/lm-company-net-profit-2026-gradient.png",
+        title: "L&M Company Net Profit in Fiscal Year 2026"
+      },
+      "horizontal-bar": {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/percentage-of-students-enrollment-each-month.png",
+        title: "Percentage (%) of Students Enrollment Each Month"
+      },
+      line: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/eur-to-usd-exchange-rate-1999-2025.png",
+        title: "EUR to USD Exchange Rate (1999–2025)"
+      },
+      radar: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/my-study-interests.png",
+        title: "My Study Interests"
+      }
+    }
+
+    const currentSlide = singleImages[type] || singleImages["bar"]
+
+    return (
+      <div className="w-full h-full flex items-center justify-center p-1">
+        <img
+          src={currentSlide.src}
+          alt={currentSlide.title}
+          className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300"
+        />
+      </div>
+    )
+  }
+
+  // mode === "grouped"
+  const groupedImages: Record<string, { src: string; title: string }> = {
+    "august-visa": {
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/august_visa_transactions.png",
+      title: "August Visa Transactions"
+    },
+    "muscle-workout": {
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/muscle-workout-set-per-day.png",
+      title: "Muscle Workout Set Per Day"
+    },
+    "scatter-plot": {
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/scatter-plot-of-three-groups.png",
+      title: "Scatter Plot of Three Groups"
+    },
+    "mrr-signups": {
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/mrr-and-signups-growth.png",
+      title: "MRR ($) vs Signups"
+    }
+  }
+
+  const currentSlide = groupedImages[type] || groupedImages["august-visa"]
+
+  return (
+    <div className="w-full h-full flex items-center justify-center p-1">
+      <img
+        src={currentSlide.src}
+        alt={currentSlide.title}
+        className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300"
+      />
+    </div>
+  )
+}
+
+// ── AUTO SCROLLING CHART TYPES TICKER (INFINITE LOOP & DRAGGABLE) ──
+function AutoScrollingChartTypes({
+  supportedChartTypes,
+}: {
+  supportedChartTypes: Array<{ id: string; label: string; icon: any }>
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const isHoveredRef = useRef(false)
+  const isDraggingRef = useRef(false)
+  const isPageVisibleRef = useRef(true)
+  const isInViewRef = useRef(true)
+  const startXRef = useRef(0)
+  const scrollLeftRef = useRef(0)
+
+  // Pre-computed 3x array for seamless infinite conveyor belt
+  const items = React.useMemo(() => [
+    ...supportedChartTypes,
+    ...supportedChartTypes,
+    ...supportedChartTypes,
+  ], [supportedChartTypes])
+
+  // Center scroll position on mount so left/right dragging work immediately
+  useEffect(() => {
+    const el = containerRef.current
+    if (el && el.scrollWidth > 0 && el.scrollLeft === 0) {
+      el.scrollLeft = el.scrollWidth / 3
+    }
+  }, [])
+
+  // Optimized Delta-Time Animation Loop (runs once, zero re-renders on hover/drag)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    // Pause when the chart ticker is scrolled out of viewport
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isInViewRef.current = entry.isIntersecting
+      },
+      { threshold: 0 }
+    )
+    observer.observe(el)
+
+    // Track tab visibility to pause when inactive
+    const handleVisibility = () => {
+      isPageVisibleRef.current = !document.hidden
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    const pixelsPerSecond = 45 // Constant speed across 60Hz, 120Hz & 144Hz displays
+    let lastTime = performance.now()
+    let animId: number
+
+    const step = (currentTime: number) => {
+      const delta = (currentTime - lastTime) / 1000
+      lastTime = currentTime
+
+      // Guard against frame jumps after tab switch
+      if (delta > 0 && delta < 0.2) {
+        const setWidth = el.scrollWidth / 3
+        if (setWidth > 0) {
+          if (!isHoveredRef.current && !isDraggingRef.current && isPageVisibleRef.current && isInViewRef.current) {
+            el.scrollLeft += pixelsPerSecond * delta
+          }
+          // Seamless infinite wrap in both directions
+          if (el.scrollLeft >= setWidth * 2) {
+            el.scrollLeft -= setWidth
+          } else if (el.scrollLeft <= 0) {
+            el.scrollLeft += setWidth
+          }
+        }
+      }
+
+      animId = requestAnimationFrame(step)
+    }
+
+    animId = requestAnimationFrame(step)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      observer.disconnect()
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [])
+
+  // Window-level drag listeners (active only during drag)
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const el = containerRef.current
+      if (!el) return
+      const walk = (e.pageX - el.offsetLeft - startXRef.current) * 1.2
+      el.scrollLeft = scrollLeftRef.current - walk
+
+      const setWidth = el.scrollWidth / 3
+      if (setWidth > 0) {
+        if (el.scrollLeft >= setWidth * 2) {
+          el.scrollLeft -= setWidth
+          scrollLeftRef.current -= setWidth
+        } else if (el.scrollLeft <= 0) {
+          el.scrollLeft += setWidth
+          scrollLeftRef.current += setWidth
+        }
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      isDraggingRef.current = false
+    }
+
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mouseup", handleMouseUp)
+    }
+  }, [isDragging])
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const el = containerRef.current
+    if (!el) return
+    e.preventDefault()
+    setIsDragging(true)
+    isDraggingRef.current = true
+    startXRef.current = e.pageX - el.offsetLeft
+    scrollLeftRef.current = el.scrollLeft
+  }
+
+  // Mobile / Tablet Touch handlers
+  const touchStartXRef = useRef(0)
+  const touchScrollLeftRef = useRef(0)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const el = containerRef.current
+    if (!el) return
+    isHoveredRef.current = true
+    touchStartXRef.current = e.touches[0].pageX - el.offsetLeft
+    touchScrollLeftRef.current = el.scrollLeft
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const el = containerRef.current
+    if (!el) return
+    const walk = (e.touches[0].pageX - el.offsetLeft - touchStartXRef.current) * 1.2
+    el.scrollLeft = touchScrollLeftRef.current - walk
+
+    const setWidth = el.scrollWidth / 3
+    if (setWidth > 0) {
+      if (el.scrollLeft >= setWidth * 2) {
+        el.scrollLeft -= setWidth
+        touchScrollLeftRef.current -= setWidth
+      } else if (el.scrollLeft <= 0) {
+        el.scrollLeft += setWidth
+        touchScrollLeftRef.current += setWidth
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    isHoveredRef.current = false
+  }
+
+  return (
+    <div className="relative w-full overflow-hidden select-none py-1">
+      {/* Edge gradient fade masks */}
+      <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-slate-950 to-transparent z-10" />
+      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-950 to-transparent z-10" />
+
+      {/* Auto-scrolling, draggable conveyor */}
+      <div
+        ref={containerRef}
+        onMouseEnter={() => { isHoveredRef.current = true }}
+        onMouseLeave={() => { isHoveredRef.current = false }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={`flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1 px-1 select-none transform-gpu ${
+          isDragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        {items.map((c, index) => {
+          const Icon = c.icon
+          return (
+            <div
+              key={`${c.id}-${index}`}
+              title={c.label}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 select-none transition-colors shadow-2xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 ${
+                isDragging ? "cursor-grabbing" : "cursor-grab"
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0 text-slate-600 dark:text-slate-400" />
+              <span className="whitespace-nowrap">{c.label}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── CHARTS SHOWCASE SECTION ─────────────────────────────────
+function ChartsShowcaseSection() {
+  const [mode, setMode] = useState<"single" | "grouped">("single")
+  const [selectedType, setSelectedType] = useState<string>("bar")
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const [isInViewport, setIsInViewport] = useState(false)
+  const [isTabActive, setIsTabActive] = useState(true)
+  const [isHovered, setIsHovered] = useState(false)
+
+  // Single mode carousel options
+  const singleExampleTypes = [
+    { id: "bar", label: "Bar" },
+    { id: "donut", label: "3D Donut" },
+    { id: "waterfall", label: "Waterfall" },
+    { id: "horizontal-bar", label: "Horizontal Bar" },
+    { id: "line", label: "Line" },
+    { id: "radar", label: "Radar" },
+  ]
+
+  // Grouped mode carousel options
+  const groupedExampleTypes = [
+    { id: "august-visa", label: "August Visa Transactions" },
+    { id: "muscle-workout", label: "Muscle Workout Set Per Day" },
+    { id: "scatter-plot", label: "Scatter Plot of Three Groups" },
+    { id: "mrr-signups", label: "MRR vs Signups" },
+  ]
+
+  const exampleTypes = mode === "single" ? singleExampleTypes : groupedExampleTypes
+
+  // Supported chart types for horizontal badge list
+  const supportedChartTypes = [
+    { id: "bar", label: "Bar", icon: BarChart2 },
+    { id: "line", label: "Line", icon: TrendingUp },
+    { id: "area", label: "Area", icon: Activity },
+    { id: "pie", label: "Pie", icon: PieChart },
+    { id: "donut", label: "Donut", icon: CircleDot },
+    { id: "horizontal-bar", label: "Horizontal Bar", icon: AlignLeft },
+    { id: "stacked-bar", label: "Stacked Bar", icon: Layers },
+    { id: "radar", label: "Radar", icon: Hexagon },
+    { id: "polar", label: "Polar", icon: Target },
+    { id: "scatter", label: "Scatter", icon: Sparkles },
+    { id: "bubble", label: "Bubble", icon: Circle },
+    { id: "3d-bar", label: "3D Bar", icon: Box },
+    { id: "3d-pie", label: "3D Pie", icon: PieChart },
+    { id: "3d-donut", label: "3D Donut", icon: CircleDot },
+    { id: "gauge", label: "Gauge", icon: Gauge },
+    { id: "funnel", label: "Funnel", icon: Filter },
+    { id: "waterfall", label: "Waterfall", icon: BarChart2 },
+  ]
+
+  const currentIndex = exampleTypes.findIndex(c => c.id === selectedType)
+
+  const handlePrev = () => {
+    const nextIdx = (currentIndex - 1 + exampleTypes.length) % exampleTypes.length
+    setSelectedType(exampleTypes[nextIdx].id)
+  }
+
+  const handleNext = () => {
+    const nextIdx = (currentIndex + 1) % exampleTypes.length
+    setSelectedType(exampleTypes[nextIdx].id)
+  }
+
+  // Track viewport intersection
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInViewport(entry.isIntersecting)
+      },
+      { threshold: 0.2 }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Track page visibility & window focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden)
+    }
+
+    const handleFocus = () => setIsTabActive(true)
+    const handleBlur = () => setIsTabActive(false)
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("focus", handleFocus)
+    window.addEventListener("blur", handleBlur)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("focus", handleFocus)
+      window.removeEventListener("blur", handleBlur)
+    }
+  }, [])
+
+  // Auto-slide to next image every 3 seconds only when visible in viewport, tab active, and not hovered
+  useEffect(() => {
+    if (exampleTypes.length <= 1 || !isInViewport || !isTabActive || isHovered) return
+
+    const interval = setInterval(() => {
+      setSelectedType((prevType) => {
+        const idx = exampleTypes.findIndex(c => c.id === prevType)
+        const nextIdx = (idx + 1) % exampleTypes.length
+        return exampleTypes[nextIdx].id
+      })
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [exampleTypes, isInViewport, isTabActive, isHovered])
+
+  return (
+    <div ref={sectionRef} id="showcase-charts" className="mt-16 sm:mt-24 pt-6 font-sans scroll-mt-24 sm:scroll-mt-28">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+
+        {/* Left Side (Vertically centered to match reference image) */}
+        <div className="lg:col-span-6 space-y-4 sm:space-y-5">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-800/70 px-2.5 py-0.5 rounded-full">
+              <Sparkles className="w-3 h-3 text-indigo-500 shrink-0" />
+              <span>Visual Studio</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mt-2.5">
+              Charts
+            </h2>
+            <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm leading-relaxed max-w-md font-normal">
+              Create publication-ready single and grouped chart visualizations tailored to your dataset in seconds.
+            </p>
+          </div>
+
+          {/* Clean feature point items */}
+          <div className="space-y-2.5 pt-1">
+            {[
+              "Get Realtime Data with one-click live fetch.",
+              "Choose from different chart Preset/Theme as per your wish.",
+              "Supports Grouped Dataset for Professional Presentations.",
+              "Supports 17+ Chart types to choose as per your need.",
+            ].map((text, idx) => (
+              <div key={idx} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300 font-medium">
+                <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-400">
+                  <Check className="w-2.5 h-2.5" />
+                </div>
+                <span>{text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom Row: Horizontal auto-scrolling loop tags */}
+          <AutoScrollingChartTypes supportedChartTypes={supportedChartTypes} />
+        </div>
+
+        {/* Right Side: Clean Floating Preview Container */}
+        <div className="lg:col-span-6 flex flex-col items-center lg:items-end justify-between w-full">
+          {/* Top Segmented Pill Switcher */}
+          <div className="flex items-center justify-center lg:justify-end mb-3 w-full">
+            <div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs select-none">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("single")
+                  setSelectedType("bar")
+                }}
+                className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  mode === "single"
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/80 dark:border-slate-700"
+                    : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Single
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("grouped")
+                  setSelectedType("august-visa")
+                }}
+                className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  mode === "grouped"
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/80 dark:border-slate-700"
+                    : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Grouped
+              </button>
+            </div>
+          </div>
+
+          {/* Floating Card Box with Responsive Height for Carousel */}
+          <div
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="w-full max-w-[520px] h-[260px] xs:h-[290px] sm:h-[320px] md:h-[340px] shrink-0 bg-transparent flex items-center justify-center relative group"
+          >
+            {/* Pure Chart Renderer View */}
+            <div className="w-full h-full flex items-center justify-center">
+              <ChartRenderer type={selectedType} mode={mode} />
+            </div>
+
+            {/* Left Floating Arrow Button */}
+            {exampleTypes.length > 1 && (
+              <button
+                onClick={handlePrev}
+                aria-label="Previous chart"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+              >
+                <ChevronLeft className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </button>
+            )}
+
+            {/* Right Floating Arrow Button */}
+            {exampleTypes.length > 1 && (
+              <button
+                onClick={handleNext}
+                aria-label="Next chart"
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+              >
+                <ChevronRight className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// ── TEMPLATE RENDERER HELPER ────────────────────────────────
+function TemplateRenderer({ slide }: { slide: { src: string; title: string } }) {
+  return (
+    <div className="w-full h-full flex items-center justify-center p-1">
+      <img
+        src={slide.src}
+        alt={slide.title}
+        className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300"
+      />
+    </div>
+  )
+}
+
+// ── TEMPLATES SHOWCASE SECTION ───────────────────────────────
+function TemplatesShowcaseSection() {
+  const [activeTemplateIdx, setActiveTemplateIdx] = useState(0)
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const [isInViewport, setIsInViewport] = useState(false)
+  const [isTabActive, setIsTabActive] = useState(true)
+  const [isHovered, setIsHovered] = useState(false)
+
+  // 5 template images in the exact order requested
+  const templateSlides = [
+    {
+      id: "olympic-medals-2024",
+      title: "Top 10 Nations at Paris 2024",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/top-10-nations-at-paris-2024.png",
+    },
+    {
+      id: "co2-levels-2026",
+      title: "Global Atmospheric CO2 Levels in 2026",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/global-atmospheric-co2-levels-in-2026.png",
+    },
+    {
+      id: "silicon-titans-2026",
+      title: "Silicon Titans: Top 5 Chip Makers by Market Cap (2026)",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/silicon-titans-top-5-chip-makers-2026.png",
+    },
+    {
+      id: "youtube-channels-subscribers",
+      title: "Top 10 YouTube Channels by Subscribers",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/top-10-youtube-channels-by-subscribers.png",
+    },
+    {
+      id: "fifa-world-ranking-2026",
+      title: "FIFA 2026 Men World Ranking : Top 10 Teams",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/fifa-2026-men-world-ranking-top-10.jpg",
+    },
+  ]
+
+  const handlePrev = () => {
+    setActiveTemplateIdx((prev) => (prev - 1 + templateSlides.length) % templateSlides.length)
+  }
+
+  const handleNext = () => {
+    setActiveTemplateIdx((prev) => (prev + 1) % templateSlides.length)
+  }
+
+  // Track viewport intersection
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInViewport(entry.isIntersecting)
+      },
+      { threshold: 0.2 }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Track page visibility & window focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden)
+    }
+
+    const handleFocus = () => setIsTabActive(true)
+    const handleBlur = () => setIsTabActive(false)
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("focus", handleFocus)
+    window.addEventListener("blur", handleBlur)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("focus", handleFocus)
+      window.removeEventListener("blur", handleBlur)
+    }
+  }, [])
+
+  // Auto-slide to next template every 3 seconds only when visible in viewport, tab active, and not hovered
+  useEffect(() => {
+    if (templateSlides.length <= 1 || !isInViewport || !isTabActive || isHovered) return
+
+    const interval = setInterval(() => {
+      setActiveTemplateIdx((prev) => (prev + 1) % templateSlides.length)
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [templateSlides.length, isInViewport, isTabActive, isHovered])
+
+  return (
+    <div ref={sectionRef} id="showcase-templates" className="mt-16 sm:mt-24 pt-6 font-sans scroll-mt-24 sm:scroll-mt-28">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+
+        {/* Carousel Preview (order-2 on mobile/tablet so text is read first, order-1 on desktop) */}
+        <div className="lg:col-span-6 flex flex-col items-center lg:items-start justify-center w-full order-2 lg:order-1">
+          <div
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="w-full max-w-[520px] h-[260px] xs:h-[290px] sm:h-[320px] md:h-[340px] shrink-0 bg-transparent flex items-center justify-center relative group"
+          >
+            {/* Pure Template Renderer View */}
+            <div className="w-full h-full flex items-center justify-center">
+              <TemplateRenderer slide={templateSlides[activeTemplateIdx]} />
+            </div>
+
+            {/* Left Floating Arrow Button */}
+            {templateSlides.length > 1 && (
+              <button
+                onClick={handlePrev}
+                aria-label="Previous template"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+              >
+                <ChevronLeft className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </button>
+            )}
+
+            {/* Right Floating Arrow Button */}
+            {templateSlides.length > 1 && (
+              <button
+                onClick={handleNext}
+                aria-label="Next template"
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+              >
+                <ChevronRight className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Dots Indicator */}
+          <div className="flex items-center justify-center gap-1.5 w-full max-w-[520px] pt-3">
+            {templateSlides.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveTemplateIdx(idx)}
+                aria-label={`Go to template ${idx + 1}`}
+                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  activeTemplateIdx === idx
+                    ? "w-6 bg-teal-600 dark:bg-teal-400"
+                    : "w-1.5 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Text & Feature Points (order-1 on mobile/tablet, order-2 on desktop) */}
+        <div className="lg:col-span-6 space-y-4 max-w-full overflow-hidden order-1 lg:order-2">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 border border-teal-200/70 dark:border-teal-800/70 px-2.5 py-0.5 rounded-full">
+              <Layout className="w-3 h-3 text-teal-500 shrink-0" />
+              <span>Infographic Zones</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight break-words mt-2.5">
+              Templates
+            </h2>
+            <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm leading-relaxed max-w-md break-words font-normal">
+              Create publication-ready, pro infographic chart templates with intelligent layouts in a single click.
+            </p>
+          </div>
+
+          {/* Clean feature point items */}
+          <div className="space-y-2.5 pt-1">
+            {[
+              "Explore templates across a variety of themes and aspect ratios.",
+              "Design Customized High Quality Templates with dedicated Tools.",
+              "Design eye-catching graphics inside templates with Decoration tools.",
+              "Get Tailored AI response from created Templates Zones.",
+            ].map((text, idx) => (
+              <div key={idx} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300 font-medium">
+                <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-400">
+                  <Check className="w-2.5 h-2.5" />
+                </div>
+                <span>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// ── MAIN PAGE ──────────────────────────────────────────────
+export default function HomeNewPage() {
+  const [activeTab, setActiveTab] = useState("ai-chat")
+  const [chatPrompt, setChatPrompt] = useState("")
+  const isManualScrollingRef = useRef(false)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleTabClick = (id: string) => {
+    setActiveTab(id)
+    isManualScrollingRef.current = true
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current)
+    }
+
+    const el = document.getElementById(`showcase-${id}`)
+    if (el) {
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 640
+      const headerOffset = isMobile ? 125 : 140
+      const elementPosition = el.getBoundingClientRect().top
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      })
+    }
+
+    scrollTimeoutRef.current = setTimeout(() => {
+      isManualScrollingRef.current = false
+    }, 1000)
+  }
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isManualScrollingRef.current) return
+
+      const isMobile = window.innerWidth < 640
+      const threshold = isMobile ? 130 : 145
+      const sections = ["ai-chat", "editor", "board"]
+      let currentActive = "ai-chat"
+
+      for (const id of sections) {
+        const el = document.getElementById(`showcase-${id}`)
+        if (el) {
+          const rect = el.getBoundingClientRect()
+          if (rect.top <= threshold + 40) {
+            currentActive = id
+          }
+        }
+      }
+
+      setActiveTab(prev => (prev !== currentActive ? currentActive : prev))
+    }
+
+    const handleUserInteraction = () => {
+      isManualScrollingRef.current = false
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    window.addEventListener("wheel", handleUserInteraction, { passive: true })
+    window.addEventListener("touchstart", handleUserInteraction, { passive: true })
+    window.addEventListener("scrollend", handleUserInteraction, { passive: true })
+    handleScroll()
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+      window.removeEventListener("wheel", handleUserInteraction)
+      window.removeEventListener("touchstart", handleUserInteraction)
+      window.removeEventListener("scrollend", handleUserInteraction)
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  return (
+    <div className={`home-new-container ${GeistSans.variable} ${GeistSans.className} font-sans min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300 relative overflow-x-clip`}>
+
+      {/* Background glows */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="animate-float-slow absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/20 blur-[100px]" />
+        <div className="animate-float-medium absolute top-1/3 right-0 w-[350px] h-[350px] rounded-full bg-purple-500/10 dark:bg-purple-600/20 blur-[100px]" />
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage: `linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)`,
+            backgroundSize: "60px 60px",
+          }}
+        />
+      </div>
+
+      <HomeNewNavbar />
+
+      <main className="relative z-10">
+
+        {/* ── OPENAI-STYLE CHATBOT PROMPT UI ── */}
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-4 sm:pb-6">
+          <h2 className="text-2xl sm:text-3xl md:text-[32px] font-semibold tracking-tight text-center text-slate-900 dark:text-white mb-6 sm:mb-7">
+            What would you like to chart?
+          </h2>
+
+          <div className="w-full rounded-[24px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700/80 ring-1 ring-slate-900/[0.03] dark:ring-white/[0.05] shadow-[0_8px_30px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] focus-within:border-indigo-400 dark:focus-within:border-indigo-500/80 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:shadow-[0_12px_36px_rgba(79,70,229,0.12)] transition-all duration-200 px-5 pt-4 pb-3.5 sm:px-6 sm:pt-5 sm:pb-4">
+            <textarea
+              rows={2}
+              value={chatPrompt}
+              onChange={(e) => setChatPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  // Dummy action for now
+                }
+              }}
+              placeholder="Create a bar chart of top 10 highest-grossing films..."
+              className="w-full resize-none bg-transparent text-sm sm:text-[15px] text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none leading-relaxed"
+            />
+
+            <div className="flex items-center justify-end mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  // Dummy action for now
+                }}
+                aria-label="Send prompt"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-500/25 hover:shadow-md hover:shadow-indigo-500/35 active:scale-95 flex items-center justify-center transition-all duration-200 cursor-pointer"
+              >
+                <ArrowUp className="w-4 h-4 sm:w-[18px] sm:h-[18px] stroke-[2.25]" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* ── HERO ── */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 lg:pt-16 pb-20 sm:pb-28 lg:pb-32">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-8 lg:gap-10 items-center mt-2 sm:mt-4 lg:mt-6">
+
+            <div className="md:col-span-1 lg:col-span-4 space-y-4 sm:space-y-5 text-left">
+              {/* OpenAI-style announcement pill */}
+              <Link
+                href="/landing"
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all group w-fit"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Introducing Realtime AI Charting</span>
+                <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+              </Link>
+
+              <h1 className="text-3xl xs:text-4xl sm:text-5xl font-semibold tracking-tight leading-tight text-slate-900 dark:text-white">
+                Generate &amp; Style <br />
+                <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                  Charts with AI
+                </span>
+              </h1>
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed font-normal max-w-md">
+                AIChartor merges powerful conversational AI generation with a pixel-perfect design editor. Describe your data story in plain English, apply professional templates, and fine-tune styling to match your brand.
+              </p>
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <Link
+                  href="/landing"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white px-6 py-3 text-xs sm:text-sm font-semibold tracking-tight shadow-md shadow-indigo-500/25 hover:shadow-lg hover:shadow-indigo-500/35 hover:-translate-y-0.5 transition-all duration-200 active:scale-95 group"
+                >
+                  <Sparkles className="w-4 h-4 text-indigo-200 group-hover:text-white transition-colors" />
+                  <span>Start with AI Chat</span>
+                  <ArrowRight className="w-4 h-4 opacity-80 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all duration-200" />
+                </Link>
+                <Link
+                  href="/editor"
+                  className="inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100/80 dark:hover:bg-slate-800 text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white px-6 py-3 text-xs sm:text-sm font-medium tracking-tight backdrop-blur-sm transition-all duration-200 active:scale-95 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700"
+                >
+                  Open Editor
+                </Link>
+              </div>
+            </div>
+
+            <div className="md:col-span-1 lg:col-span-3 relative w-full pt-6 sm:pt-8 max-w-lg mx-auto lg:max-w-none">
+              <div className="absolute top-0 left-0 z-20 w-[92%] xs:w-[88%] sm:w-[82%] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl px-2.5 sm:px-3.5 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-2.5">
+                <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
+                <span className="flex-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono font-semibold truncate">Show top 10 highest-grossing Hollywood films...</span>
+                <Link href="/landing" className="shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center transition-colors duration-200 shadow-md shadow-indigo-500/30">
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                </Link>
+              </div>
+              <div className="ml-auto w-[90%] rounded-2xl overflow-hidden shadow-2xl border border-slate-200/40 dark:border-slate-700/40 group relative z-10">
+                <img src="/chart-preview.png" alt="AI Generated Chart" className="w-full h-auto block object-cover group-hover:scale-[1.012] transition-transform duration-500 ease-out" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FEATURES SECTION ── */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 sm:mt-12 lg:mt-16 pb-20 sm:pb-24">
+
+          {/* Heading */}
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
+              One platform for your entire charting workflow
+            </h2>
+            <div className="h-6 sm:h-7 flex items-center justify-center mt-2 sm:mt-3">
+              <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base font-semibold transition-opacity duration-150">
+                {SUBTITLES[activeTab]}
+              </p>
+            </div>
+          </div>
+
+          {/* ── STICKY SHOWCASE WRAPPER (Bar sticks while user scrolls through all 3 showcases) ── */}
+          <div className="relative">
+
+            {/* Sticky Navigation Bar with solid opaque background positioned below the sticky navbar */}
+            <div className="sticky top-14 sm:top-16 z-40 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-white dark:bg-slate-950 mb-8 sm:mb-12 transition-colors">
+              <div className="flex justify-center">
+                <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 sm:p-1.5 border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
+                  {TABS.map(({ id, label, icon: Icon }) => {
+                    const isActive = activeTab === id
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => handleTabClick(id)}
+                        className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium border transition-colors duration-150 whitespace-nowrap select-none cursor-pointer ${
+                          isActive
+                            ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-600"
+                            : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span>{label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Showcases Stacked One Below Another */}
+            <div className="relative z-10 isolate space-y-20 sm:space-y-28 lg:space-y-36">
+              {/* 1. AI Chart Showcase (No title as requested: "Except for AI Chat") */}
+              <div id="showcase-ai-chat" className="scroll-mt-36 sm:scroll-mt-40">
+                <AiChatBento />
+              </div>
+
+              {/* 2. Advanced Editor Showcase — Title on the Left End */}
+              <div id="showcase-editor" className="scroll-mt-36 sm:scroll-mt-40">
+                <div className="text-left mb-4 sm:mb-6">
+                  <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                    Advanced Editor
+                  </h3>
+                </div>
+                <EditorBento />
+              </div>
+
+              {/* 3. Board Showcase — Title on the Right End */}
+              <div id="showcase-board" className="scroll-mt-36 sm:scroll-mt-40">
+                <div className="text-right mb-4 sm:mb-6">
+                  <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                    Board
+                  </h3>
+                </div>
+                <BoardBento />
+              </div>
+            </div>
+
+          </div>
+
+          {/* New Charts Showcase Section */}
+          <ChartsShowcaseSection />
+
+          {/* New Templates Showcase Section */}
+          <TemplatesShowcaseSection />
+
+          {/* Standalone duplicate boxes completely below the sections */}
+          <div className="mt-16 sm:mt-24 pt-8 sm:pt-16 font-sans">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto items-stretch">
+              <div className="w-full flex justify-center">
+                <AdvancedControlsCard />
+              </div>
+              <div className="w-full flex justify-center">
+                <UnlimitedFreeEditorCard />
+              </div>
+              <div className="w-full flex justify-center">
+                <CloudExportShareCard />
+              </div>
+            </div>
+
+            {/* Pricing Section directly below the 3-card row */}
+            <PricingSection />
+          </div>
+
+        </section>
+
+      </main>
+
+      {/* Site Footer */}
+      <SiteFooter />
     </div>
   )
 }

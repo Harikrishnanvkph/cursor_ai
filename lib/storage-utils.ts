@@ -167,21 +167,19 @@ export async function clearAllUserSessionData(userId: string): Promise<void> {
 
   const keysToRemove = storeNames.map(name => `${name}-${userId}`);
 
-  let removedCount = 0;
+  // localStorage + timestamp removal is synchronous; IndexedDB deletions are independent of each
+  // other, so run them concurrently instead of awaiting 12 transactions back-to-back (this used to
+  // make logout noticeably slow for users with large offline stores).
   for (const key of keysToRemove) {
     try {
-      if (localStorage.getItem(key) !== null) {
-        localStorage.removeItem(key);
-        removedCount++;
-      }
+      localStorage.removeItem(key);
       removeStorageTimestamp(key);
-      
-      // Clear from IndexedDB
-      await idbStorage.removeItem(key).catch(() => {});
     } catch (error) {
       console.warn(`Failed to remove key ${key}:`, error);
     }
   }
+
+  await Promise.allSettled(keysToRemove.map(key => idbStorage.removeItem(key)));
 
   console.log(`✅ Completely cleared all user session data (localStorage + IndexedDB) for user: ${userId}`);
 }

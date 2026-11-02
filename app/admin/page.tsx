@@ -1,6 +1,7 @@
 "use client"
 
 import { useAuth } from "@/components/auth/AuthProvider"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { BarChart3, Shield, LayoutTemplate, Settings, LogOut, Palette, ExternalLink, LayoutDashboard, Sparkles, Edit3 } from "lucide-react"
@@ -8,29 +9,23 @@ import Link from "next/link"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 
 export default function AdminPage() {
+  return (
+    <ProtectedRoute>
+      <AdminPageContent />
+    </ProtectedRoute>
+  )
+}
+
+function AdminPageContent() {
   const { user, loading, signOut } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/signin")
-    }
-    // If user is loaded and is NOT admin, redirect away
+    // ProtectedRoute handles unauthenticated users; this only guards admin access
     if (!loading && user && !user.is_admin) {
       router.push("/")
     }
   }, [user, loading, router])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-          <p className="text-gray-400 text-sm font-medium">Loading admin panel...</p>
-        </div>
-      </div>
-    )
-  }
 
   if (!user?.is_admin) {
     return null // Will redirect via useEffect

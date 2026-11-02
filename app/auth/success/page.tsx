@@ -28,9 +28,9 @@ export default function AuthSuccessPage() {
       }
     }
 
-    // If user is already authenticated, redirect to home
+    // If user is already authenticated, redirect to workspace
     if (user) {
-      router.replace('/')
+      router.replace(user.is_admin ? '/admin' : '/board')
       return
     }
 
@@ -101,7 +101,7 @@ export default function AuthSuccessPage() {
                   )}
                 </div>
               </div>
-              <Button onClick={() => router.replace('/')} className="w-full">
+              <Button onClick={() => router.replace(user?.is_admin ? '/admin' : '/board')} className="w-full">
                 Continue to Dashboard
               </Button>
             </div>

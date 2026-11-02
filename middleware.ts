@@ -13,37 +13,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Gemini Style: Redirect logged-in users visiting the root marketing page ('/')
-  // directly to their workspace dashboard.
-  if (pathname === '/') {
-    if (authCookie) {
-      // Robust redirect handling:
-      // 1. If they have a custom ?redirect= or ?next= parameter, respect it.
-      // 2. Otherwise, default to '/board' (Dashboard).
-      const customRedirect = searchParams.get('redirect') || searchParams.get('next')
-      const isAdminCookie = request.cookies.get('is_admin')
-      let targetPath = isAdminCookie ? '/admin' : '/board'
-
-      if (customRedirect) {
-        // Prevent open redirect vulnerabilities by ensuring it starts with '/' and not '//'
-        const cleanPath = decodeURIComponent(customRedirect).trim()
-        if (cleanPath.startsWith('/') && !cleanPath.startsWith('//')) {
-          targetPath = cleanPath
-        }
-      }
-
-      // Preserve other query parameters (e.g. oauth=success)
-      const redirectUrl = new URL(targetPath, request.url)
-      searchParams.forEach((value, key) => {
-        if (key !== 'redirect' && key !== 'next') {
-          redirectUrl.searchParams.set(key, value)
-        }
-      })
-
-      return NextResponse.redirect(redirectUrl)
-    }
-  }
-
   // Check if the route is protected
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
 

@@ -18,20 +18,27 @@ export type AuthUser = {
 
 const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000'
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit & { timeoutMs?: number }): Promise<T> {
+  // Add timeout to prevent hanging requests (12 seconds gives Supabase room for cold starts/refreshes)
+  const { timeoutMs = 12000, ...fetchInit } = init || {}
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
   try {
-    // Add timeout to prevent hanging requests (12 seconds gives Supabase room for cold starts/refreshes)
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 12000)
+    // Only declare a JSON content type when there is a body. A `Content-Type: application/json`
+    // header on a bodiless GET turns an otherwise "simple" cross-origin request into one that needs a
+    // CORS preflight, which doubled the latency of every /auth/me call.
+    const headers: Record<string, string> = {
+      ...(fetchInit.body ? { 'Content-Type': 'application/json' } : {}),
+      ...((fetchInit.headers as Record<string, string> | undefined) || {}),
+    }
 
     const res = await fetch(`${baseUrl}${path}`, {
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      ...fetchInit,
+      headers,
       signal: controller.signal,
-      ...init,
     })
-
-    clearTimeout(timeoutId)
 
     if (!res.ok) {
       let msg = 'Request failed'
@@ -82,12 +89,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       status: error.status || 500,
       code: error.code
     } as T
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
 export const authApi = {
   me: async (): Promise<{ user: AuthUser | null; isAuthError?: boolean; isNetworkError?: boolean }> => {
-    const response = await request<{ user: AuthUser | null } | { error: string; message: string; status?: number; code?: string }>(`/auth/me`, { method: 'GET' })
+    // 8s (not the 12s default): this runs on every page load and the provider retries transient failures,
+    // so failing fast and retrying beats one long hang.
+    const response = await request<{ user: AuthUser | null } | { error: string; message: string; status?: number; code?: string }>(`/auth/me`, { method: 'GET', timeoutMs: 8000 })
 
     // Check if this is an error response
     if ('error' in response) {

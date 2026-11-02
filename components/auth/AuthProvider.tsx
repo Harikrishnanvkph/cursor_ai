@@ -1,5 +1,5 @@
 "use client"
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react'
 import { authApi, type AuthUser } from '@/lib/auth-client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -23,36 +23,94 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-const setAuthCookie = (isAuthenticated: boolean, isAdmin?: boolean) => {
+const setAuthCookie = (isAuthenticated: boolean) => {
   if (typeof document !== 'undefined') {
     if (isAuthenticated) {
       document.cookie = `is_authenticated=true; path=/; max-age=${15 * 24 * 60 * 60}; SameSite=Lax`
-      if (isAdmin) {
-        document.cookie = `is_admin=true; path=/; max-age=${15 * 24 * 60 * 60}; SameSite=Lax`
-      } else {
-        document.cookie = `is_admin=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
-      }
     } else {
       document.cookie = `is_authenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
-      document.cookie = `is_admin=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
     }
   }
 }
 
+// Synchronously read the "was signed in" hint (client cookie + cached profile) so the very first
+// client paint can already show the signed-in UI instead of waiting for the /auth/me round-trip.
+function readCachedSession(): AuthUser | null {
+  try {
+    const hasCookie = document.cookie.includes('is_authenticated=true')
+    const cachedUser = localStorage.getItem('cached_auth_user')
+    if (hasCookie && cachedUser) {
+      const parsed = JSON.parse(cachedUser) as AuthUser
+      // Security: Never trust client-cached is_admin claim optimistically.
+      // Wait for server authApi.me() to confirm before granting any admin status.
+      return { ...parsed, is_admin: false }
+    }
+  } catch {}
+  return null
+}
+
+// Persist every successful authentication the same way, wherever it came from (me / sign-in / guest).
+// Previously only refresh() wrote `cached_auth_user`, so right after an email sign-in the next page
+// load had no hint to render from and showed the signed-out UI until /auth/me answered.
+function persistSession(user: AuthUser) {
+  if (typeof window !== 'undefined') {
+    try {
+      if (user.id) localStorage.setItem('user-id', user.id)
+      localStorage.setItem('cached_auth_user', JSON.stringify(user))
+    } catch {}
+  }
+  setAuthCookie(true)
+}
+
+function clearPersistedSession() {
+  setAuthCookie(false)
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('cached_auth_user')
+      localStorage.removeItem('user-id')
+    } catch {}
+  }
+}
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+
+// Back-off between retries when /auth/me fails for a transient reason (timeout, 5xx, cold start)
+const ME_RETRY_DELAYS_MS = [600, 1800]
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
-  // Optimistic initialization: if we have a cached user in localStorage + auth cookie,
-  // skip the loading screen and verify in the background
+  // Must start as null/true so server HTML and the first client render match (no hydration mismatch).
+  // The cached session is applied in a layout effect below, i.e. after hydration but BEFORE first paint.
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await authApi.me()
+  // Bumped by every explicit auth action (sign-in / sign-out / guest). A /auth/me request that was
+  // started before the bump is stale and must not overwrite the newer state.
+  const authEpochRef = useRef(0)
+  // Share one in-flight verification between mount, auth:refresh events, the OAuth success page, etc.
+  const inFlightRefreshRef = useRef<{ promise: Promise<void>; epoch: number } | null>(null)
 
-      // If this was a network error, timeout, or 5xx/429 server error (not an explicit 401),
-      // DO NOT wipe the user session! Keep the optimistic session so users aren't locked out.
+  const runRefresh = useCallback(async () => {
+    const epoch = authEpochRef.current
+    const isStale = () => epoch !== authEpochRef.current
+
+    try {
+      let res = await authApi.me()
+
+      // Transient failure (network error, timeout, 5xx/429 - NOT an explicit 401): retry with back-off
+      // instead of leaving a perfectly valid session looking signed-out until the next page load.
+      for (const delay of ME_RETRY_DELAYS_MS) {
+        if (!res.isNetworkError) break
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) break
+        await sleep(delay)
+        if (isStale()) return
+        res = await authApi.me()
+      }
+
+      if (isStale()) return
+
+      // Still failing after retries: DO NOT wipe the user session. Keep the optimistic session.
       if (res.isNetworkError) {
         console.warn('⚠️ Transient network/server error checking session — preserving active session.')
         return
@@ -61,47 +119,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // User verified successfully
       if (res.user) {
         setUser(res.user)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('user-id', res.user.id)
-          localStorage.setItem('cached_auth_user', JSON.stringify(res.user))
-        }
-        setAuthCookie(true, res.user.is_admin)
+        persistSession(res.user)
         return
       }
 
       // Explicit authentication failure (HTTP 401 confirmed)
       if (res.isAuthError) {
         setUser(null)
-        setAuthCookie(false)
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('cached_auth_user')
-        }
+        clearPersistedSession()
       }
     } catch (error: any) {
       console.warn('Unexpected error during refresh (preserving active session):', error)
     } finally {
+      if (!isStale()) setLoading(false)
+    }
+  }, [])
+
+  const refresh = useCallback((): Promise<void> => {
+    const current = inFlightRefreshRef.current
+    // Reuse the running request unless an explicit auth action (sign-in/out) happened since it started:
+    // in that case its answer is already obsolete and we need a fresh one.
+    if (current && current.epoch === authEpochRef.current) return current.promise
+
+    const entry = { epoch: authEpochRef.current, promise: undefined as unknown as Promise<void> }
+    entry.promise = runRefresh().finally(() => {
+      if (inFlightRefreshRef.current === entry) inFlightRefreshRef.current = null
+    })
+    inFlightRefreshRef.current = entry
+    return entry.promise
+  }, [runRefresh])
+
+  // Apply the cached session before the browser paints so a returning user never sees a
+  // "Sign in / Try for free" flash while /auth/me is still in flight.
+  useLayoutEffect(() => {
+    const cached = readCachedSession()
+    if (cached) {
+      setUser(cached)
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    try {
-      const hasCookie = document.cookie.includes('is_authenticated=true')
-      const cachedUser = localStorage.getItem('cached_auth_user')
-      if (hasCookie && cachedUser) {
-        setUser(JSON.parse(cachedUser) as AuthUser)
-        setLoading(false)
-      }
-    } catch {}
     refresh()
   }, [refresh])
 
   useEffect(() => {
+    // Quota-changing actions (create/delete chart, AI generation) fire `auth:refresh` in bursts;
+    // coalesce them so we don't run the (multi-query) /auth/me endpoint several times in a row.
+    let timer: ReturnType<typeof setTimeout> | null = null
     const handleAuthRefresh = () => {
-      refresh()
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        timer = null
+        refresh()
+      }, 400)
     }
     window.addEventListener('auth:refresh', handleAuthRefresh)
     return () => {
+      if (timer) clearTimeout(timer)
       window.removeEventListener('auth:refresh', handleAuthRefresh)
     }
   }, [refresh])
@@ -112,7 +187,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (e.key === 'cached_auth_user') {
         if (e.newValue) {
           try {
-            setUser(JSON.parse(e.newValue) as AuthUser)
+            const parsed = JSON.parse(e.newValue) as AuthUser
+            setUser({
+              ...parsed,
+              is_admin: false
+            })
           } catch {}
         } else {
           setUser(null)
@@ -162,13 +241,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false
       }
 
+      // A sign-in supersedes any /auth/me request still in flight from before it (e.g. the mount-time
+      // check that returned 401 because the user had not signed in yet) - otherwise that late 401
+      // would wipe the brand-new session.
+      authEpochRef.current++
       setUser(res.user)
 
-      // Store user ID for user-specific localStorage keys
-      if (typeof window !== 'undefined' && res.user?.id) {
-        localStorage.setItem('user-id', res.user.id)
-      }
-      setAuthCookie(true, res.user?.is_admin)
+      // Persist user id + cached profile + auth cookie hint (so the next page load renders signed-in at once)
+      persistSession(res.user)
 
       // Handle redirect after successful sign-in
       if (typeof window !== 'undefined') {
@@ -183,7 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
            router.replace(redirectPath)
         } else {
            // Default redirect if no stored path exists for normal users
-           router.replace('/')
+           router.replace('/board')
         }
       }
 
@@ -245,6 +325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (!res.wasNewUser) {
         toast.error('Email is already registered. Try signing in instead.')
       }
+      authEpochRef.current++
       await refresh()
 
       // User ID will be stored in refresh() method
@@ -280,83 +361,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     setLoading(true)
-    try {
-      // Get the userId before we clear state
-      const userId = typeof window !== 'undefined' ? localStorage.getItem('user-id') : null
-      const res = await authApi.signOut()
 
-      // Always clear the user locally regardless of server response
-      setUser(null)
-      setAuthCookie(false)
+    // 1) Invalidate everything local FIRST and synchronously. From this instant the UI, the
+    //    middleware cookie hint and any in-flight /auth/me are already "signed out" - the user no longer
+    //    has to wait on the network for that to take effect.
+    const userId = typeof window !== 'undefined' ? (localStorage.getItem('user-id') || user?.id || null) : null
+    authEpochRef.current++ // a /auth/me started before now must not resurrect the session
+    setUser(null)
+    clearPersistedSession()
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('auth_user')
+      sessionStorage.removeItem('redirectAfterSignIn')
+      sessionStorage.setItem('logged_out_from_oauth', 'true')
+    }
 
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('cached_auth_user')
-        localStorage.removeItem('user-id')
-        sessionStorage.removeItem('auth_user')
-        sessionStorage.removeItem('redirectAfterSignIn')
-        sessionStorage.setItem('logged_out_from_oauth', 'true')
-
-        // Completely evict all user local storage and IndexedDB keys
-        if (userId) {
-          try {
-            const { clearAllUserSessionData } = await import('@/lib/storage-utils')
-            await clearAllUserSessionData(userId)
-          } catch (err) {
-            console.warn('Failed to clear user storage:', err)
-          }
-        }
+    // 2) Revoke the server session (httpOnly cookies can only be cleared by the server) and evict the
+    //    user's local/IndexedDB data IN PARALLEL. These used to run one after another, with the server
+    //    round-trip (2 DB/Supabase calls) blocking the cleanup and the redirect.
+    const revokeOnServer = async () => {
+      const withTimeout = <T,>(p: Promise<T>, ms: number) =>
+        Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))])
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await withTimeout(authApi.signOut(), 4000)
+          if (res) return true
+        } catch {}
+        // One quick retry: if the cookie is not cleared, the /signin page would find the user still
+        // signed in and bounce them straight back.
+        await sleep(300)
       }
+      return false
+    }
 
-      // Only show error if there was an actual problem (not network failure)
-      if (!res) {
-        console.warn('Server unavailable during sign out, but user cleared locally')
-      }
-
-      // Immediate redirect to sign-in page to secure session and reset memory heap
-      if (typeof window !== 'undefined') {
-        window.location.replace('/signin')
-        return
-      }
-    } catch (error: any) {
-      console.error('Sign out error:', error)
-
-      // Still clear the user locally even if server call fails
-      setUser(null)
-      setAuthCookie(false)
-
-      if (typeof window !== 'undefined') {
-        const userId = localStorage.getItem('user-id')
-        localStorage.removeItem('cached_auth_user')
-        localStorage.removeItem('user-id')
-        sessionStorage.removeItem('auth_user')
-        sessionStorage.removeItem('redirectAfterSignIn')
-        sessionStorage.setItem('logged_out_from_oauth', 'true')
-
-        if (userId) {
-          try {
-            const { clearAllUserSessionData } = await import('@/lib/storage-utils')
-            await clearAllUserSessionData(userId)
-          } catch (err) {
-            console.warn('Failed to clear user storage on error:', err)
-          }
-        }
-      }
-
-      // Only show error for actual failures, not network issues
-      if (!error.message?.includes('network') && !error.message?.includes('unavailable')) {
-        toast.error('Sign out completed, but there was an issue with the server.')
-      }
-
-      if (typeof window !== 'undefined') {
-        window.location.replace('/signin')
-        return
-      }
-    } finally {
-      if (typeof window === 'undefined') {
-        setLoading(false)
+    const evictLocalData = async () => {
+      if (!userId) return
+      try {
+        const { clearAllUserSessionData } = await import('@/lib/storage-utils')
+        // Synchronous localStorage cleanup happens immediately inside; the IndexedDB part can hang
+        // indefinitely (e.g. an open blocked by another tab), so never let it hold up the redirect.
+        await Promise.race([clearAllUserSessionData(userId), sleep(2500)])
+      } catch (err) {
+        console.warn('Failed to clear user storage:', err)
       }
     }
-  }, [])
+
+    const [serverResult] = await Promise.allSettled([revokeOnServer(), evictLocalData()])
+    if (serverResult.status !== 'fulfilled' || !serverResult.value) {
+      console.warn('Server unavailable during sign out, but user cleared locally')
+    }
+
+    // Full navigation (not router) to reset the in-memory heap and every store
+    if (typeof window !== 'undefined') {
+      window.location.replace('/signin')
+      return
+    }
+    setLoading(false)
+  }, [user?.id])
 
   const signInWithGoogle = useCallback(async () => {
     try {
@@ -399,12 +459,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
+      authEpochRef.current++
       setUser(res.user)
-
-      if (typeof window !== 'undefined' && res.user?.id) {
-        localStorage.setItem('user-id', res.user.id)
-      }
-      setAuthCookie(true, res.user?.is_admin)
+      persistSession(res.user)
 
       router.replace('/')
     } catch (e: any) {
