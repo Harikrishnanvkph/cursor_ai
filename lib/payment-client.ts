@@ -1,7 +1,9 @@
 /**
  * Client-side Payment Orchestrator
- * Integrates Razorpay modal checkout and Dodo Payments redirect
+ * Integrates Dodo Payments redirect, Razorpay modal checkout, and Simulation mode for Credit Packs
  */
+
+import type { CreditPackId } from "./subscription-config"
 
 declare global {
   interface Window {
@@ -10,8 +12,9 @@ declare global {
 }
 
 export interface CheckoutParams {
-  planTier?: "pro" | "enterprise"
-  billingCycle?: "monthly" | "yearly"
+  packId?: CreditPackId
+  planTier?: "lite" | "pro" | "enterprise"
+  billingCycle?: "one_time" | "monthly" | "yearly"
   regionOverride?: "IN" | "GLOBAL"
   user?: {
     id: string
@@ -25,7 +28,7 @@ export interface CheckoutParams {
 }
 
 const getBaseUrl = (): string => {
-  return process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000'
+  return process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:5000"
 }
 
 /**
@@ -49,12 +52,13 @@ export function loadRazorpayScript(): Promise<boolean> {
 }
 
 /**
- * Initiate checkout based on resolved region / gateway
+ * Initiate checkout for a selected credit pack ('ai_lite' | 'ai_pro' | 'cloud_lite' | 'cloud_pro')
  */
 export async function initiateCheckout({
+  packId = "ai_pro",
   planTier = "pro",
-  billingCycle = "monthly",
-  regionOverride,
+  billingCycle = "one_time",
+  regionOverride = "GLOBAL",
   user,
   onSuccess,
   onError,
@@ -66,12 +70,15 @@ export async function initiateCheckout({
       return
     }
 
+    const effectivePackId: CreditPackId = packId || (planTier === "lite" ? "ai_lite" : "ai_pro")
+
     // 1. Create checkout session from server
     const res = await fetch(`${getBaseUrl()}/api/payments/create-checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({
+        packId: effectivePackId,
         planTier,
         billingCycle,
         regionOverride,
@@ -85,20 +92,20 @@ export async function initiateCheckout({
 
     const data = await res.json()
 
-    // ─── GATEWAY 1: RAZORPAY (INDIA / INR) ───
+    // ─── GATEWAY 1: RAZORPAY (WHEN ENABLED) ───
     if (data.gateway === "razorpay") {
-      // Simulation mode (when API keys are not provided in dev/test)
       if (data.isSimulation) {
-        console.log("Processing Razorpay checkout in Sandbox Simulation Mode...")
         const confirmRes = await fetch(`${getBaseUrl()}/api/payments/confirm-simulation`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
             gateway: "razorpay",
+            packId: effectivePackId,
             planTier,
             billingCycle,
-            region: "IN",
+            region: "GLOBAL",
+            sessionId: data.orderId,
           }),
         })
 
@@ -107,11 +114,10 @@ export async function initiateCheckout({
         }
 
         if (onSuccess) onSuccess()
-        window.location.href = `/payment/success?gateway=razorpay&plan=${planTier}&cycle=${billingCycle}&amount=${data.amountDisplay}`
+        window.location.href = `/payment/success?gateway=razorpay&pack=${effectivePackId}&amount=${data.amountDisplay}`
         return
       }
 
-      // Real or Test Key Razorpay Checkout Modal
       const isLoaded = await loadRazorpayScript()
       if (!isLoaded || !window.Razorpay) {
         throw new Error("Could not initialize Razorpay checkout. Please check your internet connection.")
@@ -119,21 +125,20 @@ export async function initiateCheckout({
 
       const options = {
         key: data.keyId,
-        amount: data.amount, // paise
-        currency: "INR",
+        amount: data.amount,
+        currency: data.currency || "USD",
         name: "AIChartor",
-        description: `Upgrade to ${planTier.toUpperCase()} Plan (${billingCycle})`,
+        description: `Credit Pack (${effectivePackId.toUpperCase()})`,
         order_id: data.orderId,
         prefill: {
           name: user.full_name || "",
           email: user.email || "",
         },
         theme: {
-          color: "#4f46e5", // Indigo theme
+          color: "#4f46e5",
         },
         modal: {
           ondismiss: () => {
-            console.log("Razorpay checkout modal closed by user")
             if (onError) onError(new Error("Payment cancelled by user"))
           },
         },
@@ -143,7 +148,6 @@ export async function initiateCheckout({
           razorpay_signature: string
         }) => {
           try {
-            // Verify payment signature on backend
             const verifyRes = await fetch(`${getBaseUrl()}/api/payments/razorpay/verify`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -152,6 +156,7 @@ export async function initiateCheckout({
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
+                packId: effectivePackId,
                 planTier,
                 billingCycle,
               }),
@@ -163,7 +168,7 @@ export async function initiateCheckout({
             }
 
             if (onSuccess) onSuccess()
-            window.location.href = `/payment/success?gateway=razorpay&order_id=${response.razorpay_order_id}`
+            window.location.href = `/payment/success?gateway=razorpay&pack=${effectivePackId}&order_id=${response.razorpay_order_id}&amount=${data.amountDisplay}`
           } catch (err: any) {
             console.error("Verification error:", err)
             if (onError) onError(err)
@@ -182,19 +187,20 @@ export async function initiateCheckout({
       return
     }
 
-    // ─── GATEWAY 2: DODO PAYMENTS (GLOBAL / USD) ───
+    // ─── GATEWAY 2: DODO PAYMENTS (USD) ───
     if (data.gateway === "dodo") {
       if (data.isSimulation) {
-        // In simulation mode, confirm upgrade and route to success
         const confirmRes = await fetch(`${getBaseUrl()}/api/payments/confirm-simulation`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
             gateway: "dodo",
+            packId: effectivePackId,
             planTier,
-            billingCycle,
+            billingCycle: "one_time",
             region: "GLOBAL",
+            sessionId: data.sessionId,
           }),
         })
 
@@ -203,11 +209,10 @@ export async function initiateCheckout({
         }
 
         if (onSuccess) onSuccess()
-        window.location.href = `/payment/success?gateway=dodo&plan=${planTier}&cycle=${billingCycle}&amount=${data.amount}`
+        window.location.href = `/payment/success?gateway=dodo&pack=${effectivePackId}&amount=${data.amount}`
         return
       }
 
-      // Real Dodo Payments Redirect
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl
       } else {

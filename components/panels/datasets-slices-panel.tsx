@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useChartStore } from "@/lib/chart-store"
@@ -9,9 +10,16 @@ import { SliceSettings } from "./datasets-slices/slice-settings"
 export function DatasetsSlicesPanel() {
   const { chartType } = useChartStore()
   const isTimeline = chartType === 'timeline'
+  const [activeTab, setActiveTab] = useState<string>("datasets")
+
+  useEffect(() => {
+    if (isTimeline && activeTab === "slices") {
+      setActiveTab("datasets")
+    }
+  }, [isTimeline, activeTab])
 
   return (
-    <Tabs defaultValue="datasets" value="datasets" className="w-full">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
         <TabsTrigger
           value="datasets"

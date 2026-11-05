@@ -1,3 +1,11 @@
+export type CloudCreditGrant = {
+  id: string
+  pack_id: 'cloud_lite' | 'cloud_pro'
+  credits_amount: number
+  purchased_at: string
+  expires_at: string
+}
+
 export type AuthUser = {
   id: string
   email?: string
@@ -7,12 +15,21 @@ export type AuthUser = {
   provider_id?: string
   user_metadata?: Record<string, any>
   is_admin?: boolean
-  subscription_tier?: 'free' | 'pro' | 'enterprise'
+  subscription_tier?: 'free' | 'lite' | 'pro' | 'enterprise'
+  free_ai_credits_used?: number
+  free_ai_credits_limit?: number
+  free_ai_credits_remaining?: number
+  purchased_ai_credits?: number
   ai_credits_used?: number
   ai_credits_limit?: number
   ai_credits_remaining?: number
+  permanent_cloud_credits?: number
+  bonus_cloud_credits?: number
+  active_cloud_grants?: CloudCreditGrant[]
   cloud_charts_limit?: number
   saved_charts_count?: number
+  cloud_charts_remaining?: number
+  first_ai_bonus_claimed?: boolean
   credits_reset_at?: string
 }
 
@@ -278,10 +295,10 @@ export const authApi = {
     // Fallback - this shouldn't happen but satisfies TypeScript
     return null
   },
-  upgradeToPro: async () => {
+  upgradeToPro: async (packId: string = 'ai_pro') => {
     const response = await request<{ success: boolean; message: string; subscription: any } | { error: string; message: string }>(`/auth/subscription/upgrade`, {
       method: 'POST',
-      body: JSON.stringify({ tier: 'pro' })
+      body: JSON.stringify({ packId, tier: 'pro' })
     })
 
     if ('error' in response) {

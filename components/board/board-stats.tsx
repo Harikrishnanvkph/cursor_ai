@@ -51,11 +51,11 @@ export function TotalChartsBadge({
  * Redundant stat cards and breakdown section have been removed to eliminate duplicate metrics.
  */
 export function BoardStats({ allConversations = [] }: BoardStatsProps) {
-  const { user, isPro, cloudChartsLimit: cloudLimit, savedChartsCount, aiCreditsLimit, aiCreditsRemaining } = useSubscriptionQuota()
+  const { user, isPro, isLite, cloudChartsLimit: cloudLimit, savedChartsCount, aiCreditsLimit, aiCreditsRemaining } = useSubscriptionQuota()
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
 
-  const effectiveCloudLimit = cloudLimit || 30
-  const effectiveAiLimit = aiCreditsLimit || 50
+  const effectiveCloudLimit = cloudLimit || 5
+  const effectiveAiLimit = aiCreditsLimit || 10
   const savedCount = user ? savedChartsCount : allConversations.length
 
   const storagePct = Math.min(100, Math.round((savedCount / effectiveCloudLimit) * 100))
@@ -71,19 +71,19 @@ export function BoardStats({ allConversations = [] }: BoardStatsProps) {
           <span className={`text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
             isPro 
               ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs' 
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              : isLite
+                ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
           }`}>
-            {isPro ? 'Pro Plan' : 'Free Plan'}
+            {isPro ? 'Pro User' : isLite ? 'Lite User' : 'Free Plan'}
           </span>
-          {!isPro && (
-            <button
-              type="button"
-              onClick={() => setIsUpgradeOpen(true)}
-              className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 hover:underline cursor-pointer ml-1"
-            >
-              Upgrade
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setIsUpgradeOpen(true)}
+            className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 hover:underline cursor-pointer ml-1"
+          >
+            + Buy Credits
+          </button>
         </div>
 
         {/* 2) Slider: Number of Cloud Charts (e.g. 48/50) */}
@@ -142,8 +142,8 @@ export function BoardStats({ allConversations = [] }: BoardStatsProps) {
         open={isUpgradeOpen} 
         onOpenChange={setIsUpgradeOpen} 
         featureHighlight="cloud" 
-        title="Need More Cloud Storage?"
-        description={`You have saved ${savedCount} of your ${effectiveCloudLimit} charts on the Free plan. Upgrade to Pro to save up to 30 charts and get 50 AI credits/month.`}
+        title="Need More Cloud Save Credits?"
+        description={`You have used ${savedCount} of your ${effectiveCloudLimit} cloud save credits. Choose a top-up pack to keep saving your charts.`}
       />
     </div>
   )

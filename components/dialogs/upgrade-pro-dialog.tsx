@@ -1,222 +1,266 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
+import Link from "next/link"
 import { useAuth } from "@/components/auth/AuthProvider"
-import { useGeoLocation } from "@/hooks/useGeoLocation"
-import { RegionSelector } from "@/components/pricing/RegionSelector"
 import { initiateCheckout } from "@/lib/payment-client"
+import {
+  AI_CREDIT_PACKS,
+  CLOUD_CREDIT_PACKS,
+  type CreditPackId,
+} from "@/lib/subscription-config"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Sparkles, Zap, Cloud, Edit3, ShieldCheck, Loader2, ArrowRight } from "lucide-react"
+import { Zap, Cloud, Check, Loader2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+
+function renderFeatureText(text: string, highlightWord?: string, isProPack?: boolean) {
+  if (!highlightWord || !text.includes(highlightWord)) {
+    return text
+  }
+  const parts = text.split(highlightWord)
+  return (
+    <>
+      {parts[0]}
+      <span
+        className={`px-1 py-0.2 rounded font-bold text-[10.5px] inline-block ${
+          isProPack
+            ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+            : "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/60"
+        }`}
+      >
+        {highlightWord}
+      </span>
+      {parts.slice(1).join(highlightWord)}
+    </>
+  )
+}
 
 interface UpgradeProDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   title?: string
   description?: string
-  featureHighlight?: 'ai' | 'cloud' | 'all'
+  featureHighlight?: "ai" | "cloud" | "all"
 }
 
 export function UpgradeProDialog({
   open,
   onOpenChange,
-  title = "Upgrade to Pro",
-  description = "Unlock higher AI generation limits, expanded cloud storage, and premium export capabilities.",
-  featureHighlight = 'all'
+  featureHighlight = "all",
 }: UpgradeProDialogProps) {
   const { user } = useAuth()
-  const { region, isIndia, setRegion } = useGeoLocation()
-  const [isUpgrading, setIsUpgrading] = useState(false)
+  const [creditTab, setCreditTab] = useState<"ai" | "cloud">(
+    featureHighlight === "cloud" ? "cloud" : "ai"
+  )
+  const [purchasingPackId, setPurchasingPackId] = useState<CreditPackId | null>(null)
 
-  const handleUpgrade = async () => {
+  useEffect(() => {
+    if (open) {
+      setCreditTab(featureHighlight === "cloud" ? "cloud" : "ai")
+    }
+  }, [open, featureHighlight])
+
+  const firstAiBonusClaimed = Boolean(user?.first_ai_bonus_claimed)
+  const activePacks = creditTab === "ai" ? AI_CREDIT_PACKS : CLOUD_CREDIT_PACKS
+
+  const handleBuyPack = async (packId: CreditPackId) => {
     if (!user) {
       window.location.href = "/signin"
       return
     }
-    setIsUpgrading(true)
+
+    setPurchasingPackId(packId)
     try {
       await initiateCheckout({
-        planTier: 'pro',
-        billingCycle: 'monthly',
-        regionOverride: region,
+        packId,
+        planTier: packId.includes("pro") ? "pro" : "lite",
+        billingCycle: "one_time",
+        regionOverride: "GLOBAL",
         user,
-        // Close this Radix dialog before Razorpay opens, otherwise its focus trap,
-        // overlay, and body pointer-events lock block clicks inside the Razorpay iframe
         onBeforeOpen: () => {
-          setIsUpgrading(false)
+          setPurchasingPackId(null)
           onOpenChange(false)
         },
         onSuccess: () => {
+          setPurchasingPackId(null)
           onOpenChange(false)
         },
         onError: (err) => {
-          console.error("Upgrade error:", err)
-          setIsUpgrading(false)
-        }
+          console.error("Credit pack purchase error:", err)
+          setPurchasingPackId(null)
+        },
       })
     } catch (err) {
       console.error(err)
-      setIsUpgrading(false)
+      setPurchasingPackId(null)
     }
   }
 
-  const isAlreadyPro = user?.subscription_tier === 'pro'
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[460px] p-0 overflow-hidden border-indigo-100 dark:border-slate-800 shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[min(90vh,540px)] [&>button]:text-white/80 [&>button]:hover:text-white [&>button]:top-3 [&>button]:right-3">
-        {/* Modal Top Banner */}
-        <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 px-5 pt-4.5 pb-3.5 text-white overflow-hidden shrink-0">
-          <div className="absolute -top-12 -right-12 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-purple-500/20 rounded-full blur-xl pointer-events-none" />
+      <DialogContent className="sm:max-w-[660px] p-0 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl bg-white dark:bg-slate-900 flex flex-col [&>button]:top-4.5 [&>button]:right-4.5 [&>button]:text-slate-400 [&>button]:hover:text-slate-700 dark:[&>button]:hover:text-white">
+        {/* Simple & Clean Header */}
+        <div className="px-6 pt-5 pb-3.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3 pr-8">
+            <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+              Top Up Credits
+            </DialogTitle>
 
-          <div className="relative z-10 pr-6">
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-white">
-                {title}
-              </DialogTitle>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 font-semibold border border-emerald-400/30 whitespace-nowrap shrink-0">
-                Cancel anytime
-              </span>
+            {/* Tab Switcher: AI Credits | Cloud Credits */}
+            <div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 select-none">
+              <button
+                type="button"
+                onClick={() => setCreditTab("ai")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer ${
+                  creditTab === "ai"
+                    ? "bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-xs"
+                    : "text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>AI Credits</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreditTab("cloud")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer ${
+                  creditTab === "cloud"
+                    ? "bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-xs"
+                    : "text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <Cloud className="w-3.5 h-3.5 text-sky-500 fill-sky-500" />
+                <span>Cloud Credits</span>
+              </button>
             </div>
-            <DialogDescription className="text-indigo-100/90 text-xs leading-relaxed line-clamp-2">
-              {description}
-            </DialogDescription>
+          </div>
+          <DialogDescription className="sr-only">
+            Choose an AI or cloud save credits top-up pack.
+          </DialogDescription>
+        </div>
 
-            {/* Price Tag & Region Switcher */}
-            <div className="mt-3 flex items-center justify-between gap-2 pt-2.5 border-t border-white/15">
-              <div className="flex items-baseline gap-1.5 shrink-0">
-                <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  {isIndia ? "₹399" : "$5"}
-                </span>
-                <span className="text-xs font-medium text-indigo-200">/ month</span>
-              </div>
+        {/* 2-Column Pack Cards (Lite $2 | Pro $5) */}
+        <div className="p-5 sm:p-6 bg-slate-50/50 dark:bg-slate-950/40">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            {activePacks.map((pack) => {
+              const isProPack = pack.popular
+              const isBuyingThis = purchasingPackId === pack.id
 
-              <div className="flex items-center shrink-0">
-                <RegionSelector
-                  variant="compact"
-                  region={region}
-                  onSelectRegion={setRegion}
-                  className="bg-black/25 dark:bg-black/40 border-white/15 scale-90 sm:scale-95 origin-right [&_button]:text-[11px] [&_button]:py-1 [&_button]:px-2.5 [&_button:not(.shadow-sm)]:text-indigo-100 [&_button:not(.shadow-sm)]:hover:text-white"
-                />
-              </div>
-            </div>
+              return (
+                <div
+                  key={pack.id}
+                  className={`rounded-2xl p-5 flex flex-col justify-between border transition-all ${
+                    isProPack
+                      ? "bg-slate-900 text-white border-indigo-500 shadow-lg ring-1 ring-indigo-500/20"
+                      : "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 shadow-2xs"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-base font-bold tracking-tight">{pack.userTitle}</span>
+                      <span
+                        className={`text-[10.5px] font-bold px-2.5 py-0.5 rounded-full ${
+                          isProPack
+                            ? "bg-indigo-500/25 text-indigo-200 border border-indigo-400/30"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                        }`}
+                      >
+                        {pack.badge}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex items-baseline gap-1.5">
+                      <span className="text-3xl font-extrabold tracking-tight">${pack.priceUsd}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">one-time</span>
+                    </div>
+
+                    <div className="mt-1 mb-4">
+                      <span
+                        className={`text-sm font-bold ${
+                          isProPack ? "text-indigo-300" : "text-indigo-600 dark:text-indigo-400"
+                        }`}
+                      >
+                        {pack.headlineGrant}
+                      </span>
+                    </div>
+
+                    <ul className="space-y-2 pt-3 border-t border-slate-200/70 dark:border-slate-800">
+                      {pack.features.map((feat, idx) => {
+                        const alreadyClaimedBonus = feat.firstPurchaseOnly && firstAiBonusClaimed
+                        return (
+                          <li key={idx} className="flex items-start gap-2 text-xs leading-normal">
+                            <Check
+                              className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                                isProPack ? "text-indigo-400" : "text-indigo-600 dark:text-indigo-400"
+                              }`}
+                            />
+                            <div className="flex flex-col">
+                              <span className={isProPack ? "text-slate-200" : "text-slate-700 dark:text-slate-300 font-medium"}>
+                                {renderFeatureText(feat.text, feat.highlightWord, isProPack)}
+                              </span>
+                              {alreadyClaimedBonus && (
+                                <span className="text-[10px] text-emerald-400 font-semibold mt-0.5">
+                                  ✓ Already claimed on first payment
+                                </span>
+                              )}
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={() => handleBuyPack(pack.id)}
+                    disabled={purchasingPackId !== null}
+                    className={`mt-5 w-full h-10 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                      isProPack
+                        ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/25"
+                        : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-xs"
+                    }`}
+                  >
+                    {isBuyingThis ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{pack.ctaLabel}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )
+            })}
           </div>
         </div>
 
-        {/* Features List */}
-        <div className="p-4 sm:p-5 space-y-2 bg-white dark:bg-slate-900 overflow-y-auto flex-1 min-h-0">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
-            What's included in Pro:
-          </div>
-
-          <div className="space-y-2">
-            {/* AI Credits */}
-            <div className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
-              featureHighlight === 'ai' 
-                ? 'bg-indigo-50/70 border-indigo-200 dark:bg-indigo-950/30 dark:border-indigo-800/60 ring-1 ring-indigo-500/20' 
-                : 'bg-slate-50/70 border-slate-200/60 dark:bg-slate-800/40 dark:border-slate-800'
-            }`}>
-              <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                <Zap className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1">
-                  <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-                    50 AI Credits / month
-                  </p>
-                  <span className="text-[10px] font-bold text-indigo-650 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.2 rounded shrink-0">
-                    5x more
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  Generate complex charts with DeepSeek and Gemini Realtime.
-                </p>
-              </div>
-            </div>
-
-            {/* Cloud Saves */}
-            <div className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
-              featureHighlight === 'cloud' 
-                ? 'bg-indigo-50/70 border-indigo-200 dark:bg-indigo-950/30 dark:border-indigo-800/60 ring-1 ring-indigo-500/20' 
-                : 'bg-slate-50/70 border-slate-200/60 dark:bg-slate-800/40 dark:border-slate-800'
-            }`}>
-              <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Cloud className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1">
-                  <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-                    Maximum 30 Cloud Saves
-                  </p>
-                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.2 rounded shrink-0">
-                    3x more
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  Save and manage up to 30 custom charts in your cloud board.
-                </p>
-              </div>
-            </div>
-
-            {/* Advanced Editor */}
-            <div className="flex items-center gap-3 p-2.5 rounded-xl border bg-slate-50/70 border-slate-200/60 dark:bg-slate-800/40 dark:border-slate-800">
-              <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <Edit3 className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-                  Complete Access to Advanced Editor
-                </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  Full control over themes, animations, palettes & typography.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-5 py-3 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+        {/* Clean Footer with Link to Pricing Details */}
+        <div className="px-6 py-3.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 text-xs">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            disabled={isUpgrading}
-            className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+            disabled={purchasingPackId !== null}
+            className="font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors cursor-pointer"
           >
             Maybe later
           </button>
-
-          {isAlreadyPro ? (
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              <ShieldCheck className="w-4 h-4" />
-              <span>You are already on Pro</span>
-            </div>
-          ) : (
-            <Button
-              onClick={handleUpgrade}
-              disabled={isUpgrading}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md shadow-indigo-500/25 px-4 h-9 rounded-xl flex items-center gap-2 text-xs sm:text-sm transition-all active:scale-95"
-            >
-              {isUpgrading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Activating Pro...</span>
-                </>
-              ) : (
-                <>
-                  <span>Upgrade to Pro ({isIndia ? "₹399" : "$5"}/mo)</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </>
-              )}
-            </Button>
-          )}
+          <Link
+            href="/pricing"
+            onClick={() => onOpenChange(false)}
+            className="inline-flex items-center gap-1.5 font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+          >
+            <span>More details - Pricing Page</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </DialogContent>
     </Dialog>

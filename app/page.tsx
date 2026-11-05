@@ -10,6 +10,13 @@ import { Sparkles, Sliders, LayoutDashboard, ArrowRight, ArrowUp, Layers, PanelL
 import { useGeoLocation } from "@/hooks/useGeoLocation"
 import { RegionSelector } from "@/components/pricing/RegionSelector"
 import { initiateCheckout } from "@/lib/payment-client"
+import {
+  AI_CREDIT_PACKS,
+  CLOUD_CREDIT_PACKS,
+  FREE_CARD_BY_CATEGORY,
+  CUSTOM_REQUEST_CONFIG,
+  type CreditPackId,
+} from "@/lib/subscription-config"
 import { GeistSans } from "geist/font/sans"
 
 // Gemini-style four-pointed star icon
@@ -445,7 +452,7 @@ function AdvancedControlsCard() {
       <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
         <button
           onClick={() => setActiveTab("chart")}
-          className={`h-7 sm:h-8 px-4 sm:px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "chart"
+          className={`h-7 sm:h-8 px-4 sm:px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "chart"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -454,7 +461,7 @@ function AdvancedControlsCard() {
         </button>
         <button
           onClick={() => setActiveTab("template")}
-          className={`h-7 sm:h-8 px-4 sm:px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "template"
+          className={`h-7 sm:h-8 px-4 sm:px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "template"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -463,15 +470,15 @@ function AdvancedControlsCard() {
         </button>
       </div>
 
-      {/* Main Preview Box - Outer line removed! Smooth fixed-frame display */}
-      <div className="w-full max-w-md h-[210px] sm:h-[240px] flex items-center justify-center relative overflow-hidden">
-        <div className="w-full max-w-[260px] sm:max-w-[280px] h-[190px] sm:h-[210px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-center justify-center p-2.5 relative overflow-hidden group transition-all duration-300">
+      {/* Main Preview Box Directly Below - Fixed Height matching sibling cards */}
+      <div className="w-full max-w-md h-[210px] sm:h-[240px] flex items-center justify-center relative">
+        <div className="w-full h-[190px] sm:h-[210px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-sm flex items-center justify-center relative overflow-hidden transition-all duration-300">
           <div className="w-full h-full flex items-center justify-center">
             <img
               key={activeTab}
               src={activeTab === "chart" ? "/smartphone-chart.png" : "/smartphone-template.png"}
               alt={activeTab === "chart" ? "Standalone Chart View" : "Infographic Template View"}
-              className="w-full h-full object-contain rounded-lg animate-in fade-in duration-200"
+              className="max-h-full max-w-full object-contain rounded-xl shadow-2xs border border-slate-200/60 dark:border-slate-700/80 animate-in fade-in duration-200"
             />
           </div>
         </div>
@@ -655,10 +662,10 @@ function UnlimitedFreeEditorCard() {
       </div>
 
       {/* Connected Segmented Pill Switcher [ Unlimited Edits | Full Toolkit | Zero Paywalls ] - Zero-jiggle geometry */}
-      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none max-w-full overflow-x-auto">
+      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
         <button
           onClick={() => setActiveTab("unlimited")}
-          className={`h-7 sm:h-8 px-2.5 xs:px-3 sm:px-3.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "unlimited"
+          className={`h-7 sm:h-8 px-2.5 sm:px-3 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "unlimited"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -667,7 +674,7 @@ function UnlimitedFreeEditorCard() {
         </button>
         <button
           onClick={() => setActiveTab("tools")}
-          className={`h-7 sm:h-8 px-2.5 xs:px-3 sm:px-3.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "tools"
+          className={`h-7 sm:h-8 px-2.5 sm:px-3 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "tools"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -676,7 +683,7 @@ function UnlimitedFreeEditorCard() {
         </button>
         <button
           onClick={() => setActiveTab("free")}
-          className={`h-7 sm:h-8 px-2.5 xs:px-3 sm:px-3.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "free"
+          className={`h-7 sm:h-8 px-2.5 sm:px-3 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "free"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -760,10 +767,10 @@ function CloudExportShareCard() {
       </div>
 
       {/* Connected Segmented Pill Switcher [ Save | Export | Share ] - Zero-jiggle geometry */}
-      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none max-w-full overflow-x-auto">
+      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
         <button
           onClick={() => setActiveTab("save")}
-          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "save"
+          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "save"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -772,7 +779,7 @@ function CloudExportShareCard() {
         </button>
         <button
           onClick={() => setActiveTab("export")}
-          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "export"
+          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "export"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -781,7 +788,7 @@ function CloudExportShareCard() {
         </button>
         <button
           onClick={() => setActiveTab("share")}
-          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "share"
+          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "share"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -823,78 +830,61 @@ function CloudExportShareCard() {
 }
 
 // ── PRICING SECTION ─────────────────────────────────────────
+function renderFeatureText(text: string, highlightWord?: string, isProPack?: boolean) {
+  if (!highlightWord || !text.includes(highlightWord)) {
+    return text
+  }
+  const parts = text.split(highlightWord)
+  return (
+    <>
+      {parts[0]}
+      <span
+        className={`px-1.5 py-0.5 rounded font-bold text-[11px] sm:text-xs inline-block ${
+          isProPack
+            ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+            : "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/60"
+        }`}
+      >
+        {highlightWord}
+      </span>
+      {parts.slice(1).join(highlightWord)}
+    </>
+  )
+}
+
 function PricingSection() {
   const { user } = useAuth()
-  const { region, isIndia, currencySymbol, setRegion } = useGeoLocation()
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly")
-  const [isUpgrading, setIsUpgrading] = useState(false)
+  const [creditTab, setCreditTab] = useState<"ai" | "cloud">("ai")
+  const [purchasingPackId, setPurchasingPackId] = useState<CreditPackId | null>(null)
 
-  const isProUser = user?.subscription_tier === "pro"
+  const firstAiBonusClaimed = Boolean(user?.first_ai_bonus_claimed)
+  const freeCard = FREE_CARD_BY_CATEGORY[creditTab]
+  const activePacks = creditTab === "ai" ? AI_CREDIT_PACKS : CLOUD_CREDIT_PACKS
 
-  const handleProClick = async () => {
+  const handleBuyPack = async (packId: CreditPackId) => {
     if (!user) {
-      window.location.href = "/signin"
+      window.location.href = "/signin?returnUrl=%2F%23pricing"
       return
     }
-    if (isProUser) return
 
-    setIsUpgrading(true)
+    setPurchasingPackId(packId)
     try {
       await initiateCheckout({
-        planTier: "pro",
-        billingCycle,
-        regionOverride: region,
+        packId,
+        planTier: packId.includes("pro") ? "pro" : "lite",
+        billingCycle: "one_time",
+        regionOverride: "GLOBAL",
         user,
         onError: (err) => {
           console.error("Payment error:", err)
-          setIsUpgrading(false)
+          setPurchasingPackId(null)
         },
       })
     } catch (err) {
       console.error("Checkout initiation error:", err)
-      setIsUpgrading(false)
+      setPurchasingPackId(null)
     }
   }
-
-  const plans = [
-    {
-      id: "free",
-      name: "Free",
-      badge: "Free Forever",
-      description: "Essential AI charting tools with complete, unlimited access to our Advanced Editor.",
-      monthlyPrice: 0,
-      yearlyPrice: 0,
-      features: [
-        "Complete Access to Advanced Editor page/tool",
-        "10 AI credits per month",
-        "Maximum 10 cloud saving",
-        "Standard PNG & Web Export",
-        "Community Templates & Design Presets",
-      ],
-      cta: user ? (isProUser ? "Included in Pro" : "Current Plan") : "Get Started Free",
-      isCurrent: !isProUser && !!user,
-      isPopular: false,
-    },
-    {
-      id: "pro",
-      name: "Pro",
-      badge: "Most Popular",
-      description: "Supercharged AI generation, 3x cloud saves, and priority speed for pros and creators.",
-      monthlyPrice: isIndia ? 399 : 5,
-      yearlyPrice: isIndia ? 332 : 4,
-      features: [
-        "Complete Access to Advanced Editor page/tool",
-        "50 AI credits per month",
-        "Maximum 30 cloud saving",
-        "High-Res 4K PNG, SVG & Live HTML Export",
-        "Multi-Zone Templates & Custom Presets",
-        "Priority AI Prompt Processing",
-      ],
-      cta: isProUser ? "Current Plan" : "Upgrade to Pro",
-      isCurrent: isProUser,
-      isPopular: true,
-    },
-  ]
 
   return (
     <div id="pricing" className="mt-20 sm:mt-24 pt-8 sm:pt-12 font-sans max-w-7xl mx-auto px-2 sm:px-4 scroll-mt-20">
@@ -904,130 +894,200 @@ function PricingSection() {
           Simple, Transparent Pricing
         </h2>
         <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 font-normal leading-relaxed">
-          Choose the right plan to unlock full AI charting power, pro infographic templates, vector decorations, and high-res exports.
+          Start free every month, or top up AI and Cloud credits whenever you need.
         </p>
 
-        {/* Billing Switcher */}
-        <div className="mt-6 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs select-none max-w-full">
+        {/* Category Switcher: AI Credits | Cloud Credits */}
+        <div className="mt-6 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 select-none">
           <button
-            onClick={() => setBillingCycle("monthly")}
-            className={`px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${billingCycle === "monthly"
-              ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
+            type="button"
+            onClick={() => setCreditTab("ai")}
+            className={`flex items-center gap-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-150 cursor-pointer ${
+              creditTab === "ai"
+                ? "bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-xs"
+                : "text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
           >
-            Monthly
+            <Zap className={`w-3.5 h-3.5 ${creditTab === "ai" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-neutral-500"}`} />
+            <span>AI Credits</span>
           </button>
           <button
-            onClick={() => setBillingCycle("yearly")}
-            className={`flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${billingCycle === "yearly"
-              ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
+            type="button"
+            onClick={() => setCreditTab("cloud")}
+            className={`flex items-center gap-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-150 cursor-pointer ${
+              creditTab === "cloud"
+                ? "bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-xs"
+                : "text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
           >
-            <span>Yearly</span>
-            <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
-              Save 20%
-            </span>
+            <Cloud className={`w-3.5 h-3.5 ${creditTab === "cloud" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-neutral-500"}`} />
+            <span>Cloud Credits</span>
           </button>
-        </div>
-
-        {/* Region Switcher */}
-        <div className="mt-4 flex justify-center">
-          <RegionSelector
-            variant="compact"
-            region={region}
-            onSelectRegion={setRegion}
-          />
         </div>
       </div>
 
-      {/* Pricing Cards Grid (Max-4xl centered 2-card layout) */}
-      <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-stretch">
-        {plans.map((plan) => {
-          const price = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice
+      {/* 3-Column Pricing Grid: Free | Lite User ($2) | Pro User ($5) */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        {/* Column 1: Free Card */}
+        <div className="rounded-2xl p-6 sm:p-7 flex flex-col justify-between bg-white dark:bg-slate-900/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-md">
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold">{freeCard.userTitle}</h3>
+              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
+                {freeCard.badge}
+              </span>
+            </div>
+
+            {/* Price */}
+            <div className="mt-5 pb-4 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline gap-1.5">
+              <span className="text-4xl font-extrabold tracking-tight">$0</span>
+            </div>
+
+            {/* Primary Credit Line (shown once, matching sketch) */}
+            <div className="py-4 border-b border-slate-200/80 dark:border-slate-800">
+              <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                {freeCard.headlineGrant}
+              </span>
+            </div>
+
+            {/* Features */}
+            <ul className="mt-5 space-y-3">
+              {freeCard.features.map((feat, idx) => (
+                <li key={idx} className="flex items-start gap-2.5 text-xs">
+                  <Check className="w-4 h-4 shrink-0 mt-0.5 text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-slate-700 dark:text-slate-300 font-medium">{feat.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-8 pt-4">
+            <Link
+              href={user ? "/landing" : "/signin"}
+              className="block text-center w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200"
+            >
+              {user ? "Included Free" : "Get Started Free"}
+            </Link>
+          </div>
+        </div>
+
+        {/* Columns 2 & 3: Lite User ($2) | Pro User ($5) */}
+        {activePacks.map((pack) => {
+          const isProPack = pack.popular
+          const isBuyingThis = purchasingPackId === pack.id
+
           return (
             <div
-              key={plan.name}
-              className={`rounded-2xl p-6 sm:p-8 flex flex-col justify-between relative transition-all duration-300 ${plan.isPopular
-                ? "bg-slate-900 text-white dark:bg-slate-900/90 border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10 md:scale-102"
-                : "bg-white dark:bg-slate-900/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-md"
-                }`}
+              key={pack.id}
+              className={`rounded-2xl p-6 sm:p-7 flex flex-col justify-between relative transition-all duration-300 ${
+                isProPack
+                  ? "bg-slate-900 text-white dark:bg-slate-900/95 border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10"
+                  : "bg-white dark:bg-slate-900/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-md"
+              }`}
             >
-              {plan.isPopular && (
+              {isProPack && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full shadow-md">
-                  {plan.badge}
+                  {pack.badge}
                 </div>
               )}
 
               <div>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-bold">{plan.name}</h3>
-                  {!plan.isPopular && (
-                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                      {plan.badge}
+                  <h3 className="text-xl font-bold">{pack.userTitle}</h3>
+                  {!isProPack && pack.badge && (
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
+                      {pack.badge}
                     </span>
                   )}
                 </div>
 
-                <p className={`mt-2 text-xs leading-relaxed ${plan.isPopular ? "text-slate-300" : "text-slate-500 dark:text-slate-400"}`}>
-                  {plan.description}
-                </p>
+                {/* Price */}
+                <div className="mt-5 pb-4 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline gap-1.5">
+                  <span className="text-4xl font-extrabold tracking-tight">${pack.priceUsd}</span>
+                </div>
 
-                <div className="mt-6 flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold tracking-tight">{currencySymbol}{price}</span>
-                  <span className={`text-xs font-medium ${plan.isPopular ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>
-                    / month {billingCycle === "yearly" && price > 0 ? "(billed annually)" : ""}
+                {/* Primary Credit Line (shown once, matching sketch) */}
+                <div className="py-4 border-b border-slate-200/80 dark:border-slate-800">
+                  <span className={`text-base sm:text-lg font-bold ${isProPack ? "text-indigo-300" : "text-indigo-600 dark:text-indigo-400"}`}>
+                    {pack.headlineGrant}
                   </span>
                 </div>
 
-                {plan.id === "pro" && (
-                  <div className="mt-2 text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
-                    <span>{isIndia ? "🇮🇳 Razorpay (UPI & Cards)" : "🌐 Dodo Payments (Global Cards)"}</span>
-                  </div>
-                )}
-
-                <ul className="mt-8 space-y-3">
-                  {plan.features.map((feat, idx) => (
-                    <li key={idx} className="flex items-start gap-2.5 text-xs">
-                      <Check className={`w-4 h-4 shrink-0 mt-0.5 ${plan.isPopular ? "text-indigo-400" : "text-indigo-600 dark:text-indigo-400"}`} />
-                      <span className={plan.isPopular ? "text-slate-200 font-medium" : "text-slate-700 dark:text-slate-300 font-medium"}>
-                        {feat}
-                      </span>
-                    </li>
-                  ))}
+                {/* Feature List */}
+                <ul className="mt-5 space-y-3">
+                  {pack.features.map((feat, idx) => {
+                    const alreadyClaimedBonus = feat.firstPurchaseOnly && firstAiBonusClaimed
+                    return (
+                      <li key={idx} className="flex items-start gap-2.5 text-xs">
+                        <Check
+                          className={`w-4 h-4 shrink-0 mt-0.5 ${
+                            isProPack ? "text-indigo-400" : "text-indigo-600 dark:text-indigo-400"
+                          }`}
+                        />
+                        <div className="flex flex-col">
+                          <span
+                            className={
+                              isProPack
+                                ? "text-slate-200 font-medium"
+                                : "text-slate-700 dark:text-slate-300 font-medium"
+                            }
+                          >
+                            {renderFeatureText(feat.text, feat.highlightWord, isProPack)}
+                          </span>
+                          {alreadyClaimedBonus && (
+                            <span className="text-[10.5px] text-emerald-500 font-semibold mt-0.5">
+                              ✓ Already claimed on first purchase
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
                 </ul>
               </div>
 
               <div className="mt-8 pt-4">
-                {plan.id === "free" ? (
-                  <Link
-                    href={user ? "/editor" : "/signin"}
-                    className={`block text-center w-full py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                      plan.isCurrent
-                        ? "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-default"
-                        : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 active:scale-98"
-                    }`}
-                  >
-                    {plan.cta}
-                  </Link>
-                ) : (
-                  <button
-                    onClick={handleProClick}
-                    disabled={isProUser || isUpgrading}
-                    className={`w-full py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                      isProUser
-                        ? "bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 cursor-default"
-                        : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-98 cursor-pointer"
-                    }`}
-                  >
-                    {isUpgrading ? "Upgrading..." : plan.cta}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => handleBuyPack(pack.id)}
+                  disabled={purchasingPackId !== null}
+                  className={`w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+                    isProPack
+                      ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-98"
+                      : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 active:scale-98"
+                  } disabled:opacity-60`}
+                >
+                  {isBuyingThis ? "Processing..." : pack.ctaLabel}
+                </button>
               </div>
             </div>
           )
         })}
+      </div>
+
+      {/* Custom Request Banner (Bottom Box from Sketch) */}
+      <div className="max-w-6xl mx-auto mt-6 sm:mt-8">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/70 px-6 py-5 sm:px-8 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="text-center sm:text-left">
+            <h4 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              {CUSTOM_REQUEST_CONFIG.title}
+            </h4>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+              {CUSTOM_REQUEST_CONFIG.description}
+            </p>
+          </div>
+          <div className="flex flex-col sm:items-end text-center sm:text-right shrink-0">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              {CUSTOM_REQUEST_CONFIG.contactLabel}
+            </span>
+            <a
+              href={`mailto:${CUSTOM_REQUEST_CONFIG.email}`}
+              className="mt-0.5 text-sm sm:text-base font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              {CUSTOM_REQUEST_CONFIG.email}
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   )

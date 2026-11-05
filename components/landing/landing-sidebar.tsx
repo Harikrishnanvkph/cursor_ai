@@ -430,7 +430,7 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
         onOpenChange={setIsUpgradeOpen} 
         featureHighlight="ai" 
         title="Need More AI Credits?"
-        description={`You have ${aiCreditsRemaining} AI credits remaining of your monthly ${aiCreditsLimit} limit. Upgrade to Pro for 50 credits/month.`}
+        description={`You have ${aiCreditsRemaining} AI credits remaining. Choose a top-up pack to keep generating charts.`}
       />
     </aside>
   )

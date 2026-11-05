@@ -4,23 +4,33 @@ import React, { useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/auth/AuthProvider"
-import { CheckCircle2, Sparkles, ArrowRight, Zap, Cloud, ShieldCheck } from "lucide-react"
+import { useSubscriptionQuota } from "@/lib/hooks/use-subscription-quota"
+import { ALL_CREDIT_PACKS, type CreditPackId } from "@/lib/subscription-config"
+import { CheckCircle2, Sparkles, ArrowRight, Zap, Cloud } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function PaymentSuccessPage() {
-  const { user, refresh } = useAuth()
+  const { refresh } = useAuth()
+  const {
+    aiCreditsRemaining,
+    freeAiCreditsRemaining,
+    purchasedAiCredits,
+    cloudChartsLimit,
+    permanentCloudCredits,
+    bonusCloudCredits,
+  } = useSubscriptionQuota()
   const searchParams = useSearchParams()
 
   const gateway = searchParams.get("gateway") || "Payment"
-  const plan = searchParams.get("plan") || "Pro"
-  const billingCycle = searchParams.get("cycle") || "monthly"
+  const rawPack = (searchParams.get("pack") || searchParams.get("plan") || "ai_pro") as CreditPackId
+  const pack = ALL_CREDIT_PACKS[rawPack] || ALL_CREDIT_PACKS.ai_pro
 
-  // Automatically refresh user auth state so the Pro tier reflects immediately
+  // Refresh user auth state so new credit balances reflect immediately
   useEffect(() => {
     refresh()
     const timer = setTimeout(() => {
       refresh()
-    }, 2000)
+    }, 1500)
     return () => clearTimeout(timer)
   }, [refresh])
 
@@ -39,40 +49,48 @@ export default function PaymentSuccessPage() {
         {/* Header */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-3 border border-indigo-200/50 dark:border-indigo-800/40">
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Payment Successful</span>
+          <span>Credit Pack Activated</span>
         </div>
 
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-2">
-          Welcome to {plan.toUpperCase()}!
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-2">
+          {pack.headlineGrant} Added!
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">
-          Your payment via <strong className="capitalize">{gateway}</strong> was confirmed. Your account limits have been unlocked immediately.
+          Your <strong className="text-slate-700 dark:text-slate-200">${pack.priceUsd} {pack.userTitle} ({pack.category === "ai" ? "AI Credits" : "Cloud Credits"})</strong> purchase via <strong className="capitalize">{gateway}</strong> is active on your account.
         </p>
 
-        {/* Unlocked Features Pill Box */}
+        {/* Live Account Credit Balances */}
         <div className="grid grid-cols-2 gap-3 text-left mb-8">
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 flex items-start gap-2.5">
             <Zap className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
             <div>
-              <div className="text-xs font-bold text-slate-900 dark:text-white">50 AI Credits</div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Refreshed for this cycle</div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white">
+                {aiCreditsRemaining} Total AI Credits
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {freeAiCreditsRemaining} monthly + {purchasedAiCredits} permanent
+              </div>
             </div>
           </div>
 
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 flex items-start gap-2.5">
             <Cloud className="w-5 h-5 text-purple-500 shrink-0 mt-0.5" />
             <div>
-              <div className="text-xs font-bold text-slate-900 dark:text-white">30 Cloud Saves</div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Cloud board capacity</div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white">
+                {cloudChartsLimit} Cloud Save Slots
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {permanentCloudCredits} permanent{bonusCloudCredits > 0 ? ` + ${bonusCloudCredits} active pack` : ""}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <Link href="/editor" className="flex-1">
+          <Link href="/landing" className="flex-1">
             <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-6 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all">
-              <span>Open Advanced Editor</span>
+              <span>Create with AI Chat</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
