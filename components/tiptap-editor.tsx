@@ -49,6 +49,7 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FontFamilySelect } from '@/components/ui/font-family-select'
 import { UNIFIED_FONT_FAMILIES, ensureGoogleFontLoaded, findFontByInput } from '@/lib/typography-registry'
 
 // ── Unified Font Families (re-exported for backwards compatibility) ──
@@ -932,28 +933,22 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                 <Separator orientation="vertical" className="h-6 mx-1" />
 
                 {/* Font Family */}
-                <Select
-                    value={getCurrentFontFamily()}
-                    onValueChange={(value) => {
-                        if (value === 'default') {
-                            editor.chain().focus().unsetFontFamily().run()
-                        } else {
-                            ensureGoogleFontLoaded(value)
-                            editor.chain().focus().setFontFamily(value).run()
-                        }
-                    }}
-                >
-                    <SelectTrigger className="h-8 w-32 text-xs" style={{ fontFamily: getCurrentFontFamily() && getCurrentFontFamily() !== 'default' ? getCurrentFontFamily() : undefined }}>
-                        <SelectValue placeholder="Font" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64">
-                        {EDITOR_FONT_FAMILIES.map(f => (
-                            <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value !== 'default' ? f.value : undefined }}>
-                                {f.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <div className="w-36">
+                    <FontFamilySelect
+                        value={getCurrentFontFamily()}
+                        placeholder="Font"
+                        triggerClassName="h-8 w-36 text-xs"
+                        includeDefault={true}
+                        onValueChange={(value) => {
+                            if (value === 'default' || !value) {
+                                editor.chain().focus().unsetFontFamily().run()
+                            } else {
+                                ensureGoogleFontLoaded(value)
+                                editor.chain().focus().setFontFamily(value).run()
+                            }
+                        }}
+                    />
+                </div>
 
                 {/* Font Size Stepper */}
                 <div className="flex items-center h-8 border rounded-md overflow-hidden bg-white">

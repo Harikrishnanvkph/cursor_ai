@@ -16,21 +16,33 @@ interface CombinedStylingPanelProps {
     initialTab?: string
 }
 
+// Persist the user's active sub-tab across sidebar switches
+let lastActiveTab: string = "bg"
+
 export function CombinedStylingPanel({ initialTab }: CombinedStylingPanelProps) {
     const { chartConfig, chartType } = useChartStore()
     const { updateChartConfig } = useChartActions()
-    const [activeTab, setActiveTab] = useState(initialTab || "bg")
+    const [activeTab, setActiveTab] = useState(() => initialTab || lastActiveTab || "bg")
+    const prevInitialTabRef = React.useRef(initialTab)
 
+    // Synchronize ONLY when initialTab prop explicitly changes from parent
     useEffect(() => {
-        if (initialTab && initialTab !== activeTab) {
+        if (initialTab && initialTab !== prevInitialTabRef.current) {
+            prevInitialTabRef.current = initialTab
             setActiveTab(initialTab)
+            lastActiveTab = initialTab
         }
-    }, [initialTab, activeTab])
+    }, [initialTab])
+
+    const handleSelectTab = (tabId: string) => {
+        setActiveTab(tabId)
+        lastActiveTab = tabId
+    }
 
     // Ensure labels tab is reset when switching to timeline series
     useEffect(() => {
         if (chartType === 'timeline' && activeTab === 'labels') {
-            setActiveTab('styling')
+            handleSelectTab('styling')
         }
     }, [chartType, activeTab])
 
@@ -64,7 +76,7 @@ export function CombinedStylingPanel({ initialTab }: CombinedStylingPanelProps) 
                     return (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => handleSelectTab(tab.id)}
                             className={`flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-all duration-200 rounded-xl ${
                                 isActive
                                     ? "bg-blue-600 text-white shadow-sm font-semibold"

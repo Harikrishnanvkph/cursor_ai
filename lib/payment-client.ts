@@ -58,7 +58,7 @@ export async function initiateCheckout({
   packId = "ai_pro",
   planTier = "pro",
   billingCycle = "one_time",
-  regionOverride = "GLOBAL",
+  regionOverride,
   user,
   onSuccess,
   onError,
@@ -72,6 +72,9 @@ export async function initiateCheckout({
 
     const effectivePackId: CreditPackId = packId || (planTier === "lite" ? "ai_lite" : "ai_pro")
 
+    // Effective region passed from caller (detected automatically via useGeoLocation)
+    const effectiveRegion = regionOverride || "IN"
+
     // 1. Create checkout session from server
     const res = await fetch(`${getBaseUrl()}/api/payments/create-checkout`, {
       method: "POST",
@@ -81,7 +84,7 @@ export async function initiateCheckout({
         packId: effectivePackId,
         planTier,
         billingCycle,
-        regionOverride,
+        regionOverride: effectiveRegion,
       }),
     })
 
@@ -126,7 +129,7 @@ export async function initiateCheckout({
       const options = {
         key: data.keyId,
         amount: data.amount,
-        currency: data.currency || "USD",
+        currency: data.currency || "INR",
         name: "AIChartor",
         description: `Credit Pack (${effectivePackId.toUpperCase()})`,
         order_id: data.orderId,

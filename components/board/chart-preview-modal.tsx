@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from "react"
+import { GeistSans } from "geist/font/sans"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -441,7 +442,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-[95vw] sm:h-[95vh] sm:rounded-2xl rounded-none flex flex-col gap-0 p-0 [&>button:last-child]:hidden bg-slate-50 dark:bg-slate-950 dark:border-slate-800">
+      <DialogContent className={`w-full h-full sm:w-[95vw] sm:max-w-[95vw] sm:h-[95vh] sm:rounded-2xl rounded-none flex flex-col gap-0 p-0 [&>button:last-child]:hidden bg-slate-50 dark:bg-slate-950 dark:border-slate-800 ${GeistSans.variable} ${GeistSans.className} font-sans`}>
         {/* Header */}
         <DialogHeader className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-sm shrink-0">
           <div className="flex items-center justify-between gap-2 sm:gap-4">
@@ -468,7 +469,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                     <Share2 className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-56 p-3 z-[9999] dark:bg-slate-900 dark:border-slate-700">
+                <PopoverContent align="end" className="w-56 p-3 z-[9999] dark:bg-slate-900 dark:border-slate-700 font-sans">
                   {/* Share vs Embed Toggle */}
                   <div className="flex items-center gap-0.5 bg-zinc-100 rounded-lg p-0.5 border border-zinc-200/50 mb-3 select-none">
                     <button
@@ -534,7 +535,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                     <Download className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 font-sans">
                   <DropdownMenuItem onClick={handleDownloadPNG} className="focus:bg-violet-50 focus:text-violet-700">
                     <ImageIcon className="h-4 w-4 mr-2 text-zinc-450" />
                     Download PNG

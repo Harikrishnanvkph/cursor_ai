@@ -866,6 +866,7 @@ interface ChartPreviewToolbarProps {
     exports: any;
     handleFullscreen: () => void;
     isLeftSidebarCollapsed?: boolean;
+    className?: string;
 }
 
 export const ChartPreviewToolbar = memo(({
@@ -883,12 +884,17 @@ export const ChartPreviewToolbar = memo(({
     exports,
     handleFullscreen,
     isLeftSidebarCollapsed,
+    className,
 }: ChartPreviewToolbarProps) => {
     const hasData = useChartStore(s => s.chartData.datasets.length > 0);
     const disabled = !hasData;
 
     return (
-        <div className={`${isMobile ? 'py-0.5 px-1' : 'px-2 py-1 mb-1'} flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0`}>
+        <div className={cn(
+            isMobile ? 'py-0.5 px-1' : 'px-2 py-1 mb-1',
+            'flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0',
+            className
+        )}>
             {rename?.chartTitle && (
                 <div className="flex-1 min-w-0 pr-1">
                     <TitleSection rename={rename} />

@@ -23,6 +23,41 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
 
+/* Ensure Geist Sans cascades cleanly through all UI elements on board page and all embedded popups */
+.board-page-container,
+.board-page-container *,
+body.board-page-active,
+body.board-page-active *,
+body.board-page-active [data-radix-portal],
+body.board-page-active [data-radix-portal] *,
+body.board-page-active [data-radix-popper-content-wrapper],
+body.board-page-active [data-radix-popper-content-wrapper] *,
+body.board-page-active [role="dialog"],
+body.board-page-active [role="dialog"] *,
+body.board-page-active [role="menu"],
+body.board-page-active [role="menu"] *,
+body.board-page-active [role="listbox"],
+body.board-page-active [role="listbox"] *,
+body.board-page-active [role="tooltip"],
+body.board-page-active [role="tooltip"] *,
+body.board-page-active [data-sonner-toaster],
+body.board-page-active [data-sonner-toaster] *,
+body.board-page-active [data-sonner-toast],
+body.board-page-active [data-sonner-toast] * {
+  font-family: var(--font-geist-sans), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+body.board-page-active [class*="font-mono"],
+body.board-page-active code,
+body.board-page-active pre,
+body.board-page-active kbd,
+.board-page-container [class*="font-mono"],
+.board-page-container code,
+.board-page-container pre,
+.board-page-container kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

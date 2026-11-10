@@ -3,6 +3,7 @@
 import React from 'react'
 import { Input } from '@/components/ui/input'
 import { useFormatBuilder } from '../format-builder-context'
+import { FontFamilySelect } from '@/components/ui/font-family-select'
 import { UNIFIED_FONT_FAMILIES, ensureGoogleFontLoaded, findFontByInput } from '@/lib/typography-registry'
 
 export function TextZoneStyles() {
@@ -67,20 +68,11 @@ export function TextZoneStyles() {
       </div>
       <div>
         <label className="text-[10px] text-gray-500 block mb-1">Font Family</label>
-        <select
-          value={findFontByInput(s.fontFamily)?.value || s.fontFamily || "'Inter', sans-serif"}
-          onChange={e => {
-            ensureGoogleFontLoaded(e.target.value)
-            update({ fontFamily: e.target.value })
-          }}
-          className="w-full h-6 text-[10px] bg-gray-900 border border-gray-700 rounded text-white"
-        >
-          {UNIFIED_FONT_FAMILIES.filter(f => f.value !== 'default').map(f => (
-            <option key={f.id} value={f.value} style={{ fontFamily: f.value }}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+        <FontFamilySelect
+          value={s.fontFamily || "'Inter', sans-serif"}
+          onValueChange={(fontFamily) => update({ fontFamily })}
+          triggerClassName="h-7 text-[11px] bg-gray-900 border-gray-700 text-white hover:bg-gray-800"
+        />
       </div>
     </div>
   )

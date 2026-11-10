@@ -142,7 +142,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       case "labels":
         return <CombinedStylingPanel initialTab="labels" />
       case "styling":
-        return <CombinedStylingPanel initialTab="styling" />
+        return <CombinedStylingPanel />
       case "axes":
         return <AxesPanel />
 

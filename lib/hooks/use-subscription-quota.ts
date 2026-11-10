@@ -27,10 +27,14 @@ export function useSubscriptionQuota() {
   const purchasedAiCredits = user?.purchased_ai_credits ?? 0;
 
   // Combined AI Credit Totals
-  const aiCreditsLimit = user?.ai_credits_limit ?? freeAiCreditsLimit + purchasedAiCredits;
+  const currentTotalRemaining = freeAiCreditsRemaining + purchasedAiCredits;
+  const aiCreditsLimit =
+    user?.ai_credits_limit && user.ai_credits_limit >= currentTotalRemaining
+      ? user.ai_credits_limit
+      : Math.max(config.aiCreditsLimit, freeAiCreditsLimit + purchasedAiCredits);
   const aiCreditsUsed = freeAiCreditsUsed;
   const aiCreditsRemaining =
-    user?.ai_credits_remaining ?? freeAiCreditsRemaining + purchasedAiCredits;
+    user?.ai_credits_remaining ?? currentTotalRemaining;
 
   // Cloud Save Credits (Permanent + Active Expiring Grants)
   const permanentCloudCredits =

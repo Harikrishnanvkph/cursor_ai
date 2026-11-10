@@ -193,22 +193,22 @@ export function GeneralTab({
 
     const renderDatasetsList = () => (
         <div className="space-y-2">
-            <div className="flex items-center justify-between bg-blue-50/70 p-2.5 rounded-t-lg border border-blue-100">
-                <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+            <div className="flex items-center justify-between bg-blue-50/70 px-2.5 py-2 rounded-t-lg border border-blue-100 min-w-0">
+                <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
                     <Label className="text-xs font-semibold text-gray-800 tracking-wide">Datasets</Label>
-                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">
+                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded-full font-bold">
                         {filteredDatasets.length}
                     </span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 shrink-0">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setShowImportModal(true)}
-                        className="h-7 text-xs border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95"
+                        className="h-6.5 px-2 text-[11px] gap-1 border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95 shrink-0"
                     >
-                        <Upload className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                        <Upload className="h-3 w-3 text-blue-600 shrink-0" />
                         Import
                     </Button>
                     <Button
@@ -218,20 +218,22 @@ export function GeneralTab({
                             setIsCreatingNewGroup(false);
                             handleOpenAddDatasetModal();
                         }}
-                        className="h-7 text-xs border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95"
+                        className="h-6.5 px-2 text-[11px] gap-1 border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95 shrink-0"
                     >
-                        <Plus className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                        <Plus className="h-3 w-3 text-blue-600 shrink-0" />
                         {chartMode === 'grouped' ? 'Datasets' : 'Add'}
                     </Button>
 
-                    <div
-                        className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors"
+                    <button
+                        type="button"
+                        className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-blue-100/40 cursor-pointer transition-colors shrink-0"
                         onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
+                        title={datasetsDropdownOpen ? "Collapse datasets" : "Expand datasets"}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
+                            width="14"
+                            height="14"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -242,7 +244,7 @@ export function GeneralTab({
                         >
                             <path d="M6 9L12 15L18 9" />
                         </svg>
-                    </div>
+                    </button>
                 </div>
             </div>
 
@@ -386,11 +388,11 @@ export function GeneralTab({
 
     const renderGroupsList = () => (
         <div className="space-y-2">
-            <div className="flex items-center justify-between bg-blue-50/70 p-2.5 rounded-t-lg border border-blue-100">
-                <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+            <div className="flex items-center justify-between bg-blue-50/70 px-2.5 py-2 rounded-t-lg border border-blue-100 min-w-0">
+                <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
                     <Label className="text-xs font-semibold text-gray-800 tracking-wide">Groups</Label>
-                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">
+                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded-full font-bold">
                         {groups.length}
                     </span>
                 </div>
@@ -401,9 +403,9 @@ export function GeneralTab({
                         setIsCreatingNewGroup(true);
                         setShowAddDatasetModal(true);
                     }}
-                    className="h-7 text-xs border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95"
+                    className="h-6.5 px-2 text-[11px] gap-1 border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95 shrink-0"
                 >
-                    <Plus className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                    <Plus className="h-3 w-3 text-blue-600 shrink-0" />
                     Group
                 </Button>
             </div>

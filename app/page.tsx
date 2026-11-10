@@ -8,7 +8,6 @@ import { HomeNewNavbar } from "@/components/home-new/home-new-navbar"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Sparkles, Sliders, LayoutDashboard, ArrowRight, ArrowUp, Layers, PanelLeft, Share2, Settings, Palette, AlertTriangle, CheckCircle2, RefreshCw, Maximize2, Database, Layout, Grid, MessageSquare, MousePointer2, Pencil, Minus, ArrowLeftRight, Square, Circle, Triangle, Star, Hexagon, Heart, Cloud, Plus, Type, Lock, Copy, Trash2, MoreHorizontal, BarChart2, PieChart, FolderOpen, Save, TrendingUp, ChevronLeft, ChevronRight, AlignLeft, CircleDot, Target, Box, Filter, Gauge, LayoutGrid, Activity, Download, Check, Zap, ChevronDown } from "lucide-react"
 import { useGeoLocation } from "@/hooks/useGeoLocation"
-import { RegionSelector } from "@/components/pricing/RegionSelector"
 import { initiateCheckout } from "@/lib/payment-client"
 import {
   AI_CREDIT_PACKS,
@@ -854,6 +853,7 @@ function renderFeatureText(text: string, highlightWord?: string, isProPack?: boo
 
 function PricingSection() {
   const { user } = useAuth()
+  const { region, isIndia, currencySymbol } = useGeoLocation()
   const [creditTab, setCreditTab] = useState<"ai" | "cloud">("ai")
   const [purchasingPackId, setPurchasingPackId] = useState<CreditPackId | null>(null)
 
@@ -873,16 +873,18 @@ function PricingSection() {
         packId,
         planTier: packId.includes("pro") ? "pro" : "lite",
         billingCycle: "one_time",
-        regionOverride: "GLOBAL",
+        regionOverride: region,
         user,
         onError: (err) => {
           console.error("Payment error:", err)
           setPurchasingPackId(null)
+          alert(err.message || "Failed to initiate payment")
         },
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error("Checkout initiation error:", err)
       setPurchasingPackId(null)
+      alert(err.message || "Failed to initiate checkout")
     }
   }
 
@@ -926,7 +928,7 @@ function PricingSection() {
         </div>
       </div>
 
-      {/* 3-Column Pricing Grid: Free | Lite User ($2) | Pro User ($5) */}
+      {/* 3-Column Pricing Grid: Free | Lite User | Pro User */}
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
         {/* Column 1: Free Card */}
         <div className="rounded-2xl p-6 sm:p-7 flex flex-col justify-between bg-white dark:bg-slate-900/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-md">
@@ -940,7 +942,7 @@ function PricingSection() {
 
             {/* Price */}
             <div className="mt-5 pb-4 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline gap-1.5">
-              <span className="text-4xl font-extrabold tracking-tight">$0</span>
+              <span className="text-4xl font-extrabold tracking-tight">{currencySymbol}0</span>
             </div>
 
             {/* Primary Credit Line (shown once, matching sketch) */}
@@ -971,10 +973,11 @@ function PricingSection() {
           </div>
         </div>
 
-        {/* Columns 2 & 3: Lite User ($2) | Pro User ($5) */}
+        {/* Columns 2 & 3: Lite User | Pro User */}
         {activePacks.map((pack) => {
           const isProPack = pack.popular
           const isBuyingThis = purchasingPackId === pack.id
+          const displayPrice = isIndia ? (pack.priceInr || (pack.priceUsd === 2 ? 99 : 249)) : pack.priceUsd
 
           return (
             <div
@@ -1003,7 +1006,7 @@ function PricingSection() {
 
                 {/* Price */}
                 <div className="mt-5 pb-4 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline gap-1.5">
-                  <span className="text-4xl font-extrabold tracking-tight">${pack.priceUsd}</span>
+                  <span className="text-4xl font-extrabold tracking-tight">{currencySymbol}{displayPrice}</span>
                 </div>
 
                 {/* Primary Credit Line (shown once, matching sketch) */}

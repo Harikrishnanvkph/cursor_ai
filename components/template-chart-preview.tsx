@@ -11,6 +11,7 @@ import { useChatStore } from "@/lib/chat-store"
 import { useHistoryStore } from "@/lib/history-store"
 import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
 
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -74,6 +75,7 @@ interface TemplateChartPreviewProps {
   onNewChart?: () => void
   readOnly?: boolean
   zoomPan?: any
+  variant?: 'landing' | 'default'
 }
 
 export function TemplateChartPreview({
@@ -85,7 +87,8 @@ export function TemplateChartPreview({
   onTabChange,
   onNewChart,
   readOnly = false,
-  zoomPan
+  zoomPan,
+  variant = 'default',
 }: TemplateChartPreviewProps) {
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
@@ -1656,7 +1659,15 @@ export function TemplateChartPreview({
 
       {/* Template Controls */}
       {!readOnly && !isMobile && (
-        <div className="px-2 py-1 mb-1 flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0">
+        <div className={cn(
+          variant === 'landing'
+            ? 'h-[52px] min-h-[52px] px-3.5 border-b border-slate-200/80 bg-white/40 backdrop-blur-xl flex items-center justify-between flex-shrink-0 z-10 w-full'
+            : 'px-2 py-1 mb-1 flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0'
+        )}>
+          <div className={cn(
+            "flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0",
+            variant === 'landing' && "h-full"
+          )}>
           {chartTitle && (
             <div className="flex-1 min-w-0 pr-1">
               <div className="flex items-center gap-1.5 mb-0 min-w-0 w-full">
@@ -1947,8 +1958,6 @@ export function TemplateChartPreview({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <div className="w-[1px] h-4 bg-slate-200 mx-0.5" />
 
             {/* More Options (Ellipsis Dropdown) */}
             <DropdownMenu>
@@ -2265,29 +2274,41 @@ export function TemplateChartPreview({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          </div>
         </div>
       )}
 
       {/* Template Canvas */}
-      <div className="flex-1 overflow-hidden">
-        <div
-          ref={containerRef}
-          className={`relative w-full h-full ${
-            readOnly ? 'overflow-hidden border-none shadow-none' : (isMobile || panMode ? 'overflow-hidden' : 'overflow-auto') + ' border rounded-lg shadow-sm'
-          } flex items-center justify-center transition-colors${isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          style={{
-            cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
-            touchAction: panMode ? 'none' : 'manipulation',
-            backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
-            backgroundImage: canvasBgType === 'transparent' ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
-            backgroundSize: canvasBgType === 'transparent' ? '20px 20px' : undefined,
-            backgroundPosition: canvasBgType === 'transparent' ? '0 0, 0 10px, 10px -10px, -10px 0px' : undefined,
-          }}
-        >
+      {(() => {
+        const cardElement = (
+          <Card className={cn(
+            "w-full flex flex-col flex-1 min-h-[300px] rounded-lg bg-card text-card-foreground overflow-hidden transition-all duration-200",
+            readOnly ? "border-none shadow-none bg-transparent" : "border shadow-lg",
+            isFullscreen && "fixed inset-4 z-50 m-0"
+          )}>
+            <CardContent className="p-0 flex-1 flex flex-col h-full w-full relative">
+              <div
+                ref={containerRef}
+                className={`relative w-full flex-1 ${
+                  readOnly ? 'overflow-hidden border-none shadow-none' : (isMobile || panMode ? 'overflow-hidden' : 'overflow-auto')
+                } flex items-center justify-center transition-colors`}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#cbd5e1 #f1f5f9',
+                  cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                  touchAction: panMode ? 'none' : 'manipulation',
+                  minHeight: '100%',
+                  height: '100%',
+                  backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
+                  backgroundImage: canvasBgType === 'transparent' ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
+                  backgroundSize: canvasBgType === 'transparent' ? '20px 20px' : undefined,
+                  backgroundPosition: canvasBgType === 'transparent' ? '0 0, 0 10px, 10px -10px, -10px 0px' : undefined,
+                }}
+              >
           {/* Layout wrapper — sized to the scaled template so the scrollable
               area matches the visual size (CSS transform doesn't affect layout). */}
           <div
@@ -2383,8 +2404,21 @@ export function TemplateChartPreview({
           </div>
           {/* Amazon Loupe Magnifier Overlay */}
           <ChartLoupeOverlay targetContainerRef={containerRef} />
-        </div>
-      </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+        return variant === 'landing' ? (
+          <div className="flex-1 p-4 overflow-auto min-h-0 flex flex-col">
+            {cardElement}
+          </div>
+        ) : (
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {cardElement}
+          </div>
+        );
+      })()}
 
       {/* Fullscreen Toolbar */}
       {isFullscreen && (

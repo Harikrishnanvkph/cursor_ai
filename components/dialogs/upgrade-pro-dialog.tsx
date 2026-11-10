@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth/AuthProvider"
+import { useGeoLocation } from "@/hooks/useGeoLocation"
 import { initiateCheckout } from "@/lib/payment-client"
 import {
   AI_CREDIT_PACKS,
@@ -54,6 +55,7 @@ export function UpgradeProDialog({
   featureHighlight = "all",
 }: UpgradeProDialogProps) {
   const { user } = useAuth()
+  const { region, isIndia, currencySymbol } = useGeoLocation()
   const [creditTab, setCreditTab] = useState<"ai" | "cloud">(
     featureHighlight === "cloud" ? "cloud" : "ai"
   )
@@ -80,7 +82,7 @@ export function UpgradeProDialog({
         packId,
         planTier: packId.includes("pro") ? "pro" : "lite",
         billingCycle: "one_time",
-        regionOverride: "GLOBAL",
+        regionOverride: region,
         user,
         onBeforeOpen: () => {
           setPurchasingPackId(null)
@@ -93,11 +95,13 @@ export function UpgradeProDialog({
         onError: (err) => {
           console.error("Credit pack purchase error:", err)
           setPurchasingPackId(null)
+          alert(err.message || "Failed to initiate payment")
         },
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
       setPurchasingPackId(null)
+      alert(err.message || "Failed to initiate checkout")
     }
   }
 
@@ -175,7 +179,10 @@ export function UpgradeProDialog({
                     </div>
 
                     <div className="mt-3 flex items-baseline gap-1.5">
-                      <span className="text-3xl font-extrabold tracking-tight">${pack.priceUsd}</span>
+                      <span className="text-3xl font-extrabold tracking-tight">
+                        {currencySymbol}
+                        {isIndia ? (pack.priceInr || (pack.priceUsd === 2 ? 99 : 249)) : pack.priceUsd}
+                      </span>
                       <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">one-time</span>
                     </div>
 

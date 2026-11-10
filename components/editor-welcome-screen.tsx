@@ -348,7 +348,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={() => setDatasetType('single')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                     datasetType === 'single'
                       ? 'bg-white text-indigo-700 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
@@ -360,7 +360,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={() => setDatasetType('grouped')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                     datasetType === 'grouped'
                       ? 'bg-white text-indigo-700 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
@@ -382,7 +382,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={handleQuickLoadSample}
-                  className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-purple-300 active:scale-[0.98] transition-all flex items-center justify-between group shadow-2xs"
+                  className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-purple-300 active:bg-purple-50/50 transition-[border-color,background-color] duration-150 flex items-center justify-between group shadow-2xs"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-100 transition-colors flex-shrink-0">
@@ -402,7 +402,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={handleCustomDimensionSample}
-                  className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 active:scale-[0.98] transition-all flex items-center justify-between group shadow-2xs"
+                  className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 active:bg-indigo-50/50 transition-[border-color,background-color] duration-150 flex items-center justify-between group shadow-2xs"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-100 transition-colors flex-shrink-0">
@@ -430,7 +430,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
               <button
                 type="button"
                 onClick={handleCustomDimensionDataset}
-                className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-blue-300 active:scale-[0.98] transition-all flex items-center justify-between group shadow-2xs"
+                className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-blue-300 active:bg-blue-50/50 transition-[border-color,background-color] duration-150 flex items-center justify-between group shadow-2xs"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-100 transition-colors flex-shrink-0">
@@ -522,7 +522,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                   <button
                     type="button"
                     onClick={() => setDatasetType('single')}
-                    className={`flex items-center justify-center gap-1.5 py-1 px-3 rounded-md text-xs font-semibold transition-all duration-150 active:scale-[0.98] ${
+                    className={`flex items-center justify-center gap-1.5 py-1 px-3 rounded-md text-xs font-semibold transition-colors duration-150 active:opacity-90 ${
                       datasetType === 'single'
                         ? 'bg-white text-indigo-700 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -534,7 +534,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                   <button
                     type="button"
                     onClick={() => setDatasetType('grouped')}
-                    className={`flex items-center justify-center gap-1.5 py-1 px-3 rounded-md text-xs font-semibold transition-all duration-150 active:scale-[0.98] ${
+                    className={`flex items-center justify-center gap-1.5 py-1 px-3 rounded-md text-xs font-semibold transition-colors duration-150 active:opacity-90 ${
                       datasetType === 'grouped'
                         ? 'bg-white text-indigo-700 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -555,7 +555,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <div className="grid gap-2.5 grid-cols-2">
                   {/* Quick Start */}
                   <div
-                    className="border border-slate-200/90 rounded-xl p-3 hover:border-purple-400 active:scale-[0.99] hover:shadow-md transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                    className="border border-slate-200/90 rounded-xl p-3 hover:border-purple-400 hover:shadow-md active:bg-purple-50/30 active:border-purple-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                     onClick={handleQuickLoadSample}
                   >
                     <div>
@@ -582,7 +582,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
 
                   {/* Choose Size */}
                   <div
-                    className="border border-slate-200/90 rounded-xl p-3 hover:border-indigo-400 active:scale-[0.99] hover:shadow-md transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                    className="border border-slate-200/90 rounded-xl p-3 hover:border-indigo-400 hover:shadow-md active:bg-indigo-50/30 active:border-indigo-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                     onClick={handleCustomDimensionSample}
                   >
                     <div>
@@ -616,7 +616,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                   Add Your Own Data
                 </h3>
                 <div
-                  className="border border-slate-200/90 rounded-xl p-3 hover:border-blue-400 active:scale-[0.99] hover:shadow-md transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                  className="border border-slate-200/90 rounded-xl p-3 hover:border-blue-400 hover:shadow-md active:bg-blue-50/30 active:border-blue-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                   onClick={handleCustomDimensionDataset}
                 >
                   <div>
@@ -718,7 +718,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={() => setDatasetType('single')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-all duration-150 active:scale-[0.98] ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors duration-150 active:opacity-90 ${
                     datasetType === 'single'
                       ? 'bg-white text-indigo-700 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -730,7 +730,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={() => setDatasetType('grouped')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-all duration-150 active:scale-[0.98] ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors duration-150 active:opacity-90 ${
                     datasetType === 'grouped'
                       ? 'bg-white text-indigo-700 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -751,7 +751,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                 {/* Quick Load (default dimensions) */}
                 <div
-                  className="border border-slate-200/90 rounded-xl p-3.5 hover:border-purple-400 active:scale-[0.99] hover:shadow-md transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                  className="border border-slate-200/90 rounded-xl p-3.5 hover:border-purple-400 hover:shadow-md active:bg-purple-50/30 active:border-purple-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                   onClick={handleQuickLoadSample}
                 >
                   <div>
@@ -773,7 +773,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
 
                 {/* Custom Dimensions + Sample Data */}
                 <div
-                  className="border border-slate-200/90 rounded-xl p-3.5 hover:border-indigo-400 active:scale-[0.99] hover:shadow-md transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                  className="border border-slate-200/90 rounded-xl p-3.5 hover:border-indigo-400 hover:shadow-md active:bg-indigo-50/30 active:border-indigo-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                   onClick={handleCustomDimensionSample}
                 >
                   <div>
@@ -802,7 +802,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 Add Your Own Data
               </h3>
               <div
-                className="border border-slate-200/90 rounded-xl p-3.5 hover:border-blue-400 active:scale-[0.99] hover:shadow-md transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                className="border border-slate-200/90 rounded-xl p-3.5 hover:border-blue-400 hover:shadow-md active:bg-blue-50/30 active:border-blue-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                 onClick={handleCustomDimensionDataset}
               >
                 <div>

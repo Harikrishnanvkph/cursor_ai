@@ -14,10 +14,17 @@ import {
   Minus, Plus, Palette, Type,
   Edit2,
   AlignLeft, AlignCenter, AlignRight,
-  MoreHorizontal, Check
+  MoreHorizontal, Check, Search, Globe, Loader2
 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { UNIFIED_FONT_FAMILIES, ensureGoogleFontLoaded, findFontByInput } from "@/lib/typography-registry"
+import { FontFamilyModal } from "@/components/ui/font-family-select"
+import {
+  UNIFIED_FONT_FAMILIES,
+  ensureGoogleFontLoaded,
+  findFontByInput,
+  registerDynamicFont,
+  FontFamilyOption
+} from "@/lib/typography-registry"
 
 // ── Constants ──────────────────────────────────
 
@@ -368,39 +375,31 @@ function ColorPickerButton({ currentColor, onColorChange }: { currentColor: stri
 }
 
 function FontPickerButton({ currentFont, onFontChange }: { currentFont: string; onFontChange: (f: string) => void }) {
+  const [open, setOpen] = useState(false)
   const matched = findFontByInput(currentFont)
   const currentCleanFont = matched?.label || currentFont.split(',')[0].replace(/['"]/g, '').trim()
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg text-slate-700 hover:bg-slate-100 text-xs font-medium max-w-[96px] truncate shrink-0" title="Font family">
-          <Type className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
-          <span className="truncate" style={{ fontFamily: matched?.value }}>{currentCleanFont || 'Font'}</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-48 p-1.5 shadow-xl rounded-xl z-[150]" side="bottom" align="start">
-        <div className="max-h-52 overflow-y-auto">
-          {FONT_OPTIONS.map(f => {
-            const isSelected = matched?.id === f.id || currentFont === f.value
-            return (
-              <button
-                key={f.id}
-                className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg hover:bg-slate-100 transition-colors ${
-                  isSelected ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700'
-                }`}
-                style={{ fontFamily: f.value }}
-                onClick={() => {
-                  ensureGoogleFontLoaded(f.value)
-                  onFontChange(f.value)
-                }}
-              >
-                {f.label}
-              </button>
-            )
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setOpen(true)}
+        className="h-8 px-2 rounded-lg text-slate-700 hover:bg-slate-100 text-xs font-medium max-w-[110px] truncate shrink-0 cursor-pointer"
+        title="Font family"
+      >
+        <Type className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+        <span className="truncate" style={{ fontFamily: matched?.value }}>{currentCleanFont || 'Font'}</span>
+      </Button>
+
+      <FontFamilyModal
+        open={open}
+        onOpenChange={setOpen}
+        value={currentFont}
+        onSelectFont={(fontValue) => {
+          onFontChange(fontValue)
+        }}
+      />
+    </>
   )
 }

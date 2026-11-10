@@ -18,6 +18,7 @@ import {
   Clock,
 } from "lucide-react"
 import { initiateCheckout } from "@/lib/payment-client"
+import { useGeoLocation } from "@/hooks/useGeoLocation"
 import {
   AI_CREDIT_PACKS,
   CLOUD_CREDIT_PACKS,
@@ -50,6 +51,7 @@ function renderFeatureText(text: string, highlightWord?: string, isProPack?: boo
 
 export default function PricingPage() {
   const { user } = useAuth()
+  const { region, isIndia, currencySymbol } = useGeoLocation()
   const [creditTab, setCreditTab] = useState<"ai" | "cloud">("ai")
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
   const [purchasingPackId, setPurchasingPackId] = useState<CreditPackId | null>(null)
@@ -74,20 +76,27 @@ export default function PricingPage() {
         packId,
         planTier: packId.includes("pro") ? "pro" : "lite",
         billingCycle: "one_time",
-        regionOverride: "GLOBAL",
+        regionOverride: region,
         user,
         onError: (err) => {
           console.error("Payment error:", err)
           setPurchasingPackId(null)
+          alert(err.message || "Failed to initiate payment")
         },
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error("Checkout initiation error:", err)
       setPurchasingPackId(null)
+      alert(err.message || "Failed to initiate checkout")
     }
   }
 
   const faqs = [
+    {
+      question: "How many AI credits does each chart or template use?",
+      answer:
+        "Generating or modifying a Chart uses 1 AI credit. Generating or modifying a Template or Format layout (which generates multiple coordinated visual elements and structured text) uses 2 AI credits.",
+    },
     {
       question: "What is included for free on every account?",
       answer:
@@ -96,12 +105,12 @@ export default function PricingPage() {
     {
       question: "Do purchased AI Credits ever expire?",
       answer:
-        "No! Purchased AI Credits (+15 on the $2 Lite pack or +60 on the $5 Pro pack) never expire. Better yet, our system always consumes your 10 monthly free AI credits first before touching your purchased AI credits.",
+        "No! Purchased AI Credits (+30 on the $2 Lite pack or +100 on the $5 Pro pack) never expire. Better yet, our system always consumes your 10 monthly free AI credits first before touching your purchased AI credits.",
     },
     {
       question: "How does the +5 Cloud Save bonus on AI Credit packs work?",
       answer:
-        "On your very first purchase of any AI Credits pack ($2 Lite or $5 Pro), we permanently add +5 Cloud Save Credits to your account (bringing your permanent cloud saves from 5 to 10, which never expire). Repeat purchases of AI Credit packs grant the AI credits (+15 or +60) without adding additional permanent cloud credits.",
+        "On your very first purchase of any AI Credits pack ($2 Lite or $5 Pro), we permanently add +5 Cloud Save Credits to your account (bringing your permanent cloud saves from 5 to 10, which never expire). Repeat purchases of AI Credit packs grant the AI credits (+30 or +100) without adding additional permanent cloud credits.",
     },
     {
       question: "How do the Cloud Credits packs work and what happens when they expire?",
@@ -171,7 +180,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ─── 3-COLUMN PRICING CARDS SECTION: Free | Lite User ($2) | Pro User ($5) ─── */}
+      {/* ─── 3-COLUMN PRICING CARDS SECTION: Free | Lite User | Pro User ─── */}
       <section className="py-12 bg-white dark:bg-slate-950 transition-colors duration-300 relative">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-6 sm:gap-8 items-stretch">
@@ -186,7 +195,7 @@ export default function PricingPage() {
                 </div>
 
                 <div className="mt-6 pb-5 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline">
-                  <span className="text-5xl font-extrabold tracking-tight">$0</span>
+                  <span className="text-5xl font-extrabold tracking-tight">{currencySymbol}0</span>
                 </div>
 
                 <div className="py-4 border-b border-slate-200/80 dark:border-slate-800">
@@ -219,10 +228,11 @@ export default function PricingPage() {
               </div>
             </div>
 
-            {/* Columns 2 & 3: Lite User ($2) | Pro User ($5) */}
+            {/* Columns 2 & 3: Lite User | Pro User */}
             {activePacks.map((pack) => {
               const isProPack = pack.popular
               const isBuyingThis = purchasingPackId === pack.id
+              const displayPrice = isIndia ? (pack.priceInr || (pack.priceUsd === 2 ? 99 : 249)) : pack.priceUsd
 
               return (
                 <div
@@ -250,7 +260,7 @@ export default function PricingPage() {
                     </div>
 
                     <div className="mt-6 pb-5 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline">
-                      <span className="text-5xl font-extrabold tracking-tight">${pack.priceUsd}</span>
+                      <span className="text-5xl font-extrabold tracking-tight">{currencySymbol}{displayPrice}</span>
                     </div>
 
                     <div className="py-4 border-b border-slate-200/80 dark:border-slate-800">

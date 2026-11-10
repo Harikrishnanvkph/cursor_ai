@@ -9,7 +9,7 @@ import { useTemplateStore } from "@/lib/template-store"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef } from "react"
 import { useUIStore } from "@/lib/stores/ui-store"
-import { ChevronLeft, ChevronRight, Settings, Save, Trash2, X, Loader2, PanelRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Settings, SlidersHorizontal, Save, Trash2, X, Loader2, PanelRight } from "lucide-react"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
@@ -30,6 +30,7 @@ import { FullSizeFormatView } from "@/components/gallery/FullSizeFormatView"
 
 // parseDimension imported from shared utility
 import { parseDimension } from "@/lib/utils/dimension-utils"
+import { useIsBelow1152 } from "@/lib/hooks/use-screen-dimensions"
 
 export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSidebarOpen: boolean, setLeftSidebarOpen: (open: boolean) => void }) {
   const { chartData, chartType, chartConfig, hasJSON } = useChartStore()
@@ -39,10 +40,16 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   const router = useRouter()
   const hasChartData = chartData.datasets.length > 0
 
-  const { isSidebarCollapsed: isCollapsed, toggleSidebar } = useUIStore()
+  const { isSidebarCollapsed: isCollapsed, toggleSidebar, setSidebarCollapsed, setActiveSidebarTab } = useUIStore()
+  const isBelow1152 = useIsBelow1152()
   const { isGalleryOpen, selectedFormatId } = useFormatGalleryStore()
   const [isHovering, setIsHovering] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  const handleEditBasicSettings = () => {
+    setActiveSidebarTab('general')
+    setSidebarCollapsed(false)
+  }
 
   // Dimension mismatch dialog state
   const [showDimensionDialog, setShowDimensionDialog] = useState(false)
@@ -289,7 +296,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
     setShowClearDialog(true)
   }
 
-  // Handle chart resize when sidebar toggles
+  // Handle chart resize when sidebar toggles or breakpoint changes
   useEffect(() => {
     const handleResize = () => {
       window.dispatchEvent(new Event('resize'))
@@ -297,21 +304,30 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
 
     const timer = setTimeout(handleResize, 10) // Small delay for layout update
     return () => clearTimeout(timer)
-  }, [isCollapsed, leftSidebarOpen])
+  }, [isCollapsed, leftSidebarOpen, isBelow1152])
 
   return (
     <div className="flex flex-1 h-full overflow-hidden relative">
       <div
         className={cn(
-          "p-4 overflow-auto absolute inset-0 right-auto",
-          isCollapsed ? "right-14" : "right-[280px]"
+          "absolute inset-0 right-auto flex flex-col overflow-hidden",
+          isBelow1152
+            ? "right-14"
+            : isCollapsed
+            ? "right-14"
+            : "right-[320px]"
         )}
         style={{
           left: 0,
-          width: isCollapsed ? 'calc(100% - 56px)' : 'calc(100% - 280px)'
+          width: isBelow1152
+            ? 'calc(100% - 56px)'
+            : isCollapsed
+            ? 'calc(100% - 56px)'
+            : 'calc(100% - 320px)'
         }}
       >
         <ChartPreview
+          variant="landing"
           onToggleSidebar={toggleSidebar}
           isSidebarCollapsed={isCollapsed}
           onToggleLeftSidebar={() => setLeftSidebarOpen(!leftSidebarOpen)}
@@ -319,25 +335,33 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         />
       </div>
 
-      {/* Right Sidebar (Config Panel) - Collapsible */}
+      {/* Overlay Backdrop below 1152px when expanded — clicking outside collapses the sidebar */}
+      {isBelow1152 && !isCollapsed && (
+        <div
+          className="absolute inset-0 z-20 bg-slate-900/10 backdrop-blur-[0.5px] transition-opacity animate-in fade-in duration-200 cursor-pointer"
+          onClick={toggleSidebar}
+          title="Click to collapse sidebar"
+        />
+      )}
+
+      {/* Right Sidebar (Config Panel) - Collapsible (Overlays when expanded below 1152px) */}
       <div
         className={cn(
-          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l border-slate-200/80 bg-slate-50/60 backdrop-blur-xl shadow-md flex flex-col z-10",
-          isCollapsed ? "w-14" : "w-[280px]"
+          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l border-slate-200/80 shadow-md flex flex-col transition-all duration-200",
+          isCollapsed
+            ? "w-14 z-10 bg-slate-50/60 backdrop-blur-xl"
+            : isBelow1152
+            ? "w-[320px] z-30 shadow-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl"
+            : "w-[320px] z-10 bg-slate-50/60 backdrop-blur-xl"
         )}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
         {isCollapsed ? (
           // Collapsed state: show profile, expand button, and action buttons
-          <div className="flex flex-col items-center h-full py-4 bg-slate-50/60 backdrop-blur-xl group">
-            <div className="flex flex-col items-center space-y-4 w-full">
-              {/* Profile Icon - Top */}
-              <div className="pb-4 border-b border-slate-200/60 w-full flex justify-center">
-                <SimpleProfileDropdown size="sm" />
-              </div>
-
-              {/* Expand Button - Below Profile */}
+          <div className="flex flex-col items-center h-full bg-slate-50/60 backdrop-blur-xl group">
+            {/* Top header row - 52px aligned */}
+            <div className="h-[52px] min-h-[52px] w-full flex items-center justify-center border-b border-slate-200/80 flex-shrink-0">
               <button
                 onClick={toggleSidebar}
                 className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
@@ -345,6 +369,13 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               >
                 <PanelRight className="w-4 h-4" />
               </button>
+            </div>
+
+            <div className="flex flex-col items-center space-y-4 w-full py-4">
+              {/* Profile Icon */}
+              <div className="pb-4 border-b border-slate-200/60 w-full flex justify-center">
+                <SimpleProfileDropdown size="sm" />
+              </div>
 
               {/* Action Buttons: Save, Cancel, History */}
               <button
@@ -368,13 +399,35 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               <HistoryDropdown variant="compact" className="h-8 w-8 border-0 bg-transparent shadow-none hover:bg-slate-100" />
             </div>
 
-            {/* Spacer — clicking the empty area below buttons expands the sidebar */}
-            <div className="flex-1 cursor-pointer" onClick={toggleSidebar} title="Expand Sidebar" />
+            {/* Edit Basic Settings Button Area — clicking expands the sidebar to basic settings */}
+            <div
+              className="flex-1 w-full flex flex-col items-center justify-center py-6 px-1.5 cursor-pointer"
+              onClick={handleEditBasicSettings}
+              title="Edit Basic Settings"
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleEditBasicSettings()
+                }}
+                className="group flex flex-col items-center justify-center gap-2.5 py-4 px-2 w-full max-w-[42px] rounded-xl border border-slate-300/80 bg-white/90 hover:bg-white hover:border-indigo-400 hover:text-indigo-600 text-slate-800 shadow-xs hover:shadow-md active:scale-95 transition-all select-none"
+                title="Edit Basic Settings"
+              >
+                <SlidersHorizontal className="w-4 h-4 text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 transition-colors shrink-0 stroke-2" />
+                <span
+                  style={{ writingMode: "vertical-rl" }}
+                  className="text-[11px] font-semibold tracking-wide text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 whitespace-nowrap"
+                >
+                  Edit Basic Settings
+                </span>
+              </button>
+            </div>
           </div>
         ) : (
           // Expanded state: show ConfigSidebar with top bar (expand, history, profile)
           <>
-            <div className="flex items-center justify-between p-2.5 border-b border-slate-200/80 bg-white/40">
+            <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200/80 bg-white/40 min-h-[52px] h-[52px] flex-shrink-0">
               {/* Expand/Collapse Button */}
               <button
                 onClick={toggleSidebar}
@@ -385,27 +438,29 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               </button>
 
               {/* Action Buttons: Save, Cancel, History */}
-              <button
-                onClick={handleSaveClick}
-                disabled={!hasJSON || isSaving}
-                className="h-8 w-8 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
-                title="Save chart to online database"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={!hasJSON}
-                className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
-                title="Clear chart and start new"
-              >
-                <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
-              </button>
-              <HistoryDropdown variant="inline" className="h-8 w-8 p-0 border-0 bg-transparent shadow-none hover:bg-slate-100 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button
+                  onClick={handleSaveClick}
+                  disabled={!hasJSON || isSaving}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
+                  title="Save chart to online database"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
+                </button>
+                <button
+                  onClick={handleCancel}
+                  disabled={!hasJSON}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
+                  title="Clear chart and start new"
+                >
+                  <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+                </button>
+                <HistoryDropdown variant="inline" className="h-8 w-8 p-0 border-0 bg-transparent shadow-none hover:bg-slate-100 flex-shrink-0" />
 
-              {/* Profile Icon - Dropdown Menu - Always visible */}
-              <div className="flex-shrink-0">
-                <SimpleProfileDropdown size="sm" />
+                {/* Profile Icon - Dropdown Menu - Always visible */}
+                <div className="flex-shrink-0">
+                  <SimpleProfileDropdown size="sm" />
+                </div>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">

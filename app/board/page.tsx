@@ -12,6 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
+import { GeistSans } from "geist/font/sans"
+import { BoardFontProvider } from "@/components/board/board-font-provider"
 import {
   Sheet,
   SheetContent,
@@ -91,7 +93,9 @@ import {
 export default function BoardPage() {
   return (
     <ProtectedRoute>
-      <BoardPageContent />
+      <BoardFontProvider>
+        <BoardPageContent />
+      </BoardFontProvider>
     </ProtectedRoute>
   )
 }
@@ -278,7 +282,7 @@ function BoardPageContent() {
 
   if (loading && conversations.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+      <div className={`board-page-container ${GeistSans.variable} ${GeistSans.className} font-sans min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center`}>
         <div className="text-center space-y-5">
           <div className="relative mx-auto w-16 h-16">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
@@ -300,7 +304,7 @@ function BoardPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className={`board-page-container ${GeistSans.variable} ${GeistSans.className} font-sans min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100`}>
 
       {/* Modern Header */}
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
@@ -331,7 +335,7 @@ function BoardPageContent() {
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors hidden phab:block" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 shadow-xl z-50">
+                <DropdownMenuContent align="start" className="w-64 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 shadow-xl z-50 font-sans">
                   <DropdownMenuItem
                     className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-default bg-indigo-50/60 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400"
                   >
@@ -404,7 +408,7 @@ function BoardPageContent() {
                       <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500 shrink-0 ml-0.5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40 p-1 z-50">
+                  <DropdownMenuContent align="end" className="w-40 p-1 z-50 font-sans">
                     <DropdownMenuItem
                       onClick={() => setViewTab("charts")}
                       className={`text-xs font-medium gap-2 cursor-pointer rounded-md ${
@@ -460,7 +464,7 @@ function BoardPageContent() {
           role="dialog"
           aria-modal="true"
           aria-label="Navigation Menu"
-          className={`absolute inset-y-0 left-0 w-[85vw] max-w-[360px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-2xl transform-gpu transition-transform duration-100 ease-out ${
+          className={`absolute inset-y-0 left-0 w-[85vw] max-w-[360px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-2xl transform-gpu transition-transform duration-100 ease-out font-sans ${
             isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -606,7 +610,7 @@ function BoardPageContent() {
                     <ChevronDown className="h-3 w-3 opacity-60 ml-0.5 shrink-0" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-44 z-50 p-1">
+                <DropdownMenuContent align="start" className="w-44 z-50 p-1 font-sans">
                   <DropdownMenuItem
                     onClick={() => setActiveTab("single")}
                     className={`text-xs py-2 cursor-pointer gap-2 rounded-md ${
@@ -824,7 +828,7 @@ function BoardPageContent() {
                           <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-52 max-h-[280px] overflow-y-auto">
+                      <DropdownMenuContent align="end" className="w-52 max-h-[280px] overflow-y-auto font-sans">
                         <DropdownMenuItem onClick={() => setFilterType("all")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                           <Folder className="h-4 w-4 mr-2 text-zinc-400" />
                           All Types
@@ -856,7 +860,7 @@ function BoardPageContent() {
                           <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuContent align="end" className="w-40 font-sans">
                         <DropdownMenuItem onClick={() => setSortBy("newest")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                           <Clock className="h-4 w-4 mr-2 text-zinc-400" />
                           Newest First
@@ -1093,7 +1097,7 @@ function BoardPageContent() {
 
             {/* Mobile & Tablet Analytics & Help Slide-over Sheet */}
             <Sheet open={showMobileInfo} onOpenChange={setShowMobileInfo}>
-              <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-4 sm:p-6 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
+              <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-4 sm:p-6 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 font-sans">
                 <SheetHeader className="mb-4 text-left">
                   <SheetTitle className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <Info className="h-4 w-4 text-violet-500" />
@@ -1362,7 +1366,7 @@ function BoardPageContent() {
 
       {/* Mobile Consolidated Filter & Sort Bottom Sheet (<= 450px) */}
       <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 font-sans">
           <SheetHeader className="text-left pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <SheetTitle className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
@@ -1761,7 +1765,7 @@ function MyImagesManager({ loadConversationsFromBackend }: MyImagesManagerProps)
 
       {/* Delete Confirmation Warning Modal */}
       {deletingImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-150 font-sans">
           <Card className="w-full max-w-md border border-slate-200 dark:border-slate-700 shadow-2xl bg-white dark:bg-slate-900 rounded-2xl overflow-hidden animate-in zoom-in-95 duration-150">
             <CardHeader className="bg-red-50/60 dark:bg-red-950/20 border-b border-red-100 dark:border-red-900/40 p-5">
               <div className="flex items-center gap-3 text-red-600 dark:text-red-400">

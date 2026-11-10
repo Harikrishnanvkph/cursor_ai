@@ -40,7 +40,7 @@ function LandingPageContent() {
   const { user } = useAuth()
   const router = useRouter()
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
-  const { isPro, aiCreditsLimit, aiCreditsRemaining } = useSubscriptionQuota()
+  const { isPro, aiCreditsLimit, aiCreditsRemaining, freeAiCreditsRemaining, purchasedAiCredits } = useSubscriptionQuota()
 
   const {
     chartConfig,
@@ -248,9 +248,24 @@ function LandingPageContent() {
     if (e) e.preventDefault()
     if (!input.trim() || isProcessing || isChatDisabled) return
 
-    if (user && aiCreditsRemaining <= 0) {
+    // Guard: Check AI credits (1 for chart, 2 for template/format mode)
+    const templateStore = useTemplateStore.getState()
+    const formatStore = useFormatGalleryStore.getState()
+    const isTemplate =
+      templateStore.editorMode === 'template' ||
+      templateStore.generateMode === 'template' ||
+      templateStore.generateMode === 'format' ||
+      Boolean(formatStore.selectedFormatId) ||
+      Boolean(templateStore.currentTemplate)
+    const requiredCredits = isTemplate ? 2 : 1
+
+    if (user && aiCreditsRemaining < requiredCredits) {
       setIsUpgradeOpen(true)
-      toast.error(`You have reached your monthly limit of ${aiCreditsLimit} AI credits. Upgrade to Pro for 50 credits/month!`)
+      toast.error(
+        isTemplate
+          ? `Template mode requires 2 AI credits, but you have ${aiCreditsRemaining} remaining. Top up your AI credits to continue!`
+          : `You have reached your limit of ${aiCreditsLimit} AI credits. Top up your AI credits to continue!`
+      )
       return
     }
 
@@ -486,6 +501,8 @@ function LandingPageContent() {
         setIncludeImages={setIncludeImages}
         aiCreditsRemaining={aiCreditsRemaining}
         aiCreditsLimit={aiCreditsLimit}
+        freeAiCreditsRemaining={freeAiCreditsRemaining}
+        purchasedAiCredits={purchasedAiCredits}
         isUpgradeOpen={isUpgradeOpen}
         setIsUpgradeOpen={setIsUpgradeOpen}
         isTemplateModalOpen={isTemplateModalOpen}
@@ -537,6 +554,8 @@ function LandingPageContent() {
         setIncludeImages={setIncludeImages}
         aiCreditsRemaining={aiCreditsRemaining}
         aiCreditsLimit={aiCreditsLimit}
+        freeAiCreditsRemaining={freeAiCreditsRemaining}
+        purchasedAiCredits={purchasedAiCredits}
         isUpgradeOpen={isUpgradeOpen}
         setIsUpgradeOpen={setIsUpgradeOpen}
         isTemplateModalOpen={isTemplateModalOpen}

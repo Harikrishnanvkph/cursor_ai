@@ -320,7 +320,7 @@ export const useChartStyleStore = create<ChartStyleStore>()(
     await get().loadPresets(true)
   },
 
-  applyPreset: (presetId: string, applyDimensions = false) => {
+  applyPreset: (presetId: string, applyDimensions?: boolean) => {
     // Search the store's live state (hardcoded + DB-backed presets)
     const { officialPresets, userPresets } = get()
     const allPresets = [...officialPresets, ...userPresets]
@@ -343,9 +343,14 @@ export const useChartStyleStore = create<ChartStyleStore>()(
       // Get the active config (resolves per-dataset or per-group overrides)
       const activeConfig = chartState.getActiveChartConfig ? chartState.getActiveChartConfig() : chartState.chartConfig
 
+      // If applyDimensions is not explicitly passed as false, and the preset defines dimensions, apply them!
+      const shouldApplyDimensions = applyDimensions !== undefined
+        ? applyDimensions
+        : !!(preset.dimensions?.width && preset.dimensions?.height)
+
       // Apply the preset
       const result = applyPresetToChart(preset, chartState.chartData, activeConfig, {
-        applyDimensions,
+        applyDimensions: shouldApplyDimensions,
       })
 
       // Undo is handled automatically by zundo when setFullChart updates the store

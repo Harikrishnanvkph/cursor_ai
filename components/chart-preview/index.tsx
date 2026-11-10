@@ -59,7 +59,7 @@ import { ChartStyleGallery } from "@/components/chart-style-gallery"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useUIStore } from "@/lib/stores/ui-store"
 
-export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false, activeTab, onTabChange, onNewChart }: {
+export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false, activeTab, onTabChange, onNewChart, variant = 'default' }: {
   onToggleSidebar?: () => void,
   isSidebarCollapsed?: boolean,
   onToggleLeftSidebar?: () => void,
@@ -67,7 +67,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   isTablet?: boolean,
   activeTab?: string,
   onTabChange?: (tab: string) => void,
-  onNewChart?: () => void
+  onNewChart?: () => void,
+  variant?: 'landing' | 'default',
 }) {
   // --- Hydration gate ---
   const storesHydrated = useStoreHydration([useChartStore, useTemplateStore]);
@@ -337,6 +338,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     return (
       <>
         <TemplateChartPreview
+          variant={variant}
           onToggleSidebar={onToggleSidebar}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleLeftSidebar={onToggleLeftSidebar}
@@ -701,67 +703,99 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
       {/* Toolbar */}
       {!isMobile && (
-        <ChartPreviewToolbar
-          isMobile={isMobile}
-          editorMode={editorMode}
-          setEditorMode={setEditorMode as any}
-          chartType={chartType}
-          onChartTypeChange={handleChartTypeChange}
-          isResponsive={isResponsive}
-          chartContainerRef={chartContainerRef}
-          chartWidth={chartWidth}
-          chartHeight={chartHeight}
-          rename={rename}
-          zoomPan={zoomPan}
-          exports={exports}
-          handleFullscreen={fullscreen.handleFullscreen}
-          isLeftSidebarCollapsed={isLeftSidebarCollapsed}
-        />
+        variant === 'landing' ? (
+          <div className="h-[52px] min-h-[52px] px-3.5 border-b border-slate-200/80 bg-white/40 backdrop-blur-xl flex items-center justify-between flex-shrink-0 z-10">
+            <ChartPreviewToolbar
+              isMobile={isMobile}
+              editorMode={editorMode}
+              setEditorMode={setEditorMode as any}
+              chartType={chartType}
+              onChartTypeChange={handleChartTypeChange}
+              isResponsive={isResponsive}
+              chartContainerRef={chartContainerRef}
+              chartWidth={chartWidth}
+              chartHeight={chartHeight}
+              rename={rename}
+              zoomPan={zoomPan}
+              exports={exports}
+              handleFullscreen={fullscreen.handleFullscreen}
+              isLeftSidebarCollapsed={isLeftSidebarCollapsed}
+              className="px-0 py-0 mb-0 h-full"
+            />
+          </div>
+        ) : (
+          <ChartPreviewToolbar
+            isMobile={isMobile}
+            editorMode={editorMode}
+            setEditorMode={setEditorMode as any}
+            chartType={chartType}
+            onChartTypeChange={handleChartTypeChange}
+            isResponsive={isResponsive}
+            chartContainerRef={chartContainerRef}
+            chartWidth={chartWidth}
+            chartHeight={chartHeight}
+            rename={rename}
+            zoomPan={zoomPan}
+            exports={exports}
+            handleFullscreen={fullscreen.handleFullscreen}
+            isLeftSidebarCollapsed={isLeftSidebarCollapsed}
+          />
+        )
       )}
 
       {/* Chart Container */}
-      <Card className={`w-full flex flex-col flex-1 min-h-[300px] rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${fullscreen.isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}>
-        <CardContent className="p-0 flex-1 flex flex-col h-full w-full relative">
-          <div
-            ref={chartContainerRef}
-            className={`relative w-full flex-1 ${isMobile || zoomPan.panMode ? 'overflow-hidden' : 'overflow-auto'} flex items-center justify-center`}
-            style={{
-              scrollbarWidth: 'thin',
-              scrollbarColor: '#cbd5e1 #f1f5f9',
-              touchAction: zoomPan.panMode ? 'none' : 'manipulation',  // Prevent gesture conflict when panMode is on, allow interaction when panMode is off
-              minHeight: '100%',
-              height: '100%',
-              backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
-              backgroundImage: canvasBgType === 'transparent' ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
-              backgroundSize: canvasBgType === 'transparent' ? '20px 20px' : undefined,
-              backgroundPosition: canvasBgType === 'transparent' ? '0 0, 0 10px, 10px -10px, -10px 0px' : undefined,
-            }}
-          >
-            {transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType && transitions.scatterBubbleSetup.direction && editorMode === 'chart' ? (
-              <ScatterBubbleSetupScreen
-                targetChartType={transitions.scatterBubbleSetup.targetType}
-                direction={transitions.scatterBubbleSetup.direction}
-                hasBackup={transitions.scatterBubbleSetup.backupData !== null}
-                onLoadSample={transitions.scatterBubbleSetup.direction === 'toScatter' ? transitions.handleLoadSampleData : transitions.handleLoadCategoricalData}
-                onRestore={transitions.scatterBubbleSetup.direction === 'toScatter'
-                  ? (transitions.scatterBubbleSetup.backupData ? transitions.handleRestoreScatterData : undefined)
-                  : (transitions.scatterBubbleSetup.backupData ? transitions.handleRestoreCategoricalData : undefined)}
-                onQuickTransform={transitions.scatterBubbleSetup.direction === 'toScatter' ? transitions.handleQuickTransform : undefined}
-                onCreateDataset={transitions.scatterBubbleSetup.direction === 'toScatter' ? transitions.handleOpenCreateModal : undefined}
-                onCancel={transitions.handleCancelSetup}
-              />
-            ) : (
-              <ChartPreviewCanvas
-                chartContainerRef={chartContainerRef as any}
-                chartConfig={chartConfig}
-                zoomPan={zoomPan}
-              />
-            )}
-            {/* Amazon Loupe Magnifier Overlay */}
-            <ChartLoupeOverlay targetContainerRef={chartContainerRef} />
+      {(() => {
+        const cardElement = (
+          <Card className={`w-full flex flex-col flex-1 min-h-[300px] rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${fullscreen.isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}>
+            <CardContent className="p-0 flex-1 flex flex-col h-full w-full relative">
+              <div
+                ref={chartContainerRef}
+                className={`relative w-full flex-1 ${isMobile || zoomPan.panMode ? 'overflow-hidden' : 'overflow-auto'} flex items-center justify-center`}
+                style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#cbd5e1 #f1f5f9',
+                  touchAction: zoomPan.panMode ? 'none' : 'manipulation',  // Prevent gesture conflict when panMode is on, allow interaction when panMode is off
+                  minHeight: '100%',
+                  height: '100%',
+                  backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
+                  backgroundImage: canvasBgType === 'transparent' ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
+                  backgroundSize: canvasBgType === 'transparent' ? '20px 20px' : undefined,
+                  backgroundPosition: canvasBgType === 'transparent' ? '0 0, 0 10px, 10px -10px, -10px 0px' : undefined,
+                }}
+              >
+                {transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType && transitions.scatterBubbleSetup.direction && editorMode === 'chart' ? (
+                  <ScatterBubbleSetupScreen
+                    targetChartType={transitions.scatterBubbleSetup.targetType}
+                    direction={transitions.scatterBubbleSetup.direction}
+                    hasBackup={transitions.scatterBubbleSetup.backupData !== null}
+                    onLoadSample={transitions.scatterBubbleSetup.direction === 'toScatter' ? transitions.handleLoadSampleData : transitions.handleLoadCategoricalData}
+                    onRestore={transitions.scatterBubbleSetup.direction === 'toScatter'
+                      ? (transitions.scatterBubbleSetup.backupData ? transitions.handleRestoreScatterData : undefined)
+                      : (transitions.scatterBubbleSetup.backupData ? transitions.handleRestoreCategoricalData : undefined)}
+                    onQuickTransform={transitions.scatterBubbleSetup.direction === 'toScatter' ? transitions.handleQuickTransform : undefined}
+                    onCreateDataset={transitions.scatterBubbleSetup.direction === 'toScatter' ? transitions.handleOpenCreateModal : undefined}
+                    onCancel={transitions.handleCancelSetup}
+                  />
+                ) : (
+                  <ChartPreviewCanvas
+                    chartContainerRef={chartContainerRef as any}
+                    chartConfig={chartConfig}
+                    zoomPan={zoomPan}
+                  />
+                )}
+                {/* Amazon Loupe Magnifier Overlay */}
+                <ChartLoupeOverlay targetContainerRef={chartContainerRef} />
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+        return variant === 'landing' ? (
+          <div className="flex-1 p-4 overflow-auto min-h-0 flex flex-col">
+            {cardElement}
           </div>
-        </CardContent>
-      </Card>
+        ) : cardElement;
+      })()}
 
       {/* Chart Style Gallery Panel — on lg+ slides over chart area; on <lg covers entire preview section */}
       <ChartStyleGallery />

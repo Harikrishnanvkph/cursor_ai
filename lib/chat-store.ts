@@ -117,6 +117,12 @@ export type ChatMessage = {
   chartSnapshot?: ChartSnapshot;
   action?: 'create' | 'modify' | 'update' | 'reset';
   changes?: string[];
+  tokensUsed?: number | null;
+  usage?: { sent?: number; received?: number; total?: number } | null;
+  modelUsed?: string | null;
+  searchQuery?: string | null;
+  searchProvider?: string | null;
+  searchSources?: Array<{ title: string; url: string; siteName?: string }> | null;
 };
 
 export type ChartSnapshot = {
@@ -414,14 +420,25 @@ export const useChatStore = create<ChatStore>()(
           chartConfig: useChartStore.getState().chartConfig,
         } : null;
 
+        // Determine if this is template/format mode (2 credits) or standard chart mode (1 credit)
+        const isTemplate =
+          templateStore.editorMode === 'template' ||
+          templateStore.generateMode === 'template' ||
+          templateStore.generateMode === 'format' ||
+          Boolean(formatStructureData) ||
+          Boolean(templateStore.currentTemplate);
+        const mode = isTemplate ? 'template' : 'chart';
+
         const requestBody: any = {
           input: finalInput,
+          mode,
           conversationId: currentConversationId,
           messageHistory: compactHistory,
           service: selectedModel === 'gemini-search' ? 'gemini' : (selectedModel === 'perplexity' ? 'perplexity' : 'deepseek'),
           model: selectedModel === 'gemini-search' ? 'gemini-3.5-flash-lite' : (selectedModel === 'perplexity' ? 'sonar-pro' : 'deepseek-chat'),
-          webSearch: selectedModel === 'gemini-search' || selectedModel === 'deepseek-search' || selectedModel === 'deepseek-brave' || selectedModel === 'perplexity',
+          webSearch: selectedModel === 'gemini-search' || selectedModel === 'deepseek-search' || selectedModel === 'deepseek-brave' || selectedModel === 'perplexity' || selectedModel === 'deepseek',
           ...(selectedModel === 'deepseek-brave' && { searchProvider: 'brave' }),
+          ...(selectedModel === 'deepseek' && { searchProvider: 'deepseek' }),
           includeImages: get().includeImages
         };
         if (liveChartState) {
@@ -492,7 +509,13 @@ export const useChatStore = create<ChatStore>()(
               content: result.user_message || 'Could you provide more details?',
               timestamp: Date.now(),
               action: 'modify',
-              changes: []
+              changes: [],
+              tokensUsed: result._metadata?.tokens_used || result._metadata?.usage?.total || null,
+              usage: result._metadata?.usage || null,
+              modelUsed: result._metadata?.model || result.service || null,
+              searchQuery: result._metadata?.searchQuery || null,
+              searchProvider: result._metadata?.searchProvider || null,
+              searchSources: result._metadata?.searchSources || null
             };
             const updatedMsgs = [...messages, userMsg, clarificationMsg];
             set({
@@ -609,7 +632,13 @@ export const useChatStore = create<ChatStore>()(
               chartConfig: finalChartConfig
             },
             action: result.action || 'create',
-            changes: result.changes || []
+            changes: result.changes || [],
+            tokensUsed: result._metadata?.tokens_used || result._metadata?.usage?.total || null,
+            usage: result._metadata?.usage || null,
+            modelUsed: result._metadata?.model || result.service || null,
+            searchQuery: result._metadata?.searchQuery || null,
+            searchProvider: result._metadata?.searchProvider || null,
+            searchSources: result._metadata?.searchSources || null
           };
 
           // Build the full conversation manually

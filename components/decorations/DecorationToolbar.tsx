@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Lock, Unlock, Copy, Trash2, MoreHorizontal, ArrowUpToLine, ArrowDownToLine } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
+import { isMulticolorSvg, extractSvgColors, replaceSvgColor } from "@/lib/elements/elements-registry"
 import { RichTextToolbar, type RichTextToolbarStyleState, type RichTextToolbarCallbacks } from "@/components/format/RichTextToolbar"
 
 interface DecorationToolbarProps {
@@ -162,13 +163,18 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
     )
   }
 
+  // Calculate colors for deco-svg or standard shapes
+  const svgColors = shape.type === 'deco-svg' ? extractSvgColors(shape.svgContent) : []
+  const swatchCount = shape.type === 'deco-svg' ? Math.max(1, svgColors.length) : 1
+  const toolbarWidth = 140 + swatchCount * 30
+
   // ── Standard toolbar for non-textbox shapes ──
   return (
     <foreignObject
       data-export-ignore="true"
       x={Math.max(0, x)}
       y={Math.max(0, toolbarY)}
-      width={152 / zoom}
+      width={toolbarWidth / zoom}
       height={48 / zoom}
       style={{ overflow: 'visible' }}
     >
@@ -180,9 +186,53 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
         style={{
           transform: `scale(${1 / zoom})`,
           transformOrigin: 'top left',
-          width: 152,
+          width: toolbarWidth,
         }}
       >
+        {/* Quick Color Swatches (Canva Style) */}
+        {shape.type === 'deco-svg' ? (
+          <div className="flex items-center gap-0.5">
+            {svgColors.map((color, idx) => (
+              <div
+                key={idx}
+                className="relative flex items-center justify-center h-8 w-8 rounded-lg hover:bg-slate-100 p-1 shrink-0"
+                title={`Change color ${idx + 1} (${color})`}
+              >
+                <input
+                  type="color"
+                  value={color.startsWith('#') ? color : '#0F172A'}
+                  onChange={(e) => {
+                    const newColor = e.target.value
+                    const newSvg = replaceSvgColor(shape.svgContent || '', color, newColor)
+                    updateShape(shapeId, {
+                      svgContent: newSvg,
+                      fillColor: newColor,
+                      strokeColor: newColor,
+                    })
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                />
+                <div
+                  className="w-4 h-4 rounded-full border border-slate-300 shadow-xs"
+                  style={{ backgroundColor: color.startsWith('#') ? color : '#0F172A' }}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="relative flex items-center justify-center h-8 w-8 rounded-lg hover:bg-slate-100 p-1 shrink-0" title="Change Color">
+            <input
+              type="color"
+              value={shape.fillColor?.startsWith('#') ? shape.fillColor : (shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#EAB308')}
+              onChange={(e) => updateShape(shapeId, { fillColor: e.target.value, strokeColor: e.target.value })}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+            />
+            <div
+              className="w-4 h-4 rounded-full border border-slate-300 shadow-xs"
+              style={{ backgroundColor: shape.fillColor?.startsWith('#') ? shape.fillColor : (shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#EAB308') }}
+            />
+          </div>
+        )}
         <Button
           variant="ghost"
           size="sm"

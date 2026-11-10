@@ -1,6 +1,7 @@
 "use client"
 
 import { sanitizeHTML, sanitizeSVG } from "@/lib/utils/sanitize"
+import { isMulticolorSvg } from "@/lib/elements/elements-registry"
 
 import React, { useRef, useCallback, useEffect, useState } from "react"
 import { useDecorationStore, type DecorationShape, type DrawingState, type GlobalShapeSettings } from "@/lib/stores/decoration-store"
@@ -715,8 +716,13 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
     }
 
     case 'deco-svg': {
+      const activeColor = shape.fillColor && shape.fillColor !== 'original' && shape.fillColor !== 'transparent' && shape.fillColor !== 'none'
+        ? shape.fillColor
+        : null
+      const svgOpacity = (shape.fillOpacity !== undefined ? shape.fillOpacity : 100) / 100
+
       return (
-        <g transform={transform}>
+        <g transform={transform} opacity={svgOpacity}>
           <rect x={x} y={y} width={w} height={h} fill="transparent" stroke="none" />
           {shape.svgContent && (
             <foreignObject x={x} y={y} width={w} height={h}>
@@ -726,6 +732,8 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
                   height: 100% !important;
                   max-width: 100% !important;
                   max-height: 100% !important;
+                  overflow: visible !important;
+                  ${activeColor ? `color: ${activeColor} !important;` : ''}
                 }
               `}</style>
               <div

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -16,10 +16,14 @@ import {
   Lock, Unlock, Eye, EyeOff, ArrowUpToLine, ArrowDownToLine,
   Check, X as XIcon, CircleDot, Pentagon, Diamond, Heart, MousePointer2, SquareDashedMousePointer,
   Type, Image as ImageIcon, FileCode, Upload, Bold, Italic, Underline, Strikethrough,
-  AlignLeft, AlignCenter, AlignRight, Spline, Octagon, Info, Undo2, Redo2, Blend
+  AlignLeft, AlignCenter, AlignRight, Spline, Octagon, Info, Undo2, Redo2, Blend,
+  Sparkles, Paintbrush, Droplets, Highlighter, Smile, Search, Globe, Loader2
 } from "lucide-react"
+import { toast } from "sonner"
 import { useDecorationStore, type DecorationShapeType, type DrawingMode } from "@/lib/stores/decoration-store"
 import { decorationFileRegistry } from "@/lib/stores/decoration-file-registry"
+import { DESIGN_ELEMENTS_LIBRARY, ELEMENT_CATEGORIES, type CanvasDesignElement, isMulticolorSvg, extractSvgColors, replaceSvgColor } from "@/lib/elements/elements-registry"
+import { IconifySearchTab } from "./IconifySearchTab"
 
 // ═══════════════════════════════════════════════════════
 // Shape definitions for the picker
@@ -330,19 +334,97 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
             <ImagePropertyEditor shape={shape} onUpdate={onUpdate} />
           )}
 
-          {/* ── SVG-specific controls ───────────────── */}
-          {isSvg && (
-            <div>
-              <Label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-2">SVG Code</Label>
-              <Textarea
-                value={shape.svgContent || ''}
-                onChange={e => onUpdate({ svgContent: e.target.value })}
-                placeholder="<svg>...</svg>"
-                className="min-h-[80px] text-xs font-mono resize-none"
-                rows={5}
-              />
+          {/* ── SVG-specific controls (Canva Elements & Iconify) ── */}
+          {isSvg && (() => {
+            const colors = extractSvgColors(shape.svgContent)
+            return (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block">
+                      Graphic Colors ({colors.length})
+                    </Label>
+                    {shape.originalSvg && (
+                      <button
+                        type="button"
+                        onClick={() => onUpdate({ svgContent: shape.originalSvg, fillColor: 'original', strokeColor: 'original' })}
+                        className="text-[10px] text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
+                        Reset to Original
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Render an interactive swatch row for every color in the graphic */}
+                  <div className="space-y-1.5">
+                    {colors.map((color, idx) => (
+                      <div key={idx} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <div className="relative flex items-center gap-1.5 shrink-0">
+                          <Input
+                            type="color"
+                            value={color.startsWith('#') ? color : '#0F172A'}
+                            onChange={e => {
+                              const newColor = e.target.value
+                              const newSvg = replaceSvgColor(shape.svgContent || '', color, newColor)
+                              onUpdate({ svgContent: newSvg, fillColor: newColor, strokeColor: newColor })
+                            }}
+                            className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer"
+                          />
+                          <div
+                            className="h-7 w-7 rounded-md border border-slate-300 shadow-2xs shrink-0"
+                            style={{ backgroundColor: color.startsWith('#') ? color : '#0F172A' }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-600 uppercase font-medium">
+                          {color}
+                        </span>
+
+                        {/* Preset swatches for this specific color channel */}
+                        <div className="flex items-center gap-1 ml-auto">
+                          {['#2F88FF', '#43CCF8', '#EC4899', '#F59E0B', '#10B981', '#0F172A', '#FFFFFF'].map(preset => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => {
+                                const newSvg = replaceSvgColor(shape.svgContent || '', color, preset)
+                                onUpdate({ svgContent: newSvg, fillColor: preset, strokeColor: preset })
+                              }}
+                              className="w-4 h-4 rounded-full border border-black/10 transition-transform hover:scale-115 shadow-2xs"
+                              style={{ backgroundColor: preset }}
+                              title={preset}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              <div>
+                <div className="flex justify-between mb-1.5">
+                  <Label className="text-[10px] text-slate-500">Opacity</Label>
+                  <span className="text-[10px] text-slate-400">{shape.fillOpacity ?? 100}%</span>
+                </div>
+                <Slider
+                  value={[shape.fillOpacity ?? 100]}
+                  onValueChange={([v]) => onUpdate({ fillOpacity: v })}
+                  min={10}
+                  max={100}
+                />
+              </div>
+              <details className="text-[10px] text-slate-400">
+                <summary className="cursor-pointer hover:text-slate-600 font-medium select-none mb-1">
+                  Advanced: View / Edit SVG Code
+                </summary>
+                <Textarea
+                  value={shape.svgContent || ''}
+                  onChange={e => onUpdate({ svgContent: e.target.value })}
+                  placeholder="<svg>...</svg>"
+                  className="min-h-[80px] text-xs font-mono resize-none mt-1"
+                  rows={4}
+                />
+              </details>
             </div>
-          )}
+          )})()}
 
           {/* Position & Size (shared) */}
           <div>
@@ -640,12 +722,130 @@ export function DecorationsPanel() {
   const [svgCode, setSvgCode] = useState('')
   const svgFileRef = useRef<HTMLInputElement>(null)
   const imgFileRef = useRef<HTMLInputElement>(null)
-  const [activeTab, setActiveTab] = useState<'shapes' | 'section'>('shapes')
+  const [activeTab, setActiveTab] = useState<'elements' | 'iconify' | 'shapes' | 'section'>('elements')
+  const [elementSearch, setElementSearch] = useState('')
+  const [elementCategory, setElementCategory] = useState<string>('all')
+  const elementsListRef = useRef<HTMLDivElement>(null)
   const shapesListRef = useRef<HTMLDivElement>(null)
   const sectionListRef = useRef<HTMLDivElement>(null)
 
+  // Dynamic Elements from jsDelivr CDN (Zero SVG code in main repo)
+  const [cdnElements, setCdnElements] = useState<CanvasDesignElement[]>([])
+  const [isLoadingCdn, setIsLoadingCdn] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('cached_cdn_elements_v1')
+      } catch {}
+      const cached = sessionStorage.getItem('cached_cdn_elements_v2')
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCdnElements(parsed)
+            return
+          }
+        } catch {}
+      }
+    }
+
+    const loadCdnElements = async () => {
+      setIsLoadingCdn(true)
+      try {
+        const cdnUrl =
+          process.env.NEXT_PUBLIC_ELEMENTS_CDN_URL ||
+          'https://cdn.jsdelivr.net/gh/Harikrishnanvkph/design-elements-cdn@v2.0.0/catalog.json'
+        const res = await fetch(cdnUrl)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            setCdnElements(data)
+            try {
+              sessionStorage.setItem('cached_cdn_elements_v2', JSON.stringify(data))
+            } catch {}
+            return
+          }
+        }
+      } catch (err) {
+        console.warn('[Elements CDN] Could not fetch catalog from jsDelivr:', err)
+      } finally {
+        setIsLoadingCdn(false)
+      }
+    }
+
+    loadCdnElements()
+  }, [])
+
+  const elementsPool = cdnElements.length > 0 ? cdnElements : DESIGN_ELEMENTS_LIBRARY
+
+  const filteredElements = React.useMemo(() => {
+    return elementsPool.filter(elem => {
+      const matchCat = elementCategory === 'all' || elem.category === elementCategory
+      const query = elementSearch.toLowerCase().trim()
+      const matchQuery = !query || elem.name.toLowerCase().includes(query) || elem.tags.some(t => t.toLowerCase().includes(query))
+      return matchCat && matchQuery
+    })
+  }, [elementsPool, elementCategory, elementSearch])
+
+  const handleAddDesignElement = (elem: CanvasDesignElement) => {
+    const isMulti = isMulticolorSvg(elem.svg)
+    const newId = addShape({
+      type: 'deco-svg',
+      x: 60,
+      y: 60,
+      width: elem.width,
+      height: elem.height,
+      rotation: 0,
+      fillColor: isMulti ? 'original' : elem.defaultColor,
+      fillOpacity: 100,
+      strokeColor: isMulti ? 'original' : elem.defaultColor,
+      strokeWidth: 0,
+      strokeStyle: 'solid',
+      visible: true,
+      locked: false,
+      zIndex: shapes.length + 1,
+      svgContent: elem.svg,
+      originalSvg: elem.svg,
+    })
+    setSelectedShapeId(newId)
+    setDrawingMode(null)
+    toast.success(`Added "${elem.name}" to canvas! Drag, rotate, or change color.`)
+  }
+
+  const handleAddQuickText = (preset: 'heading' | 'subheading' | 'body') => {
+    const fontSize = preset === 'heading' ? 24 : preset === 'subheading' ? 18 : 13
+    const text = preset === 'heading' ? 'Add Heading' : preset === 'subheading' ? 'Add Subheading' : 'Add body text'
+    const newId = addShape({
+      type: 'textbox-auto',
+      x: 100,
+      y: 100,
+      width: preset === 'heading' ? 200 : preset === 'subheading' ? 160 : 120,
+      height: fontSize * 1.4 + 8,
+      rotation: 0,
+      fillColor: 'transparent',
+      fillOpacity: 100,
+      strokeColor: 'transparent',
+      strokeWidth: 0,
+      strokeStyle: 'solid',
+      visible: true,
+      locked: false,
+      zIndex: shapes.length + 1,
+      text,
+      fontSize,
+      fontFamily: "'Inter', sans-serif",
+      textColor: '#0F172A',
+      fontWeight: preset === 'heading' ? 'bold' : preset === 'subheading' ? '600' : 'normal',
+      autoSize: true,
+    })
+    setSelectedShapeId(newId)
+    setDrawingMode(null)
+    toast.success(`Added ${preset} to canvas! Double-click to edit text or font.`)
+  }
+
   const handleScrollToHistory = () => {
-    const targetRef = activeTab === 'shapes' ? shapesListRef : sectionListRef
+    const isSvgTab = activeTab === 'elements' || activeTab === 'iconify'
+    const targetRef = isSvgTab ? elementsListRef : activeTab === 'shapes' ? shapesListRef : sectionListRef
     if (targetRef.current) {
       targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
       targetRef.current.focus()
@@ -658,7 +858,11 @@ export function DecorationsPanel() {
   const SECTION_TYPE_LIST = ['textbox', 'textbox-auto', 'deco-image', 'deco-svg']
   const shapeElements = shapes.filter(s => !SECTION_TYPE_LIST.includes(s.type))
   const sectionElements = shapes.filter(s => SECTION_TYPE_LIST.includes(s.type))
-  const activeCount = activeTab === 'shapes' ? shapeElements.length : sectionElements.length
+  const activeCount = (activeTab === 'elements' || activeTab === 'iconify')
+    ? shapes.filter(s => s.type === 'deco-svg').length
+    : activeTab === 'shapes'
+    ? shapeElements.length
+    : sectionElements.length
 
   const handleSelectTool = (type: DrawingMode | 'select') => {
     if (type === 'select') {
@@ -854,23 +1058,158 @@ export function DecorationsPanel() {
           </Button>
         </div>
       </div>
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'shapes' | 'section')} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'elements' | 'iconify' | 'shapes' | 'section')} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+          <TabsTrigger
+            value="elements"
+            className="flex items-center justify-center gap-1 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+            Elements
+          </TabsTrigger>
+          <TabsTrigger
+            value="iconify"
+            className="flex items-center justify-center gap-1 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+          >
+            <Globe className="h-3.5 w-3.5 text-indigo-500" />
+            Graphics
+          </TabsTrigger>
           <TabsTrigger
             value="shapes"
-            className="flex items-center justify-center gap-1.5 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            className="flex items-center justify-center gap-1 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
           >
             <Hexagon className="h-3.5 w-3.5" />
             Shapes
           </TabsTrigger>
           <TabsTrigger
             value="section"
-            className="flex items-center justify-center gap-1.5 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            className="flex items-center justify-center gap-1 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
           >
-            <Blend className="h-3.5 w-3.5" />
-            Overlay
+            <Type className="h-3.5 w-3.5 text-blue-500" />
+            Text
           </TabsTrigger>
         </TabsList>
+
+        {/* ═══════════ ELEMENTS TAB (Canva Style Designs) ═══════════ */}
+        <TabsContent value="elements" className="space-y-4 mt-3">
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Search brushes, splatters, markers..."
+              value={elementSearch}
+              onChange={(e) => setElementSearch(e.target.value)}
+              className="h-8 pl-8 text-xs bg-slate-50/60 focus:bg-white"
+            />
+            {elementSearch && (
+              <button
+                type="button"
+                onClick={() => setElementSearch('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <XIcon className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[11px] no-scrollbar">
+            {ELEMENT_CATEGORIES.map((cat) => {
+              const isSelected = elementCategory === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setElementCategory(cat.id)}
+                  className={`px-2.5 py-1 rounded-full whitespace-nowrap transition-all font-medium ${
+                    isSelected
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Elements Gallery Grid */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center px-1">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1.5">
+                {isLoadingCdn && <Loader2 className="h-3 w-3 animate-spin text-amber-500" />}
+                Design Library ({filteredElements.length})
+              </span>
+              <span className="text-[10px] text-slate-400">Click to add to canvas</span>
+            </div>
+
+            {isLoadingCdn && filteredElements.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+                <Loader2 className="h-6 w-6 animate-spin text-amber-500 mb-2" />
+                <span className="text-xs">Streaming elements from CDN...</span>
+              </div>
+            ) : filteredElements.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                <p className="text-xs font-medium">No elements found</p>
+                <p className="text-[10px] text-slate-400 mt-1">Try another search keyword or category</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 max-h-[340px] overflow-y-auto pr-1">
+                {filteredElements.map((elem) => (
+                  <button
+                    key={elem.id}
+                    type="button"
+                    onClick={() => handleAddDesignElement(elem)}
+                    className="group relative flex flex-col items-center justify-between p-2 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50/90 hover:border-amber-400 hover:shadow-xs transition-all text-left"
+                  >
+                    <div className="w-full h-16 flex items-center justify-center overflow-hidden p-1">
+                      <div
+                        className="w-full h-full flex items-center justify-center transition-transform group-hover:scale-105"
+                        style={{ color: elem.defaultColor }}
+                        dangerouslySetInnerHTML={{ __html: elem.svg }}
+                      />
+                    </div>
+                    <div className="w-full mt-1.5 pt-1 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-slate-700 truncate block group-hover:text-amber-600 transition-colors">
+                        {elem.name}
+                      </span>
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10"
+                        style={{ backgroundColor: elem.defaultColor }}
+                        title={elem.defaultColor}
+                      />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Layered Design Elements On Canvas */}
+          <div ref={elementsListRef} className="pt-2 border-t border-slate-100">
+            <div className="flex justify-between items-center mb-1.5">
+              <Label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                Active Elements On Canvas
+              </Label>
+            </div>
+            {renderElementList(
+              shapes.filter(s => s.type === 'deco-svg'),
+              Sparkles,
+              "No design elements on canvas yet. Click any brush or splatter above to add!",
+              'section'
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ═══════════ ICONIFY TAB (Online 200,000+ Vector SVGs) ═══════════ */}
+        <TabsContent value="iconify" className="mt-3">
+          <IconifySearchTab
+            renderElementList={renderElementList}
+            elementsListRef={elementsListRef}
+          />
+        </TabsContent>
+
 
         {/* ═══════════ SHAPES TAB ═══════════ */}
         <TabsContent value="shapes" className="space-y-4 mt-3">
@@ -1125,14 +1464,45 @@ export function DecorationsPanel() {
           </div>
         </TabsContent>
 
-        {/* ═══════════ SECTION TAB ═══════════ */}
+        {/* ═══════════ TEXT & MEDIA TAB ═══════════ */}
         <TabsContent value="section" className="space-y-4 mt-3">
 
-          {/* ── Add Textbox ──────────────────────────── */}
+          {/* ── Canva-style 1-Click Text Presets ── */}
+          <div className="space-y-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block px-1">
+              Add Text to Canvas
+            </span>
+            <Button
+              variant="outline"
+              className="w-full h-11 justify-start px-3 text-sm font-bold bg-white hover:bg-slate-50 border-slate-200 shadow-2xs group"
+              onClick={() => handleAddQuickText('heading')}
+            >
+              <Type className="h-4 w-4 mr-2.5 text-blue-500 group-hover:scale-110 transition-transform" />
+              Add a heading
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full h-9 justify-start px-3 text-xs font-semibold bg-white hover:bg-slate-50 border-slate-200 shadow-2xs group"
+              onClick={() => handleAddQuickText('subheading')}
+            >
+              <Type className="h-3.5 w-3.5 mr-2.5 text-slate-500 group-hover:scale-110 transition-transform" />
+              Add a subheading
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full h-8 justify-start px-3 text-[11px] font-normal text-slate-600 bg-white hover:bg-slate-50 border-slate-200 shadow-2xs group"
+              onClick={() => handleAddQuickText('body')}
+            >
+              <Type className="h-3 w-3 mr-2.5 text-slate-400 group-hover:scale-110 transition-transform" />
+              Add a little bit of body text
+            </Button>
+          </div>
+
+          {/* ── Draw Custom Textbox ────────────────── */}
           <div className="border rounded-lg overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50/50 border-b border-slate-100">
-              <Type className="h-4 w-4 text-blue-500" />
-              <span className="text-xs font-bold text-slate-700">Add Textbox</span>
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50/50 border-b border-slate-100">
+              <Type className="h-3.5 w-3.5 text-slate-500" />
+              <span className="text-xs font-semibold text-slate-700">Draw Text Tool</span>
             </div>
             <div className="px-3 py-3 space-y-2">
               <div className="grid grid-cols-2 gap-2">

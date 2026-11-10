@@ -49,6 +49,8 @@ export interface TabletLandingViewProps {
   setIncludeImages: (i: boolean) => void
   aiCreditsRemaining: number
   aiCreditsLimit: number
+  freeAiCreditsRemaining?: number
+  purchasedAiCredits?: number
   isUpgradeOpen: boolean
   setIsUpgradeOpen: (open: boolean) => void
   isTemplateModalOpen: boolean
@@ -95,6 +97,8 @@ export function TabletLandingView({
   setIncludeImages,
   aiCreditsRemaining,
   aiCreditsLimit,
+  freeAiCreditsRemaining,
+  purchasedAiCredits,
   isUpgradeOpen,
   setIsUpgradeOpen,
   isTemplateModalOpen,
@@ -453,6 +457,8 @@ export function TabletLandingView({
                           setIncludeImages={setIncludeImages}
                           aiCreditsRemaining={aiCreditsRemaining}
                           aiCreditsLimit={aiCreditsLimit}
+                          freeAiCreditsRemaining={freeAiCreditsRemaining}
+                          purchasedAiCredits={purchasedAiCredits}
                           onOpenUpgrade={() => setIsUpgradeOpen(true)}
                         />
 

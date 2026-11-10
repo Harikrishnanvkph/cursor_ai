@@ -65,6 +65,8 @@ export interface MobileLandingViewProps {
   setIncludeImages: (i: boolean) => void
   aiCreditsRemaining: number
   aiCreditsLimit: number
+  freeAiCreditsRemaining?: number
+  purchasedAiCredits?: number
   isUpgradeOpen: boolean
   setIsUpgradeOpen: (open: boolean) => void
   isTemplateModalOpen: boolean
@@ -112,6 +114,8 @@ export function MobileLandingView({
   setIncludeImages,
   aiCreditsRemaining,
   aiCreditsLimit,
+  freeAiCreditsRemaining,
+  purchasedAiCredits,
   isUpgradeOpen,
   setIsUpgradeOpen,
   isTemplateModalOpen,
@@ -1000,7 +1004,11 @@ export function MobileLandingView({
               </div>
               <div className="flex flex-col text-left">
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Credits Remaining</span>
-                <span className="text-[10px] text-slate-400">Monthly AI quota</span>
+                <span className="text-[10px] text-slate-400">
+                  {purchasedAiCredits && purchasedAiCredits > 0
+                    ? `${freeAiCreditsRemaining ?? 0} free + ${purchasedAiCredits} paid`
+                    : 'Monthly AI quota'}
+                </span>
               </div>
             </div>
             <button
@@ -1049,7 +1057,7 @@ export function MobileLandingView({
                       ? 'DeepSeek Brave'
                       : selectedModel === 'perplexity'
                       ? 'Perplexity Realtime'
-                      : 'DeepSeek Chat'}
+                      : 'Deepseek Web'}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                 </button>
@@ -1087,8 +1095,8 @@ export function MobileLandingView({
                   onClick={() => setSelectedModel('deepseek')}
                   className="flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
                 >
-                  <Brain className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
-                  <span>DeepSeek Chat</span>
+                  <Globe className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                  <span>Deepseek Web</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

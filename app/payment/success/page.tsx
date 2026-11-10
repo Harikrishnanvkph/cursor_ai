@@ -25,14 +25,37 @@ export default function PaymentSuccessPage() {
   const rawPack = (searchParams.get("pack") || searchParams.get("plan") || "ai_pro") as CreditPackId
   const pack = ALL_CREDIT_PACKS[rawPack] || ALL_CREDIT_PACKS.ai_pro
 
-  // Refresh user auth state so new credit balances reflect immediately
+  // Verify payment immediately with server upon return and refresh user auth state
   useEffect(() => {
-    refresh()
+    const paymentId = searchParams.get("payment_id")
+    const isDodo = gateway.toLowerCase() === "dodo"
+
+    const doVerifyAndRefresh = async () => {
+      if (isDodo && paymentId) {
+        try {
+          const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:5000"
+          await fetch(`${serverUrl}/api/payments/dodo/verify`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              paymentId,
+              packId: rawPack,
+            }),
+          })
+        } catch (err) {
+          console.warn("Direct Dodo verification attempt failed, relying on webhook:", err)
+        }
+      }
+      refresh()
+    }
+
+    doVerifyAndRefresh()
     const timer = setTimeout(() => {
       refresh()
     }, 1500)
     return () => clearTimeout(timer)
-  }, [refresh])
+  }, [gateway, rawPack, searchParams, refresh])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4">

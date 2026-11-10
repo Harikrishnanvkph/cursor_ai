@@ -36,7 +36,7 @@ interface LandingSidebarProps {
 
 export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingSidebarProps) {
   const router = useRouter()
-  const { user, isPro, aiCreditsLimit, aiCreditsRemaining } = useSubscriptionQuota()
+  const { user, isPro, aiCreditsLimit, aiCreditsRemaining, freeAiCreditsRemaining, purchasedAiCredits } = useSubscriptionQuota()
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
 
   const { hasJSON } = useChartStore()
@@ -88,10 +88,24 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     if (e) e.preventDefault()
     if (!input.trim() || isProcessing || isChatDisabled) return
 
-    // Guard: Check AI credits
-    if (user && aiCreditsRemaining <= 0) {
+    // Guard: Check AI credits (1 for chart, 2 for template/format mode)
+    const templateStore = useTemplateStore.getState()
+    const formatStore = useFormatGalleryStore.getState()
+    const isTemplate =
+      templateStore.editorMode === 'template' ||
+      templateStore.generateMode === 'template' ||
+      templateStore.generateMode === 'format' ||
+      Boolean(formatStore.selectedFormatId) ||
+      Boolean(templateStore.currentTemplate)
+    const requiredCredits = isTemplate ? 2 : 1
+
+    if (user && aiCreditsRemaining < requiredCredits) {
       setIsUpgradeOpen(true)
-      toast.error(`You have reached your monthly limit of ${aiCreditsLimit} AI credits. Upgrade to Pro for 50 credits/month!`)
+      toast.error(
+        isTemplate
+          ? `Template mode requires 2 AI credits, but you have ${aiCreditsRemaining} remaining. Top up your AI credits to continue!`
+          : `You have reached your limit of ${aiCreditsLimit} AI credits. Top up your AI credits to continue!`
+      )
       return
     }
 
@@ -181,7 +195,7 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
       {leftSidebarOpen ? (
         <>
           {/* ChatGPT-style Header with Dropdown & Action Buttons */}
-          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200/80 bg-transparent min-h-[52px]">
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200/80 bg-transparent min-h-[52px] h-[52px] flex-shrink-0">
             {/* Left: (Logo + AI Chart) Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -296,6 +310,8 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                   setIncludeImages={setIncludeImages}
                   aiCreditsRemaining={aiCreditsRemaining}
                   aiCreditsLimit={aiCreditsLimit}
+                  freeAiCreditsRemaining={freeAiCreditsRemaining}
+                  purchasedAiCredits={purchasedAiCredits}
                   onOpenUpgrade={() => setIsUpgradeOpen(true)}
                 />
 
@@ -346,8 +362,19 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
         </>
       ) : (
         // Collapsed Sidebar - Icon Only
-        <div className="flex flex-col items-center h-full py-4 bg-transparent group">
-          <div className="flex flex-col items-center space-y-4 w-full">
+        <div className="flex flex-col items-center h-full bg-transparent group">
+          {/* Top header row - 52px aligned */}
+          <div className="h-[52px] min-h-[52px] w-full flex items-center justify-center border-b border-slate-200/80 flex-shrink-0">
+            <button
+              onClick={() => setLeftSidebarOpen(true)}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-colors"
+              title="Expand Sidebar"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center space-y-4 w-full py-4">
             {/* Application Logo - Always shows logo, routes to home */}
             <button
               onClick={() => router.push("/")}
@@ -355,15 +382,6 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
               title="Go to Home"
             >
               <BarChart2 className="w-4 h-4" />
-            </button>
-
-            {/* Expand Sidebar Icon - PanelLeft */}
-            <button
-              onClick={() => setLeftSidebarOpen(true)}
-              className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all hover:shadow-sm"
-              title="Expand Sidebar"
-            >
-              <PanelLeft className="w-4 h-4" />
             </button>
 
             {/* New Chat Icon */}

@@ -99,3 +99,24 @@ export function useIsCompactDesktop() {
     
     return isCompact;
 }
+
+// Custom hook to detect < 1152px (Tailwind 'xl' breakpoint is 1152px)
+export function useIsBelow1152() {
+    const [isBelow, setIsBelow] = useState(() => {
+        if (typeof window !== "undefined") {
+            return window.matchMedia("(max-width: 1151px)").matches;
+        }
+        return false;
+    });
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(max-width: 1151px)");
+        const handleChange = (e: MediaQueryListEvent) => setIsBelow(e.matches);
+
+        setIsBelow(mediaQuery.matches);
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
+    }, []);
+
+    return isBelow;
+}

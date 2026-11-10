@@ -96,6 +96,7 @@ export interface DecorationShape {
   borderRadius?: number
 
   svgContent?: string
+  originalSvg?: string
   autoSize?: boolean
 }
 

@@ -27,6 +27,8 @@ interface ChatSettingsPopoverProps {
   setIncludeImages: (include: boolean) => void
   aiCreditsRemaining: number
   aiCreditsLimit: number
+  freeAiCreditsRemaining?: number
+  purchasedAiCredits?: number
   onOpenUpgrade?: () => void
   iconVariant?: 'gear' | 'tune' | 'plus'
 }
@@ -38,6 +40,8 @@ export function ChatSettingsPopover({
   setIncludeImages,
   aiCreditsRemaining,
   aiCreditsLimit,
+  freeAiCreditsRemaining,
+  purchasedAiCredits,
   onOpenUpgrade,
   iconVariant = 'gear',
 }: ChatSettingsPopoverProps) {
@@ -76,8 +80,8 @@ export function ChatSettingsPopover({
       case 'deepseek':
       default:
         return {
-          name: 'DeepSeek Chat',
-          icon: <Brain className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />,
+          name: 'Deepseek Web',
+          icon: <Globe className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />,
         }
     }
   }
@@ -134,7 +138,11 @@ export function ChatSettingsPopover({
             </div>
             <div className="flex flex-col text-left">
               <span className="text-xs font-semibold text-slate-800">Credits Remaining</span>
-              <span className="text-[10px] text-slate-400">Monthly AI quota</span>
+              <span className="text-[10px] text-slate-400">
+                {purchasedAiCredits && purchasedAiCredits > 0
+                  ? `${freeAiCreditsRemaining ?? 0} free + ${purchasedAiCredits} paid`
+                  : 'Monthly AI quota'}
+              </span>
             </div>
           </div>
           {onOpenUpgrade && (

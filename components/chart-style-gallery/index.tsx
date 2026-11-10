@@ -9,6 +9,7 @@ import { PresetCard } from "./preset-card"
 import { PresetFilters } from "./preset-filters"
 import type { ChartStylePreset } from "@/lib/chart-style-types"
 import { checkPresetCompatibility } from "@/lib/chart-style-engine"
+import { parseDimension } from "@/lib/utils/dimension-utils"
 import { PresetPreviewDialog } from "./preset-preview-dialog"
 import { useChatStore } from "@/lib/chat-store"
 
@@ -41,8 +42,9 @@ export function ChartStyleGallery() {
 
   // Compute chart aspect ratio from dimensions for preview cards
   const chartAspectRatio = useMemo(() => {
-    const w = (chartConfig as any)?.dimensions?.width
-    const h = (chartConfig as any)?.dimensions?.height
+    const cfg = chartConfig as any
+    const w = cfg?.dimensions?.width ?? parseDimension(cfg?.width, 0)
+    const h = cfg?.dimensions?.height ?? parseDimension(cfg?.height, 0)
     if (w && h && h > 0) return w / h
     return 4 / 3 // Default fallback
   }, [chartConfig])
@@ -233,7 +235,7 @@ export function ChartStyleGallery() {
     }
 
     const { warnings } = checkPresetCompatibility(preset, chartData)
-    const success = applyPreset(preset.id, false) // Preserve user dimensions & responsiveness when exploring gallery styles
+    const success = applyPreset(preset.id, !!preset.dimensions)
 
     if (success) {
       closeGallery()

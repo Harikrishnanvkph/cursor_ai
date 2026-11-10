@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from "react"
+import { GeistSans } from "geist/font/sans"
 import { Chart as ChartJS } from "chart.js"
 import "@/lib/chart-registration"
 import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
@@ -613,7 +614,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                     <MoreVertical className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 font-sans">
                   <DropdownMenuItem onSelect={() => setShowRenameDialog(true)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                     <Pencil className="h-4 w-4 mr-2" />
                     Rename
@@ -644,7 +645,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
         </div>
 
         <Dialog open={showRenameDialog} onOpenChange={(open) => { if (!isRenaming) setShowRenameDialog(open); }}>
-          <DialogContent className="max-w-md p-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl" hideCloseButton={isRenaming}>
+          <DialogContent className={`max-w-md p-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl ${GeistSans.variable} ${GeistSans.className} font-sans`} hideCloseButton={isRenaming}>
             <DialogHeader className="mb-4">
               <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
                 <Pencil className="h-5 w-5 text-blue-600" />
@@ -1050,7 +1051,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-56 p-3">
+            <PopoverContent align="end" className="w-56 p-3 font-sans">
               {/* Share vs Embed Toggle */}
               <div className="flex items-center gap-0.5 bg-zinc-100 rounded-lg p-0.5 border border-zinc-200/50 mb-3 select-none">
                 <button
@@ -1110,7 +1111,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 z-50">
+            <DropdownMenuContent align="end" className="w-48 z-50 font-sans">
               <DropdownMenuItem onClick={() => onPreview(conversation)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-1.5 cursor-pointer">
                 <Eye className="h-4 w-4 mr-2 text-violet-500" />
                 Preview
@@ -1145,7 +1146,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
       {/* Rename Dialog */}
       <Dialog open={showRenameDialog} onOpenChange={(open) => { if (!isRenaming) setShowRenameDialog(open); }}>
-        <DialogContent className="max-w-md p-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl" hideCloseButton={isRenaming}>
+        <DialogContent className={`max-w-md p-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl ${GeistSans.variable} ${GeistSans.className} font-sans`} hideCloseButton={isRenaming}>
           <DialogHeader className="mb-4">
             <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
               <Pencil className="h-5 w-5 text-blue-600" />

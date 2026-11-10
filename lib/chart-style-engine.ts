@@ -20,6 +20,7 @@ import type {
 } from './chart-defaults'
 import { getDefaultConfigForType } from './chart-defaults'
 import { darkenColor, generateColorPalette, applyOpacityToColor } from './utils/color-utils'
+import { parseDimension } from './utils/dimension-utils'
 import type {
   ChartStylePreset,
   ColorStrategy,
@@ -437,16 +438,25 @@ export function applyPresetToChart(
 
   // ── 4. Handle dimensions ────────────────────────────────
   if (options.applyDimensions && preset.dimensions) {
-    mergedConfig.width = preset.dimensions.width
-    mergedConfig.height = preset.dimensions.height
+    const wNum = parseDimension(preset.dimensions.width, 800)
+    const hNum = parseDimension(preset.dimensions.height, 600)
+    mergedConfig.width = `${wNum}px`
+    mergedConfig.height = `${hNum}px`
     mergedConfig.manualDimensions = true
     mergedConfig.responsive = false
+    ;(mergedConfig as any).dimensions = {
+      width: wNum,
+      height: hNum,
+    }
   } else {
     // Preserve the user's current dimension settings
     mergedConfig.width = currentConfig.width
     mergedConfig.height = currentConfig.height
     mergedConfig.manualDimensions = currentConfig.manualDimensions
     mergedConfig.responsive = currentConfig.responsive
+    if ((currentConfig as any)?.dimensions) {
+      ;(mergedConfig as any).dimensions = JSON.parse(JSON.stringify((currentConfig as any).dimensions))
+    }
   }
 
   // Always clear these flags — they don't belong to presets

@@ -1,89 +1,82 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 
 export type PaymentRegion = "IN" | "GLOBAL"
 export type PaymentGateway = "razorpay" | "dodo"
 
-export interface GeoLocationState {
-  region: PaymentRegion
-  isIndia: boolean
-  gateway: PaymentGateway
-  currency: "INR" | "USD"
-  currencySymbol: "₹" | "$"
-  detectedRegion: string
-  isManualOverride: boolean
-  loading: boolean
-  setRegion: (region: PaymentRegion) => void
+function detectRegion(): PaymentRegion {
+  if (typeof window === "undefined") return "IN"
+
+  // 1. Localhost / local development -> Always India for Razorpay testing
+  const isLocalhost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "[::1]" ||
+    window.location.hostname.endsWith(".local")
+  if (isLocalhost) return "IN"
+
+  // 2. Browser timezone & locale heuristics for India
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""
+    const offset = new Date().getTimezoneOffset()
+    const lang = (navigator.language || "").toUpperCase()
+    if (
+      tz.includes("Kolkata") ||
+      tz.includes("Calcutta") ||
+      offset === -330 ||
+      lang.includes("-IN")
+    ) {
+      return "IN"
+    }
+  } catch {
+    // ignore
+  }
+
+  return "GLOBAL"
 }
 
-const STORAGE_KEY = "aichartor_payment_region_v3"
-
-export function useGeoLocation(): GeoLocationState {
-  const [region, setRegionState] = useState<PaymentRegion>("IN")
-  const [detectedRegion, setDetectedRegion] = useState<string>("IN")
-  const [isManualOverride, setIsManualOverride] = useState<boolean>(false)
-  const [loading, setLoading] = useState<boolean>(true)
+export function useGeoLocation() {
+  const [region, setRegion] = useState<PaymentRegion>("IN")
 
   useEffect(() => {
-    // 1. Detect browser timezone, offset, and locale (instant, 0 network requests)
-    let isIndiaBrowser = false
+    // Clear any legacy manual override keys so stale preferences don't linger
     try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""
-      const offset = new Date().getTimezoneOffset()
-      const lang = (navigator.language || "").toUpperCase()
-      isIndiaBrowser =
-        tz.includes("Kolkata") ||
-        tz.includes("Calcutta") ||
-        offset === -330 ||
-        lang.includes("-IN")
+      localStorage.removeItem("aichartor_payment_region")
+      localStorage.removeItem("aichartor_payment_region_v4")
+      localStorage.removeItem("aichartor_payment_region_is_manual_v4")
+      localStorage.removeItem("aichartor_payment_region_v3")
     } catch {
       // ignore
     }
 
-    const detected: PaymentRegion = isIndiaBrowser ? "IN" : "GLOBAL"
-    setDetectedRegion(detected)
+    const localDetected = detectRegion()
+    setRegion(localDetected)
 
-    // 2. Respect explicit manual selection in localStorage if present
-    try {
-      const savedRegion = localStorage.getItem(STORAGE_KEY) as PaymentRegion | null
-      if (savedRegion === "IN" || savedRegion === "GLOBAL") {
-        setRegionState(savedRegion)
-        setIsManualOverride(true)
-      } else {
-        setRegionState(detected)
-      }
-    } catch {
-      setRegionState(detected)
-    }
-
-    setLoading(false)
-  }, [])
-
-  const setRegion = useCallback((newRegion: PaymentRegion) => {
-    setRegionState(newRegion)
-    setIsManualOverride(true)
-    try {
-      localStorage.setItem(STORAGE_KEY, newRegion)
-    } catch {
-      // ignore
+    // In production, sync with server header detection if not already detected as IN
+    if (
+      localDetected !== "IN" &&
+      typeof window !== "undefined" &&
+      !window.location.hostname.includes("localhost")
+    ) {
+      const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:5000"
+      fetch(`${serverUrl}/api/payments/config`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.isIndia || data?.detectedCountry === "IN") {
+            setRegion("IN")
+          }
+        })
+        .catch(() => {})
     }
   }, [])
 
   const isIndia = region === "IN"
-  const gateway: PaymentGateway = isIndia ? "razorpay" : "dodo"
-  const currency = isIndia ? "INR" : "USD"
-  const currencySymbol = isIndia ? "₹" : "$"
 
   return {
     region,
     isIndia,
-    gateway,
-    currency,
-    currencySymbol,
-    detectedRegion,
-    isManualOverride,
-    loading,
-    setRegion,
+    gateway: (isIndia ? "razorpay" : "dodo") as PaymentGateway,
+    currencySymbol: isIndia ? "₹" : "$",
   }
 }
