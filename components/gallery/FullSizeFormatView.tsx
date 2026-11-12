@@ -297,9 +297,9 @@ export function FullSizeFormatView() {
       {/* Top Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-white shadow-sm z-20">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={openGallery} className="gap-2">
+          <Button variant="outline" size="sm" onClick={openGallery} className="gap-2 cursor-pointer">
             <LayoutGrid className="w-4 h-4 text-purple-600" />
-            Change Format
+            Change Template
           </Button>
           <div className="h-4 w-px bg-gray-200" />
           <span className="text-sm font-semibold text-gray-800">
@@ -389,7 +389,7 @@ export function FullSizeFormatView() {
             </DropdownMenu>
           </div>
 
-          <Button variant="ghost" size="icon" onClick={clearSelection} title="Remove format and back to standard chart">
+          <Button variant="ghost" size="icon" onClick={clearSelection} title="Remove template and back to standard chart">
             <X className="w-4 h-4 text-gray-500" />
           </Button>
         </div>

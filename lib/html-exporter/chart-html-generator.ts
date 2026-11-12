@@ -19,6 +19,7 @@ import { useDecorationStore } from "../stores/decoration-store";
 import { generateDecorationsSVG, generateDecorationsCSS } from "../template-export/decoration-html-export";
 import { darkenColor } from "../utils/color-utils";
 import { buildExportConfig } from "../utils/font-scale-utils";
+import { collectAllChartFonts, generateGoogleFontHeadTags, sanitizeScalesCustomPadding } from "./html-export-font-utils";
 
 /**
  * Generate a complete standalone HTML file with the chart
@@ -627,6 +628,13 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     const decorationsSVG = decorationShapes.length > 0 ? generateDecorationsSVG(decorationShapes, width, height) : "";
     const decorationsCSS = decorationShapes.length > 0 ? generateDecorationsCSS() : "";
 
+    // Sanitize asymmetric scale tick padding ({ top, bottom })
+    sanitizeScalesCustomPadding(enhancedChartConfig?.scales);
+
+    // Collect all web fonts used across chart elements and canvas decorations
+    const allFonts = collectAllChartFonts(enhancedChartConfig, processedChartData, decorationShapes);
+    const googleFontsHTML = generateGoogleFontHeadTags(allFonts);
+
     // Use template if specified
     if (template && htmlTemplates[template as keyof typeof htmlTemplates]) {
         const selectedTemplate = htmlTemplates[template as keyof typeof htmlTemplates];
@@ -649,7 +657,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title}</title>
-    
+${googleFontsHTML ? googleFontsHTML + '\n' : ''}    
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@${chartJsVersion}/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -1159,8 +1167,25 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             };
         }
 
+        // Dynamic Scale Ticks Asymmetric Padding Sanitization
+        if (enhancedConfig.scales) {
+            Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
+                var scale = enhancedConfig.scales[axisKey];
+                if (scale && scale.ticks && typeof scale.ticks.padding === 'object' && scale.ticks.padding !== null) {
+                    var rawPad = scale.ticks.padding;
+                    var padTop = Number(rawPad.top) || 0;
+                    var padBottom = Number(rawPad.bottom) || 0;
+                    scale.ticks._customPadding = { top: padTop, bottom: padBottom };
+                    scale.ticks.padding = (padTop + padBottom) / 2;
+                }
+            });
+        }
+
         // Initialize chart safely
         function initChart() {
+            if (window.chartInitialized) return;
+            window.chartInitialized = true;
+
             if (window['chartjs-plugin-annotation'] && typeof Chart !== 'undefined' && Chart.register) {
                 try {
                     Chart.register(window['chartjs-plugin-annotation']);
@@ -1215,10 +1240,34 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             console.log('Datasets:', chartData.datasets.length);
         }
 
+        // Wait for web fonts before rendering to canvas
+        function startChartWithFonts() {
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function() {
+                    initChart();
+                }).catch(function() {
+                    initChart();
+                });
+                setTimeout(function() {
+                    if (!window.chartInitialized) initChart();
+                }, 1500);
+            } else {
+                initChart();
+            }
+        }
+
+        if (document.fonts && document.fonts.addEventListener) {
+            document.fonts.addEventListener('loadingdone', function() {
+                if (window.chart && typeof window.chart.update === 'function') {
+                    window.chart.update('none');
+                }
+            });
+        }
+
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initChart);
+            document.addEventListener('DOMContentLoaded', startChartWithFonts);
         } else {
-            initChart();
+            startChartWithFonts();
         }
         
         // Error handling

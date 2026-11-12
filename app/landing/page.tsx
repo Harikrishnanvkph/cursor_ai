@@ -135,29 +135,32 @@ function LandingPageContent() {
     }
   }, [])
 
-  // Check if chat should be disabled (only template mode requires a template; format mode is always enabled)
-  const isChatDisabled = (generateMode === 'template' && !currentTemplate)
+  // Auto-migrate legacy 'template' mode to modern blueprint format mode
+  useEffect(() => {
+    if (generateMode === 'template') {
+      useTemplateStore.getState().setGenerateMode('format')
+    }
+  }, [generateMode])
 
-  // Update initial message when template/format mode changes
+  // Chat is always enabled in both chart and template modes
+  const isChatDisabled = false
+
+  // Update initial message when template mode changes
   useEffect(() => {
     if (messages.length === 1 && messages[0].role === 'assistant') {
-      const templateMessage = 'Please attach a template to start the conversation. Select a template from the options via "Choose From Templates".'
-      const formatMessage = 'Describe your chart content. You can optionally select a format first, or browse formats after generation.'
+      const templateMessage = 'Describe your chart content. You can optionally select a template first, or browse templates after generation.'
       const defaultMessage = 'Hi! Describe the chart you want to create, or ask me to modify an existing chart.'
 
-      const shouldShowTemplateMessage = generateMode === 'template' && !currentTemplate
-      const isFormatMode = generateMode === 'format'
+      const isTemplateMode = generateMode === 'format' || generateMode === 'template'
       const currentMessage = messages[0].content
 
-      if (shouldShowTemplateMessage && currentMessage !== templateMessage) {
+      if (isTemplateMode && !selectedFormatId && currentMessage !== templateMessage && currentMessage !== defaultMessage) {
         setMessages([{ ...messages[0], content: templateMessage }])
-      } else if (isFormatMode && !selectedFormatId && currentMessage !== formatMessage && currentMessage !== defaultMessage) {
-        setMessages([{ ...messages[0], content: formatMessage }])
-      } else if (!shouldShowTemplateMessage && !isFormatMode && (currentMessage === templateMessage || currentMessage === formatMessage)) {
+      } else if (!isTemplateMode && currentMessage === templateMessage) {
         setMessages([{ ...messages[0], content: defaultMessage }])
       }
     }
-  }, [generateMode, currentTemplate, selectedFormatId, messages, setMessages])
+  }, [generateMode, selectedFormatId, messages, setMessages])
 
   const [showActiveBanner, setShowActiveBanner] = useState(false)
   const sidebarContext = useSidebarContext(); const sidebarInputContext = useSidebarInputContext();
@@ -582,7 +585,7 @@ function LandingPageContent() {
   return (
     <>
       {/* Floating global header for history and avatar */}
-      {storeHydrated && !hasVisualContent && !isTablet && !isMobile && !isTemplateModalOpen && !isGalleryOpen && !isStyleGalleryOpen && (
+      {storeHydrated && !hasVisualContent && !isTablet && !isMobile && !isGalleryOpen && !isStyleGalleryOpen && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
           <HistoryDropdown variant="full" />
           <SimpleProfileDropdown size="sm" />

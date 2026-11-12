@@ -260,11 +260,11 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
           // Snap State: Capture initial state of newly applied format
           try {
             const { useSnapStateStore } = require('@/lib/stores/snap-state-store');
-            useSnapStateStore.getState().captureCurrentState('new', format.id, `Format: ${format.name}`);
+            useSnapStateStore.getState().captureCurrentState('new', format.id, `Template: ${format.name}`);
           } catch (e) {}
           closeGallery()
           if (setLeftSidebarOpen) setLeftSidebarOpen(true)
-          toast.success(`Format "${format.name}" applied!`)
+          toast.success(`Template "${format.name}" applied!`)
           return
         } catch (err) {
           console.error('Failed to render format:', err)
@@ -294,14 +294,14 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
       try {
         const rendered = renderFormat(previewFormat, contentToApply, chartType || undefined, contextualImageUrl || undefined)
         setSelectedFormat(previewFormat.id, rendered.chartType)
-        toast.success(`Format "${previewFormat.name}" selected!`)
+        toast.success(`Template "${previewFormat.name}" selected!`)
       } catch (err) {
         console.error('Failed to render format:', err)
-        toast.error('Failed to apply format')
+        toast.error('Failed to apply template')
       }
     } else {
       setSelectedFormat(previewFormat.id, chartType || 'bar')
-      toast.info(`Format "${previewFormat.name}" selected. Generate a chart to see it applied.`)
+      toast.info(`Template "${previewFormat.name}" selected. Generate a chart to see it applied.`)
     }
 
     // Once handled, close gallery and automatically open the chat sidebar for immediate usage
@@ -319,7 +319,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
               <LayoutGrid className="w-4 h-4 text-white" />
             </div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-gray-900 leading-tight">Choose a Format</h2>
+              <h2 className="text-base font-bold text-gray-900 leading-tight">Choose a Template</h2>
             </div>
           </div>
         </div>
@@ -327,23 +327,23 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
         <div className="flex items-center justify-center p-1 bg-gray-100 rounded-lg">
           <button
             onClick={() => { setActiveTab('official'); setPreviewFormatId(null); }}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               activeTab === 'official' 
                 ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200/50' 
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
             }`}
           >
-            Official Formats
+            Official Templates
           </button>
           <button
             onClick={() => { setActiveTab('mine'); setPreviewFormatId(null); }}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               activeTab === 'mine' 
                 ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200/50' 
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
             }`}
           >
-            My Formats
+            My Templates
           </button>
         </div>
 
@@ -354,7 +354,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search formats..."
+                placeholder="Search templates..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent w-36 transition-all"
@@ -371,7 +371,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
                 ? 'bg-purple-50 text-purple-600 border-purple-200 shadow-sm'
                 : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
             }`}
-            title={showSearch ? "Hide Search" : "Search Formats"}
+            title={showSearch ? "Hide Search" : "Search Templates"}
           >
             <Search className="w-4 h-4" />
           </button>
@@ -513,15 +513,15 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
                 <div className="flex gap-2">
                   <Button
                     onClick={handleConfirmSelect}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all h-9 px-4"
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all h-9 px-4 cursor-pointer"
                   >
                     <Check className="w-4 h-4 mr-1.5" />
-                    Use Format
+                    Use Template
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setPreviewFormatId(null)}
-                    className="h-9 w-9 p-0 text-gray-400 hover:text-gray-600 border-gray-200"
+                    className="h-9 w-9 p-0 text-gray-400 hover:text-gray-600 border-gray-200 cursor-pointer"
                     title="Cancel Selection"
                   >
                     <X className="w-4 h-4" />
@@ -533,7 +533,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
               <div className="flex-shrink-0 rounded-xl overflow-hidden bg-gray-50 border border-gray-200 p-4 mb-6 shadow-inner">
                 <div className="flex items-center gap-2 mb-3">
                   <Eye className="w-4 h-4 text-gray-600" />
-                  <h4 className="text-sm font-semibold text-gray-800">Format Structure</h4>
+                  <h4 className="text-sm font-semibold text-gray-800">Template Structure</h4>
                 </div>
                 {(() => {
                   const scaleW = 280 / previewFormat.dimensions.width;
@@ -718,13 +718,13 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
               <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center mb-4">
                 <Layers className="w-10 h-10 text-gray-300" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">No Formats Found</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">No Templates Found</h3>
               <p className="text-sm text-gray-500 max-w-sm mb-4">
                 {currentFormatsList.length === 0 
-                  ? (activeTab === 'mine' ? "You haven't created any custom formats yet." : "No official formats are currently available.")
+                  ? (activeTab === 'mine' ? "You haven't created any custom templates yet." : "No official templates are currently available.")
                   : filters.dimension
                   ? `There are no templates specifically designed for the ${filters.dimension} aspect ratio.`
-                  : "We couldn't find any formats matching your current filters."}
+                  : "We couldn't find any templates matching your current filters."}
               </p>
               {filters.dimension && (
                 <button

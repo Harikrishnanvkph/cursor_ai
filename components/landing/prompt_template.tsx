@@ -42,11 +42,9 @@ export function PromptTemplate({
   onSampleClick,
   className = "",
   size = 'default',
-  isTemplateModalOpen: isTemplateModalOpenProp,
-  setIsTemplateModalOpen: setIsTemplateModalOpenProp
 }: PromptTemplateProps) {
   const [selectedRatio, setSelectedRatio] = useState<string | null>(null)
-  const [isFormatInfoOpen, setIsFormatInfoOpen] = useState(false)
+  const [isTemplateInfoOpen, setIsTemplateInfoOpen] = useState(false)
   
   const {
     generateMode,
@@ -215,11 +213,11 @@ export function PromptTemplate({
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="format"
-                aria-label="Format"
+                aria-label="Template"
                 className="flex-1 rounded-md h-7 py-0.5 data-[state=on]:bg-white dark:data-[state=on]:bg-slate-700 data-[state=on]:text-slate-800 dark:data-[state=on]:text-slate-100 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-[10px] sm:text-[11px] tracking-wide uppercase"
               >
                 <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
-                Format
+                Template
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
@@ -312,17 +310,17 @@ export function PromptTemplate({
               </div>
             ) : null
           ) : (
-            /* Format Mode */
+            /* Template Mode */
             <div className="space-y-4 pt-0.5">
               {selectedFormat ? (
                 <div className="space-y-3.5">
                   {/* Status Indicator */}
                   <div className="text-xs text-slate-400 font-bold pl-1 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-ping"></span>
-                    Status: <span className="font-semibold text-slate-700">Attached Format Layout</span>
+                    Status: <span className="font-semibold text-slate-700">Attached Template</span>
                   </div>
 
-                  {/* Format Name with Settings and Cancel Buttons */}
+                  {/* Template Name with Settings and Cancel Buttons */}
                   <div className="flex items-center gap-3 w-full bg-white/90 border border-slate-200 rounded-2xl p-4 shadow-sm">
                     <div className="flex-1 bg-slate-50/30 border border-slate-100 rounded-xl px-5 py-3 flex items-center">
                       <LayoutGrid className="w-4 h-4 text-slate-500 mr-3 flex-shrink-0" />
@@ -336,11 +334,11 @@ export function PromptTemplate({
                       </div>
                     </div>
 
-                    {/* Change Format Button */}
+                    {/* Change Template Button */}
                     <button
                       onClick={handleChooseFormat}
-                      className="w-11 h-11 rounded-xl bg-white hover:bg-slate-50 text-slate-700 flex items-center justify-center hover:scale-105 flex-shrink-0 border border-slate-200 transition-all shadow-sm"
-                      aria-label="Change format"
+                      className="w-11 h-11 rounded-xl bg-white hover:bg-slate-50 text-slate-700 flex items-center justify-center hover:scale-105 flex-shrink-0 border border-slate-200 transition-all shadow-sm cursor-pointer"
+                      aria-label="Change template"
                     >
                       <Settings className="w-4 h-4" />
                     </button>
@@ -348,8 +346,8 @@ export function PromptTemplate({
                     {/* Cancel Button */}
                     <button
                       onClick={handleCancelFormat}
-                      className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center hover:scale-105 flex-shrink-0 transition-all shadow-sm"
-                      aria-label="Remove format"
+                      className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center hover:scale-105 flex-shrink-0 transition-all shadow-sm cursor-pointer"
+                      aria-label="Remove template"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -363,7 +361,7 @@ export function PromptTemplate({
                   </div>
                 </div>
               ) : (
-                /* Format Pick Area - Wide layout to prevent squeezing and vertical bloat */
+                /* Template Pick Area - Wide layout to prevent squeezing and vertical bloat */
                 <div className="flex flex-col gap-3 max-w-2xl w-full mx-auto px-4 md:px-0">
                   {/* OR Divider */}
                   <div className="flex items-center justify-center gap-3 my-1">
@@ -374,7 +372,7 @@ export function PromptTemplate({
                     <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
                   </div>
 
-                  {/* Action Row: Choose a Format Layout Button + Info Popover/Tooltip */}
+                  {/* Action Row: Choose a Template Button + Info Popover/Tooltip */}
                   <div className="flex items-center gap-2.5 w-full">
                     <Button
                       onClick={handleChooseFormat}
@@ -382,24 +380,24 @@ export function PromptTemplate({
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 rounded-full transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-md hover:shadow-lg flex items-center justify-center border-none text-xs md:text-sm uppercase tracking-widest cursor-pointer"
                     >
                       <LayoutGrid className="w-4 h-4 mr-2.5" />
-                      {isLoadingFormats ? 'Loading layouts...' : (selectedRatio ? `Browse ${selectedRatio} Formats` : 'Choose a Format Layout')}
+                      {isLoadingFormats ? 'Loading templates...' : (selectedRatio ? `Browse ${selectedRatio} Templates` : 'Choose a Template')}
                     </Button>
 
-                    {/* Info Button: Shows 'Optional Format Selection' details on hover or click */}
-                    <Popover open={isFormatInfoOpen} onOpenChange={setIsFormatInfoOpen}>
+                    {/* Info Button: Shows 'Optional Template Selection' details on hover or click */}
+                    <Popover open={isTemplateInfoOpen} onOpenChange={setIsTemplateInfoOpen}>
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          onMouseEnter={() => setIsFormatInfoOpen(true)}
-                          onMouseLeave={() => setIsFormatInfoOpen(false)}
-                          onClick={() => setIsFormatInfoOpen((prev) => !prev)}
+                          onMouseEnter={() => setIsTemplateInfoOpen(true)}
+                          onMouseLeave={() => setIsTemplateInfoOpen(false)}
+                          onClick={() => setIsTemplateInfoOpen((prev) => !prev)}
                           className={`h-12 w-12 rounded-full border transition-all duration-200 flex items-center justify-center flex-shrink-0 cursor-pointer shadow-sm hover:shadow-md ${
-                            isFormatInfoOpen
+                            isTemplateInfoOpen
                               ? 'bg-indigo-50 border-indigo-300 text-indigo-600 ring-2 ring-indigo-500/20 dark:bg-indigo-950/60 dark:border-indigo-700 dark:text-indigo-400'
                               : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                           }`}
-                          title="Optional Format Selection Info"
-                          aria-label="Format selection information"
+                          title="Optional Template Selection Info"
+                          aria-label="Template selection information"
                         >
                           <Info className="w-4 h-4 stroke-[2.2]" />
                         </button>
@@ -408,8 +406,8 @@ export function PromptTemplate({
                         side="top"
                         align="end"
                         sideOffset={10}
-                        onMouseEnter={() => setIsFormatInfoOpen(true)}
-                        onMouseLeave={() => setIsFormatInfoOpen(false)}
+                        onMouseEnter={() => setIsTemplateInfoOpen(true)}
+                        onMouseLeave={() => setIsTemplateInfoOpen(false)}
                         className="w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl p-3.5 z-50 text-left animate-in fade-in zoom-in-95 duration-150"
                       >
                         <div className="flex items-start gap-2.5">
@@ -418,7 +416,7 @@ export function PromptTemplate({
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-xs text-slate-800 dark:text-slate-100 mb-1 tracking-tight">
-                              <span className="text-indigo-600 dark:text-indigo-400 font-bold mr-1">Optional</span> Format Selection
+                              <span className="text-indigo-600 dark:text-indigo-400 font-bold mr-1">Optional</span> Template Selection
                             </div>
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
                               Choose a pre-designed template to customize the AI-generated response and gain full control over the design.

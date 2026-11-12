@@ -15,6 +15,7 @@ import {
     processTimelineDataForExport,
     calculateTimelineBounds
 } from "./export-utils";
+import { sanitizeScalesCustomPadding } from "./html-export-font-utils";
 
 /**
  * Generate chart HTML content specifically for embedding in templates
@@ -445,6 +446,9 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
 
     const legendForExport = buildLegendConfigForExport(enhancedChartConfig, includeLegend, chartType);
 
+    // Sanitize asymmetric scale tick padding ({ top, bottom })
+    sanitizeScalesCustomPadding(enhancedChartConfig?.scales);
+
     // Generate the chart script
     const chartScript = `
     // Chart.js Configuration
@@ -732,30 +736,71 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
         });
     }
 
-    function initChart() {
-        if (window['chartjs-plugin-annotation'] && typeof Chart !== 'undefined' && Chart.register) {
-            try {
-                Chart.register(window['chartjs-plugin-annotation']);
-            } catch(e) {}
-        }
-        const canvasEl = document.getElementById('chartCanvas');
-        if (canvasEl) {
-            const ctx = canvasEl.getContext('2d');
-            const chart = new Chart(ctx, {
-                type: chartType,
-                data: chartData,
-                options: enhancedConfig,
-                plugins: (window['chartjs-plugin-annotation'] ? [window['chartjs-plugin-annotation']] : [])
+        // Dynamic Scale Ticks Asymmetric Padding Sanitization
+        if (enhancedConfig.scales) {
+            Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
+                var scale = enhancedConfig.scales[axisKey];
+                if (scale && scale.ticks && typeof scale.ticks.padding === 'object' && scale.ticks.padding !== null) {
+                    var rawPad = scale.ticks.padding;
+                    var padTop = Number(rawPad.top) || 0;
+                    var padBottom = Number(rawPad.bottom) || 0;
+                    scale.ticks._customPadding = { top: padTop, bottom: padBottom };
+                    scale.ticks.padding = (padTop + padBottom) / 2;
+                }
             });
-            window.chart = chart;
         }
-    }
 
-    if (document.readyState === 'loading') {
-        window.addEventListener('DOMContentLoaded', initChart);
-    } else {
-        initChart();
-    }
+        function initChart() {
+            if (window.chartInitialized) return;
+            window.chartInitialized = true;
+
+            if (window['chartjs-plugin-annotation'] && typeof Chart !== 'undefined' && Chart.register) {
+                try {
+                    Chart.register(window['chartjs-plugin-annotation']);
+                } catch(e) {}
+            }
+            const canvasEl = document.getElementById('chartCanvas');
+            if (canvasEl) {
+                const ctx = canvasEl.getContext('2d');
+                const chart = new Chart(ctx, {
+                    type: chartType,
+                    data: chartData,
+                    options: enhancedConfig,
+                    plugins: (window['chartjs-plugin-annotation'] ? [window['chartjs-plugin-annotation']] : [])
+                });
+                window.chart = chart;
+            }
+        }
+
+        // Wait for web fonts before rendering to canvas
+        function startChartWithFonts() {
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function() {
+                    initChart();
+                }).catch(function() {
+                    initChart();
+                });
+                setTimeout(function() {
+                    if (!window.chartInitialized) initChart();
+                }, 1500);
+            } else {
+                initChart();
+            }
+        }
+
+        if (document.fonts && document.fonts.addEventListener) {
+            document.fonts.addEventListener('loadingdone', function() {
+                if (window.chart && typeof window.chart.update === 'function') {
+                    window.chart.update('none');
+                }
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', startChartWithFonts);
+        } else {
+            startChartWithFonts();
+        }
   `;
 
     // Generate chart styles

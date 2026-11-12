@@ -2,6 +2,7 @@ import { type HTMLExportOptions } from "./html-exporter";
 import { generateCompletePluginSystem } from "./html-plugins";
 import { useDecorationStore } from "@/lib/stores/decoration-store";
 import { generateDecorationsSVG, generateDecorationsCSS } from "@/lib/template-export/decoration-html-export";
+import { collectAllChartFonts, generateGoogleFontHeadTags, sanitizeScalesCustomPadding } from "./html-exporter/html-export-font-utils";
 
 /**
  * Generate legend config with generateLabels function for HTML export
@@ -402,7 +403,24 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
             };
         }
 
+        // Dynamic Scale Ticks Asymmetric Padding Sanitization
+        if (enhancedConfig.scales) {
+            Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
+                var scale = enhancedConfig.scales[axisKey];
+                if (scale && scale.ticks && typeof scale.ticks.padding === 'object' && scale.ticks.padding !== null) {
+                    var rawPad = scale.ticks.padding;
+                    var padTop = Number(rawPad.top) || 0;
+                    var padBottom = Number(rawPad.bottom) || 0;
+                    scale.ticks._customPadding = { top: padTop, bottom: padBottom };
+                    scale.ticks.padding = (padTop + padBottom) / 2;
+                }
+            });
+        }
+
         function initChart() {
+            if (window.chartInitialized) return;
+            window.chartInitialized = true;
+
             if (window['chartjs-plugin-annotation'] && typeof Chart !== 'undefined' && Chart.register) {
                 try {
                     Chart.register(window['chartjs-plugin-annotation']);
@@ -420,10 +438,34 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
             window.chart = chart;
         }
 
+        // Wait for web fonts before rendering to canvas
+        function startChartWithFonts() {
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function() {
+                    initChart();
+                }).catch(function() {
+                    initChart();
+                });
+                setTimeout(function() {
+                    if (!window.chartInitialized) initChart();
+                }, 1500);
+            } else {
+                initChart();
+            }
+        }
+
+        if (document.fonts && document.fonts.addEventListener) {
+            document.fonts.addEventListener('loadingdone', function() {
+                if (window.chart && typeof window.chart.update === 'function') {
+                    window.chart.update('none');
+                }
+            });
+        }
+
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initChart);
+            document.addEventListener('DOMContentLoaded', startChartWithFonts);
         } else {
-            initChart();
+            startChartWithFonts();
         }
         
         window.addEventListener('error', function(event) {
@@ -500,13 +542,19 @@ export const plainTemplate: HTMLTemplate = {
       chartContainerStyle = `background-color: transparent;`;
     }
 
+    // Collect and link all Google Fonts used in chart and textboxes
+    const decorationShapes = useDecorationStore.getState().shapes || [];
+    const allFonts = collectAllChartFonts(chartConfig, chartData, decorationShapes);
+    const googleFontsHTML = generateGoogleFontHeadTags(allFonts);
+    sanitizeScalesCustomPadding(chartConfig?.scales);
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title}</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+${googleFontsHTML ? googleFontsHTML + '\n' : ''}    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     <script>

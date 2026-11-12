@@ -8,6 +8,8 @@ import { useChartData } from "@/lib/hooks/use-chart-state"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { ChevronDown } from "lucide-react"
+import { PaddingControl } from "@/components/ui/padding-control"
 
 interface GeneralTabProps {
     axis: 'x' | 'y' | 'y1'
@@ -64,11 +66,11 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
     const currentDashLabel = lineDashOptions.find(opt => opt.value === currentDashStr)?.label || 'Custom'
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-3">
             {/* Main Toggle */}
-            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-lg border border-blue-100">
+            <div className="flex items-center justify-between p-3.5 rounded-xl border border-blue-200/70 bg-gradient-to-r from-blue-50/70 to-indigo-50/40 shadow-2xs">
                 <div className="flex flex-col">
-                    <Label className="text-sm font-medium text-blue-900">
+                    <Label className="text-xs font-semibold text-blue-950">
                         Show {axis === 'y1' ? 'Right Y-Axis (Y2)' : `${axis.toUpperCase()}-Axis`}
                     </Label>
                     {axis === 'y1' && (
@@ -222,45 +224,42 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
             )}
 
             {config?.display !== false && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                     {/* Title Section */}
-                    <div className="space-y-0">
+                    <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                         <div
-                            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+                            className={cn(
+                                "flex items-center justify-between px-3.5 py-2.5 cursor-pointer select-none transition-colors",
+                                titleDropdownOpen ? "bg-slate-50/80 border-b border-slate-100" : "bg-slate-50/40 hover:bg-slate-50/80"
+                            )}
                             onClick={() => setTitleDropdownOpen(!titleDropdownOpen)}
                         >
-                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                            <h3 className="text-sm font-semibold text-gray-900">Title</h3>
-                            <div className="ml-auto flex items-center gap-2">
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <Switch
-                                        checked={config?.title?.display !== false}
-                                        onCheckedChange={(checked) => updateConfig('title.display', checked)}
-                                        className="data-[state=checked]:bg-blue-600"
-                                    />
-                                </div>
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className={`transform transition-transform ${titleDropdownOpen ? 'rotate-180' : ''}`}
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 bg-blue-600 rounded-full" />
+                                <h3 className="text-xs font-semibold text-slate-800">Title</h3>
+                            </div>
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Switch
+                                    checked={config?.title?.display !== false}
+                                    onCheckedChange={(checked) => updateConfig('title.display', checked)}
+                                    className="data-[state=checked]:bg-blue-600"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setTitleDropdownOpen(!titleDropdownOpen)}
+                                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                                    aria-label="Toggle title options"
                                 >
-                                    <path d="M6 9L12 15L18 9" />
-                                </svg>
+                                    <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", titleDropdownOpen && "rotate-180")} />
+                                </button>
                             </div>
                         </div>
 
                         {/* Title Options */}
                         {titleDropdownOpen && (
-                            <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
+                            <div className="p-3.5 space-y-3.5 bg-white">
                                 <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-gray-700">Text</Label>
+                                    <Label className="text-xs font-medium text-slate-700">Text</Label>
                                     <Input
                                         ref={titleInputRef}
                                         value={config?.title?.text || ''}
@@ -271,11 +270,45 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="flex flex-col items-start gap-1">
-                                        <Label className="text-xs font-medium text-gray-700">Color</Label>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Font Family</Label>
+                                        <FontFamilySelect
+                                            value={config?.title?.font?.family || 'Arial'}
+                                            onValueChange={(value) => updateConfig('title.font.family', value)}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Font Weight</Label>
+                                        <FontWeightSelect
+                                            value={String(config?.title?.font?.weight || 'normal')}
+                                            onValueChange={(value) => updateConfig('title.font.weight', value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Font Size</Label>
+                                        <div className="flex items-center gap-1.5">
+                                            <Input
+                                                type="number"
+                                                value={config?.title?.font?.size || ''}
+                                                onChange={(e) => updateConfig('title.font.size', e.target.value ? Number(e.target.value) : undefined)}
+                                                placeholder="12"
+                                                className="h-8 text-xs bg-white flex-1 min-w-0"
+                                                min={8}
+                                                max={48}
+                                            />
+                                            <span className="text-xs text-slate-400 shrink-0">px</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Color</Label>
                                         <div className="flex items-center gap-2">
                                             <div
-                                                className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                                                className="w-7 h-7 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
                                                 style={{ backgroundColor: config?.title?.color || '#374151' }}
                                                 onClick={() => document.getElementById(`title-color-${axis}`)?.click()}
                                             />
@@ -289,106 +322,113 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                             <Input
                                                 value={config?.title?.color || '#374151'}
                                                 onChange={(e) => updateConfig('title.color', e.target.value)}
-                                                className="w-20 h-8 text-xs font-mono uppercase bg-white"
+                                                className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
                                                 placeholder="#374151"
                                             />
                                         </div>
                                     </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Font Size</Label>
-                                        <Input
-                                            type="number"
-                                            value={config?.title?.font?.size || ''}
-                                            onChange={(e) => updateConfig('title.font.size', e.target.value ? Number(e.target.value) : undefined)}
-                                            placeholder="12"
-                                            className="h-8 text-xs bg-white"
-                                            min={8}
-                                            max={36}
-                                        />
-                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Font Family</Label>
-                                        <FontFamilySelect
-                                            value={config?.title?.font?.family || 'Arial'}
-                                            onValueChange={(value) => updateConfig('title.font.family', value)}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Font Weight</Label>
-                                        <FontWeightSelect
-                                            value={String(config?.title?.font?.weight || 'normal')}
-                                            onValueChange={(value) => updateConfig('title.font.weight', value)}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Align</Label>
-                                        <Select
-                                            value={config?.title?.align || 'center'}
-                                            onValueChange={(value) => updateConfig('title.align', value)}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs bg-white">
-                                                <SelectValue placeholder="Select align" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="start">Start</SelectItem>
-                                                <SelectItem value="center">Center</SelectItem>
-                                                <SelectItem value="end">End</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-medium text-slate-700">Alignment</Label>
+                                    <Select
+                                        value={config?.title?.align || 'center'}
+                                        onValueChange={(value) => updateConfig('title.align', value)}
+                                    >
+                                        <SelectTrigger className="h-8 text-xs bg-white">
+                                            <SelectValue placeholder="Center" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="start">Start (Left / Top)</SelectItem>
+                                            <SelectItem value="center">Center</SelectItem>
+                                            <SelectItem value="end">End (Right / Bottom)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
+
+                                <PaddingControl
+                                    label="Padding"
+                                    value={config?.title?.padding}
+                                    defaultValue={4}
+                                    onChange={(val) => updateConfig('title.padding', val)}
+                                />
                             </div>
                         )}
                     </div>
 
                     {/* Label Appearance Section */}
-                    <div className="space-y-0">
+                    <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                         <div
-                            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+                            className={cn(
+                                "flex items-center justify-between px-3.5 py-2.5 cursor-pointer select-none transition-colors",
+                                labelAppearanceDropdownOpen ? "bg-slate-50/80 border-b border-slate-100" : "bg-slate-50/40 hover:bg-slate-50/80"
+                            )}
                             onClick={() => setLabelAppearanceDropdownOpen(!labelAppearanceDropdownOpen)}
                         >
-                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                            <h3 className="text-sm font-semibold text-gray-900">Label Appearance</h3>
-                            <div className="ml-auto flex items-center gap-2">
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <Switch
-                                        checked={config?.ticks?.display !== false}
-                                        onCheckedChange={(checked) => updateConfig('ticks.display', checked)}
-                                        className="data-[state=checked]:bg-blue-600"
-                                    />
-                                </div>
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className={`transform transition-transform ${labelAppearanceDropdownOpen ? 'rotate-180' : ''}`}
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 bg-blue-600 rounded-full" />
+                                <h3 className="text-xs font-semibold text-slate-800">Label Appearance</h3>
+                            </div>
+                            <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Switch
+                                    checked={config?.ticks?.display !== false}
+                                    onCheckedChange={(checked) => updateConfig('ticks.display', checked)}
+                                    className="data-[state=checked]:bg-blue-600"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setLabelAppearanceDropdownOpen(!labelAppearanceDropdownOpen)}
+                                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                                    aria-label="Toggle label appearance options"
                                 >
-                                    <path d="M6 9L12 15L18 9" />
-                                </svg>
+                                    <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", labelAppearanceDropdownOpen && "rotate-180")} />
+                                </button>
                             </div>
                         </div>
 
                         {/* Label Options */}
                         {labelAppearanceDropdownOpen && (
-                            <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
+                            <div className="p-3.5 space-y-3.5 bg-white">
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="flex flex-col items-start gap-1">
-                                        <Label className="text-xs font-medium text-gray-700">Color</Label>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Font Family</Label>
+                                        <FontFamilySelect
+                                            value={config?.ticks?.font?.family || 'Arial'}
+                                            onValueChange={(value) => updateConfig('ticks.font.family', value)}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Font Weight</Label>
+                                        <FontWeightSelect
+                                            value={String(config?.ticks?.font?.weight || 'normal')}
+                                            onValueChange={(value) => updateConfig('ticks.font.weight', value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Font Size</Label>
+                                        <div className="flex items-center gap-1.5">
+                                            <Input
+                                                type="number"
+                                                value={config?.ticks?.font?.size || ''}
+                                                onChange={(e) => updateConfig('ticks.font.size', e.target.value ? Number(e.target.value) : undefined)}
+                                                placeholder="12"
+                                                className="h-8 text-xs bg-white flex-1 min-w-0"
+                                                min={8}
+                                                max={36}
+                                            />
+                                            <span className="text-xs text-slate-400 shrink-0">px</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Color</Label>
                                         <div className="flex items-center gap-2">
                                             <div
-                                                className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                                                className="w-7 h-7 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
                                                 style={{ backgroundColor: config?.ticks?.color || '#6b7280' }}
                                                 onClick={() => document.getElementById(`tick-color-${axis}`)?.click()}
                                             />
@@ -402,109 +442,84 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                             <Input
                                                 value={config?.ticks?.color || '#6b7280'}
                                                 onChange={(e) => updateConfig('ticks.color', e.target.value)}
-                                                className="w-20 h-8 text-xs font-mono uppercase bg-white"
+                                                className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
                                                 placeholder="#6b7280"
                                             />
                                         </div>
                                     </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Font Size</Label>
-                                        <Input
-                                            type="number"
-                                            value={config?.ticks?.font?.size || ''}
-                                            onChange={(e) => updateConfig('ticks.font.size', e.target.value ? Number(e.target.value) : undefined)}
-                                            placeholder="12"
-                                            className="h-8 text-xs bg-white"
-                                            min={8}
-                                            max={24}
-                                        />
-                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Font Family</Label>
-                                        <FontFamilySelect
-                                            value={config?.ticks?.font?.family || 'Arial'}
-                                            onValueChange={(value) => updateConfig('ticks.font.family', value)}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Font Weight</Label>
-                                        <FontWeightSelect
-                                            value={String(config?.ticks?.font?.weight || 'normal')}
-                                            onValueChange={(value) => updateConfig('ticks.font.weight', value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Rotation</Label>
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-medium text-slate-700">Rotation</Label>
+                                    <div className="flex items-center gap-1.5">
                                         <Input
                                             type="number"
-                                            value={config?.ticks?.maxRotation || ''}
+                                            value={config?.ticks?.maxRotation ?? ''}
                                             onChange={(e) => {
-                                                const value = e.target.value ? Number(e.target.value) : undefined
+                                                const value = e.target.value === '' ? undefined : Number(e.target.value)
                                                 updateConfig('ticks.maxRotation', value)
                                                 updateConfig('ticks.minRotation', value)
                                             }}
                                             placeholder="0"
-                                            className="h-8 text-xs bg-white"
+                                            className="h-8 text-xs bg-white flex-1 min-w-0"
                                             min={-90}
                                             max={90}
                                         />
+                                        <span className="text-xs text-slate-400 shrink-0">°</span>
                                     </div>
                                 </div>
+
+                                <PaddingControl
+                                    label="Padding"
+                                    value={config?.ticks?.padding}
+                                    defaultValue={3}
+                                    mode="top-bottom"
+                                    max={60}
+                                    onChange={(val) => updateConfig('ticks.padding', val)}
+                                />
                             </div>
                         )}
                     </div>
 
                     {/* Grid Appearance Section */}
-                    <div className="space-y-0">
+                    <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                         <div
-                            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+                            className={cn(
+                                "flex items-center justify-between px-3.5 py-2.5 cursor-pointer select-none transition-colors",
+                                gridAppearanceDropdownOpen ? "bg-slate-50/80 border-b border-slate-100" : "bg-slate-50/40 hover:bg-slate-50/80"
+                            )}
                             onClick={() => setGridAppearanceDropdownOpen(!gridAppearanceDropdownOpen)}
                         >
-                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                            <h3 className="text-sm font-semibold text-gray-900">Grid Appearance</h3>
-                            <div className="ml-auto flex items-center gap-2">
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <Switch
-                                        checked={config?.grid?.display !== false}
-                                        onCheckedChange={(checked) => updateConfig('grid.display', checked)}
-                                        className="data-[state=checked]:bg-blue-600"
-                                    />
-                                </div>
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className={`transform transition-transform ${gridAppearanceDropdownOpen ? 'rotate-180' : ''}`}
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 bg-blue-600 rounded-full" />
+                                <h3 className="text-xs font-semibold text-slate-800">Grid Appearance</h3>
+                            </div>
+                            <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Switch
+                                    checked={config?.grid?.display !== false}
+                                    onCheckedChange={(checked) => updateConfig('grid.display', checked)}
+                                    className="data-[state=checked]:bg-blue-600"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setGridAppearanceDropdownOpen(!gridAppearanceDropdownOpen)}
+                                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                                    aria-label="Toggle grid appearance options"
                                 >
-                                    <path d="M6 9L12 15L18 9" />
-                                </svg>
+                                    <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", gridAppearanceDropdownOpen && "rotate-180")} />
+                                </button>
                             </div>
                         </div>
 
-                        {/* Dropdown Content */}
+                        {/* Grid Options */}
                         {gridAppearanceDropdownOpen && (
-                            <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
-                                {/* Color and Ref. Lines */}
+                            <div className="p-3.5 space-y-3.5 bg-white">
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="flex flex-col items-start gap-1">
-                                        <Label className="text-xs font-medium">Color</Label>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Grid Color</Label>
                                         <div className="flex items-center gap-2">
                                             <div
-                                                className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                                                className="w-7 h-7 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
                                                 style={{ backgroundColor: config?.grid?.color || '#e5e7eb' }}
                                                 onClick={() => document.getElementById(`grid-color-${axis}`)?.click()}
                                             />
@@ -518,39 +533,33 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                             <Input
                                                 value={config?.grid?.color || '#e5e7eb'}
                                                 onChange={(e) => updateConfig('grid.color', e.target.value)}
-                                                className="w-20 h-8 text-xs font-mono uppercase bg-white"
+                                                className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
                                                 placeholder="#e5e7eb"
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex flex-col items-start gap-1">
-                                        <Label className="text-xs font-medium">Ref. Lines</Label>
-                                        <Switch
-                                            checked={config?.grid?.drawOnChartArea !== false}
-                                            onCheckedChange={(checked) => updateConfig('grid.drawOnChartArea', checked)}
-                                            className="data-[state=checked]:bg-blue-600"
-                                        />
+
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Line Width</Label>
+                                        <div className="flex items-center gap-1.5">
+                                            <Input
+                                                type="number"
+                                                value={config?.grid?.lineWidth ?? ''}
+                                                onChange={(e) => updateConfig('grid.lineWidth', e.target.value ? Number(e.target.value) : undefined)}
+                                                placeholder="1"
+                                                className="h-8 text-xs bg-white flex-1 min-w-0"
+                                                min={0}
+                                                max={10}
+                                                step={0.5}
+                                            />
+                                            <span className="text-xs text-slate-400 shrink-0">px</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Line Properties */}
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-3 items-end">
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Line Width</Label>
-                                        <Input
-                                            type="number"
-                                            value={config?.grid?.lineWidth ?? ''}
-                                            onChange={(e) => updateConfig('grid.lineWidth', e.target.value ? Number(e.target.value) : undefined)}
-                                            placeholder="1"
-                                            className="h-8 text-xs bg-white"
-                                            min={0}
-                                            max={5}
-                                            step={0.1}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Line Style</Label>
+                                        <Label className="text-xs font-medium text-slate-700">Line Style</Label>
                                         <Select
                                             value={currentDashStr}
                                             onValueChange={(value) => {
@@ -573,14 +582,26 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                             </SelectContent>
                                         </Select>
                                     </div>
+
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-slate-700">Chart Area Lines</Label>
+                                        <div className="flex items-center justify-between h-8 px-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50">
+                                            <span className="text-xs text-slate-600">Draw on Chart</span>
+                                            <Switch
+                                                checked={config?.grid?.drawOnChartArea !== false}
+                                                onCheckedChange={(checked) => updateConfig('grid.drawOnChartArea', checked)}
+                                                className="data-[state=checked]:bg-blue-600 scale-90"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Custom Dash Pattern */}
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-medium text-gray-700">Custom Dash Pattern</Label>
-                                    <div className="grid grid-cols-3 gap-3">
+                                <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/70 space-y-2.5">
+                                    <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider block">Custom Dash Pattern</span>
+                                    <div className="grid grid-cols-3 gap-2">
                                         <div className="space-y-1">
-                                            <Label className="text-xs text-gray-600">Dash Length</Label>
+                                            <Label className="text-[11px] text-slate-500 font-medium">Dash</Label>
                                             <Input
                                                 type="number"
                                                 value={(currentDash && currentDash[0]) || ''}
@@ -599,7 +620,7 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                         </div>
 
                                         <div className="space-y-1">
-                                            <Label className="text-xs text-gray-600">Gap Length</Label>
+                                            <Label className="text-[11px] text-slate-500 font-medium">Gap</Label>
                                             <Input
                                                 type="number"
                                                 value={(currentDash && currentDash[1]) || ''}
@@ -618,7 +639,7 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                         </div>
 
                                         <div className="space-y-1">
-                                            <Label className="text-xs text-gray-600">Dash Offset</Label>
+                                            <Label className="text-[11px] text-slate-500 font-medium">Offset</Label>
                                             <Input
                                                 type="number"
                                                 value={config?.grid?.borderDashOffset ?? config?.border?.dashOffset ?? ''}

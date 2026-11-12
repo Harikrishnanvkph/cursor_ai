@@ -157,6 +157,11 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         useChartStore.getState().setCurrentSnapshotId(snapshotResult.data.id)
       }
 
+      // Refresh history store immediately so newly saved chart appears in Recents / History
+      try {
+        await useHistoryStore.getState().loadConversationsFromBackend(true)
+      } catch (e) {}
+
       // Close dialog
       setShowDimensionDialog(false)
       setDimensionMismatchInfo(null)
@@ -229,6 +234,12 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       // Clear template and format state locally
       useTemplateStore.getState().clearAllTemplateState()
       useFormatGalleryStore.getState().setSelectedFormat(null, 'bar')
+
+      // Refresh history store immediately so newly saved chart appears in Recents / History
+      try {
+        await useHistoryStore.getState().loadConversationsFromBackend(true)
+      } catch (e) {}
+
       toast.success("Chart saved as separate copy!")
     } catch (error) {
       console.error('Save as separate chart failed:', error)

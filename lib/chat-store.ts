@@ -10,34 +10,8 @@ import type { ChartOptions } from 'chart.js';
 import { extractContentFromChartData, suggestChartTypes } from './variant-engine';
 import { useChartStyleStore } from './stores/chart-style-store';
 
-// Helper function to get the appropriate initial message based on template/format mode
+// Helper function to get the initial chat greeting
 const getInitialMessage = (): ChatMessage => {
-  try {
-    const templateStore = useTemplateStore.getState();
-    if (templateStore.generateMode === 'template' && !templateStore.currentTemplate) {
-      return {
-        role: 'assistant',
-        content: 'Please attach a template to start the conversation. Select a template from the options above to proceed.',
-        timestamp: Date.now()
-      };
-    }
-    if (templateStore.generateMode === 'format') {
-      try {
-        const formatStore = useFormatGalleryStore.getState();
-        if (!formatStore.selectedFormatId) {
-          return {
-            role: 'assistant',
-            content: 'Please select a format to start the conversation. Choose a format from the options above to proceed.',
-            timestamp: Date.now()
-          };
-        }
-      } catch { }
-    }
-  } catch (error) {
-    // If template store is not available, fall back to default
-    console.warn('Could not access template store for initial message:', error);
-  }
-
   return {
     role: 'assistant',
     content: 'Hi! Describe the chart you want to create, or ask me to modify an existing chart.',

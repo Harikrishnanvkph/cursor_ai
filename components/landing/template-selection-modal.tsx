@@ -140,7 +140,7 @@ export function TemplateSelectionModal({
   // ============================================================
   if (isMobileModal) {
     return (
-      <div className="fixed inset-0 z-50 bg-white flex flex-col">
+      <div className="fixed inset-0 z-50 bg-white flex flex-col font-sans">
         {/* Mobile Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
           {mobileStep === 'preview' ? (
@@ -406,11 +406,11 @@ export function TemplateSelectionModal({
   // ============================================================
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 font-sans"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-[90vw] max-w-6xl h-[85vh] max-h-[800px] flex flex-col overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-[90vw] max-w-6xl h-[85vh] max-h-[800px] flex flex-col overflow-hidden font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Main Content Area */}

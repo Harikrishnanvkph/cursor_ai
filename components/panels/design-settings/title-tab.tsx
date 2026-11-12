@@ -1,9 +1,11 @@
+import React, { useState } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { FontFamilySelect, FontWeightSelect } from "@/components/ui/font-family-select"
+import { PaddingControl, Padding4Way } from "@/components/ui/padding-control"
 
 interface TitleTabProps {
     chartConfig: any
@@ -12,12 +14,15 @@ interface TitleTabProps {
 
 export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
     return (
-        <div className="space-y-6 mt-4">
-            {/* ==================== TITLE SETTINGS ==================== */}
-            <div className="space-y-4">
-                {/* Show Title Toggle */}
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <Label className="text-sm font-medium text-blue-900">Show Title</Label>
+        <div className="space-y-4 mt-2">
+            {/* ==================== TITLE SECTION ==================== */}
+            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-2xs">
+                {/* Header with toggle */}
+                <div className="flex items-center justify-between p-3 bg-blue-50/70 border-b border-blue-100/70">
+                    <div>
+                        <Label className="text-sm font-semibold text-blue-950">Chart Title</Label>
+                        <p className="text-[11px] text-blue-700/80">Primary heading above your chart</p>
+                    </div>
                     <Switch
                         checked={chartConfig.plugins?.title?.display || false}
                         onCheckedChange={(checked) => handleConfigUpdate("plugins.title.display", checked)}
@@ -25,17 +30,8 @@ export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
                     />
                 </div>
 
-                {!chartConfig.plugins?.title?.display && (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-xs text-blue-800 leading-relaxed">
-                            <strong>Enable Chart Title</strong> to add a prominent heading above your chart.
-                            You can customize the text, font, size, color, alignment, and position.
-                        </p>
-                    </div>
-                )}
-
                 {chartConfig.plugins?.title?.display && (
-                    <div className="space-y-4 pl-1">
+                    <div className="p-3.5 space-y-3.5">
                         <div>
                             <Label className="text-xs font-medium">Title Text</Label>
                             <Input
@@ -139,30 +135,24 @@ export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
                             </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <div className="flex justify-between">
-                                <Label className="text-xs font-medium">Padding</Label>
-                                <span className="text-xs text-gray-500">{(chartConfig.plugins?.title as any)?.padding || 10}px</span>
-                            </div>
-                            <Slider
-                                value={[(chartConfig.plugins?.title as any)?.padding || 10]}
-                                onValueChange={([value]) => handleConfigUpdate("plugins.title.padding", value)}
-                                max={50}
-                                min={0}
-                                step={1}
-                                className="mt-2"
-                            />
-                        </div>
+                        <PaddingControl
+                            label="Padding"
+                            value={chartConfig.plugins?.title?.padding}
+                            defaultValue={10}
+                            onChange={(val) => handleConfigUpdate("plugins.title.padding", val)}
+                        />
                     </div>
                 )}
             </div>
 
-            <div className="border-t border-gray-100 my-4" />
-
-            {/* ==================== SUBTITLE SETTINGS ==================== */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <Label className="text-sm font-medium text-blue-900">Show Subtitle</Label>
+            {/* ==================== SUBTITLE SECTION ==================== */}
+            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-2xs">
+                {/* Header with toggle */}
+                <div className="flex items-center justify-between p-3 bg-blue-50/70 border-b border-blue-100/70">
+                    <div>
+                        <Label className="text-sm font-semibold text-blue-950">Chart Subtitle</Label>
+                        <p className="text-[11px] text-blue-700/80">Secondary heading below chart title</p>
+                    </div>
                     <Switch
                         checked={chartConfig.plugins?.subtitle?.display || false}
                         onCheckedChange={(checked) => handleConfigUpdate("plugins.subtitle.display", checked)}
@@ -170,16 +160,8 @@ export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
                     />
                 </div>
 
-                {!chartConfig.plugins?.subtitle?.display && (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-xs text-blue-800 leading-relaxed">
-                            <strong>Enable Chart Subtitle</strong> to add a secondary heading below your chart title.
-                        </p>
-                    </div>
-                )}
-
                 {chartConfig.plugins?.subtitle?.display && (
-                    <div className="space-y-4 pl-1">
+                    <div className="p-3.5 space-y-3.5">
                         <div>
                             <Label className="text-xs font-medium">Subtitle Text</Label>
                             <Input
@@ -282,20 +264,12 @@ export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
                             </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <div className="flex justify-between">
-                                <Label className="text-xs font-medium">Padding</Label>
-                                <span className="text-xs text-gray-500">{(chartConfig.plugins?.subtitle as any)?.padding || 0}px</span>
-                            </div>
-                            <Slider
-                                value={[(chartConfig.plugins?.subtitle as any)?.padding || 0]}
-                                onValueChange={([value]) => handleConfigUpdate("plugins.subtitle.padding", value)}
-                                max={50}
-                                min={0}
-                                step={1}
-                                className="mt-2"
-                            />
-                        </div>
+                        <PaddingControl
+                            label="Padding"
+                            value={chartConfig.plugins?.subtitle?.padding}
+                            defaultValue={0}
+                            onChange={(val) => handleConfigUpdate("plugins.subtitle.padding", val)}
+                        />
                     </div>
                 )}
             </div>

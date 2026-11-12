@@ -6,6 +6,7 @@ export { LandingSidebar } from './landing-sidebar'
 export { SidebarProvider, useSidebarContext, useSidebarInputContext } from './sidebar-context'
 export { TabletLandingView } from './tablet-landing-view'
 export { MobileLandingView } from './mobile-landing-view'
+export { LandingFontProvider } from './landing-font-provider'
 export {
   parseDim,
   getAspectRatio,
@@ -14,4 +15,3 @@ export {
   GenerationProgressView,
   AnimatedBackground
 } from './landing-helpers'
- 

@@ -107,7 +107,7 @@ export function UpgradeProDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[660px] p-0 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl bg-white dark:bg-slate-900 flex flex-col [&>button]:top-4.5 [&>button]:right-4.5 [&>button]:text-slate-400 [&>button]:hover:text-slate-700 dark:[&>button]:hover:text-white">
+      <DialogContent className="sm:max-w-[660px] p-0 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl bg-white dark:bg-slate-900 flex flex-col font-sans [&>button]:top-4.5 [&>button]:right-4.5 [&>button]:text-slate-400 [&>button]:hover:text-slate-700 dark:[&>button]:hover:text-white">
         {/* Simple & Clean Header */}
         <div className="px-6 pt-5 pb-3.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3 pr-8">

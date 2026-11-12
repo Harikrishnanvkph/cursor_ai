@@ -425,26 +425,15 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         toast.success(isUpdate ? 'Chart updated successfully!' : 'Chart saved successfully!');
         console.log(`✅ Chart ${isUpdate ? 'updated' : 'saved'} to backend:`, conversationId);
 
-        // Clear localStorage history to prevent duplicates
-        if (typeof window !== 'undefined') {
-            const userId = localStorage.getItem('user-id') || 'anonymous';
-            const historyKey = `chat-history-${userId}`;
-            try {
-                const historyData = localStorage.getItem(historyKey);
-                if (historyData) {
-                    const parsed = JSON.parse(historyData);
-                    if (parsed.state) {
-                        parsed.state.conversations = [];
-                        localStorage.setItem(historyKey, JSON.stringify(parsed));
-                    }
-                }
-            } catch (error) {
-                console.warn('Failed to clear history:', error);
-            }
-        }
-
         // Update backend conversation ID
         useChatStore.getState().setBackendConversationId(conversationId);
+
+        // Refresh history store immediately so newly saved chart appears in Recents / History
+        try {
+            await useHistoryStore.getState().loadConversationsFromBackend(true);
+        } catch (refreshErr) {
+            console.warn('Failed to refresh history store after save:', refreshErr);
+        }
 
         // If in template mode, mark template as saved to cloud
         if (editorMode === 'template') {

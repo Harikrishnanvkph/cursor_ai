@@ -473,12 +473,12 @@ export function FontFamilySelect({
         disabled={disabled}
         onClick={() => setOpen(true)}
         className={cn(
-          "h-8 w-full px-2.5 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-lg flex items-center justify-between shadow-2xs hover:bg-slate-50/80 dark:hover:bg-slate-800/80 transition-colors text-slate-800 dark:text-slate-200 group text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none",
+          "h-8 w-full px-2 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-lg flex items-center justify-between shadow-2xs hover:bg-slate-50/80 dark:hover:bg-slate-800/80 transition-colors text-slate-800 dark:text-slate-200 group text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none",
           triggerClassName
         )}
         title={`Font: ${displayLabel}`}
       >
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
           <Type className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" />
           <span
             className="truncate font-medium text-slate-800 dark:text-slate-200"
@@ -487,7 +487,7 @@ export function FontFamilySelect({
             {displayLabel}
           </span>
         </div>
-        <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0 ml-1.5" />
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0 ml-1" />
       </button>
 
       <FontFamilyModal
@@ -527,6 +527,8 @@ export function FontWeightSelect({
   id,
 }: FontWeightSelectProps) {
   const activeNumericStr = normalizeFontWeight(value)
+  const activeOption = FONT_WEIGHT_OPTIONS.find(opt => opt.value === activeNumericStr)
+  const displayLabel = activeOption ? activeOption.label.replace(/\s*\(\d+\)/, '') : undefined
 
   const handleSelect = (numericValue: string) => {
     if (outputFormat === 'named') {
@@ -544,9 +546,11 @@ export function FontWeightSelect({
       <Select value={activeNumericStr} onValueChange={handleSelect} disabled={disabled}>
         <SelectTrigger
           id={id}
-          className={cn('h-8 text-xs bg-white', triggerClassName)}
+          className={cn('h-8 text-xs bg-white px-2.5', triggerClassName)}
         >
-          <SelectValue placeholder={placeholder} />
+          <SelectValue placeholder={placeholder}>
+            {displayLabel}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent className="max-h-60 z-[120]">
           {FONT_WEIGHT_OPTIONS.map(opt => (

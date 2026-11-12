@@ -111,7 +111,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
                 </div>
             </div>
 
-            <div key={activeTab} className="flex-1 overflow-y-auto p-2">
+            <div key={activeTab} className="flex-1 overflow-y-auto py-2 px-0">
                 {renderTabContent(activeTab)}
             </div>
         </div>

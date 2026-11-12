@@ -28,6 +28,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
 
 // Helper to format chart/template dimensions
 const formatDimensions = (width?: string, height?: string) => {
@@ -69,10 +70,11 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
   const [filterType, setFilterType] = useState<'All' | 'Single Chart' | 'Group Chart' | 'Template Chart'>('All')
 
   const { conversations, restoreConversation, clearAllConversations, deleteConversation, loadConversationsFromBackend, loading } = useHistoryStore()
-  const { startNewConversation, historyConversationId } = useChatStore()
+  const { startNewConversation, historyConversationId, backendConversationId } = useChatStore()
   const { user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
+  const { setActiveTab, setSidebarView, setLeftSidebarCollapsed } = useEditorSidebarContext()
 
   // Reset filter when history dropdown is opened, or when historyConversationId changes (e.g. chart cleared)
   useEffect(() => {
@@ -84,7 +86,7 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
   // Load conversations from backend when user is authenticated
   useEffect(() => {
     if (user && (open || variant === 'sidebar')) {
-      loadConversationsFromBackend()
+      loadConversationsFromBackend(true)
     }
   }, [user, open, variant, loadConversationsFromBackend])
 
@@ -124,18 +126,17 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
   }
 
   const handleDeleteConversation = async (conversationId: string) => {
-    // Check if we're deleting the currently active conversation
-    const isCurrentConversation = historyConversationId === conversationId
+    const isCurrentConversation = backendConversationId === conversationId || historyConversationId === conversationId
 
     try {
       await deleteConversation(conversationId)
       setDeleteConfirmId(null)
       toast.success("Conversation deleted successfully")
 
-      // If we deleted the currently active conversation, start a new one
-      // This will automatically clear the undo/redo stack since it's no longer relevant
       if (isCurrentConversation) {
-        startNewConversation() // This already clears undo stack as part of startNewConversation
+        setSidebarView('tools')
+        setActiveTab('datasets_slices')
+        setLeftSidebarCollapsed(false)
       }
     } catch (error) {
       console.error('Failed to delete conversation:', error)

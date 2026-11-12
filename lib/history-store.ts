@@ -3,7 +3,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useChatStore, ChatMessage, ChartSnapshot } from "@/lib/chat-store";
-import { useChartStore, type SupportedChartType, type ExtendedChartData } from "@/lib/chart-store";
+import { useChartStore, DEFAULT_GROUP, getDefaultConfigForType, type SupportedChartType, type ExtendedChartData } from "@/lib/chart-store";
+import { GroupService } from "@/lib/services/group-service";
 import { useTemplateStore } from "@/lib/template-store";
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store";
 import { useChartStyleStore } from "@/lib/stores/chart-style-store";
@@ -34,7 +35,7 @@ interface HistoryStore {
   restoreConversation: (id: string) => Promise<void>;
   clearAllConversations: () => Promise<void>;
   updateConversation: (id: string, updates: Partial<Omit<Conversation, 'id' | 'timestamp'>>) => void;
-  loadConversationsFromBackend: () => Promise<void>;
+  loadConversationsFromBackend: (forceRefresh?: boolean) => Promise<void>;
 }
 
 export const useHistoryStore = create<HistoryStore>()(
@@ -55,24 +56,118 @@ export const useHistoryStore = create<HistoryStore>()(
         return id; // Return the created ID
       },
       deleteConversation: async (id) => {
+        const deletedConv = get().conversations.find((c) => c.id === id);
+
+        // Optimistically remove from local state immediately
+        set({
+          conversations: get().conversations.filter((c) => c.id !== id)
+        });
+
+        // Clean up snap state cache for this chart
+        const snapStore = useSnapStateStore.getState();
+        if (snapStore.chartSnaps[id] || snapStore.snapState?.chartId === id) {
+          const { [id]: _, ...restSnaps } = snapStore.chartSnaps;
+          useSnapStateStore.setState({
+            chartSnaps: restSnaps,
+            ...(snapStore.snapState?.chartId === id ? { snapState: null } : {})
+          });
+        }
+
+        // Remove deleted chart's dataset(s) and group(s) from local workspace & storage
+        const state = useChartStore.getState();
+        const deletedGroupIds = new Set(
+          state.groups.filter((g: any) => !g.isDefault && (g.sourceId === id || g.id === id)).map((g) => g.id)
+        );
+        const isDeletedDataset = (ds: any) => ds.sourceId === id || (ds.groupId && deletedGroupIds.has(ds.groupId));
+        const wasActive =
+          useChatStore.getState().backendConversationId === id ||
+          (state.chartMode === 'single' && isDeletedDataset(state.chartData.datasets[state.activeDatasetIndex] || {})) ||
+          (state.chartMode === 'grouped' && deletedGroupIds.has(state.activeGroupId));
+
+        const deletedMode: 'single' | 'grouped' =
+          deletedConv?.chart_mode ||
+          (deletedGroupIds.size > 0 ? 'grouped' : state.chartMode || 'single');
+
+        const filterDatasets = (data?: ExtendedChartData): ExtendedChartData => ({
+          labels: data?.labels || [],
+          datasets: (data?.datasets || []).filter((ds: any) => !isDeletedDataset(ds)),
+        });
+
+        const nextChartData = filterDatasets(state.chartData);
+        const nextSingleData = filterDatasets(state.singleModeData);
+        const nextGroupedData = filterDatasets(state.groupedModeData);
+        const nextGroups = state.groups.filter((g) => !deletedGroupIds.has(g.id));
+        const finalGroups = nextGroups.length > 0 ? nextGroups : [DEFAULT_GROUP];
+
+        useChartStore.setState({
+          chartData: nextChartData,
+          singleModeData: nextSingleData,
+          groupedModeData: nextGroupedData,
+          groups: finalGroups,
+        });
+
+        // If the deleted chart was active (or in the target mode), switch to remaining charts or welcome screen
+        if (wasActive || useChatStore.getState().backendConversationId === id) {
+          const updatedState = useChartStore.getState();
+          if (updatedState.chartMode !== deletedMode) {
+            updatedState.setChartMode(deletedMode);
+          }
+          const modeState = useChartStore.getState();
+
+          if (deletedMode === 'single') {
+            const singleDatasets = modeState.chartData.datasets.filter((ds: any) => !ds.mode || ds.mode === 'single');
+            if (singleDatasets.length > 0) {
+              const nextIdx = Math.min(modeState.activeDatasetIndex, modeState.chartData.datasets.length - 1);
+              modeState.setActiveDatasetIndex(Math.max(0, nextIdx));
+              useChartStore.setState({ hasJSON: true });
+            } else {
+              useChatStore.getState().setBackendConversationId(null);
+              useTemplateStore.getState().clearAllTemplateState();
+              useDecorationStore.getState().clearShapes();
+              useFormatGalleryStore.getState().resetGallery();
+              useChartStore.setState({
+                hasJSON: false,
+                chartTitle: null,
+                currentSnapshotId: null,
+                originalCloudDimensions: null,
+                chartConfig: getDefaultConfigForType(modeState.chartType),
+              });
+            }
+          } else {
+            const groupWithDatasets = modeState.groups.find((g) =>
+              modeState.chartData.datasets.some((ds: any) => ds.mode === 'grouped' && ds.groupId === g.id)
+            );
+            if (groupWithDatasets) {
+              const groupUpdate = GroupService.setActiveGroup(groupWithDatasets.id, modeState);
+              useChartStore.setState({ ...groupUpdate, hasJSON: true });
+            } else {
+              useChatStore.getState().setBackendConversationId(null);
+              useTemplateStore.getState().clearAllTemplateState();
+              useDecorationStore.getState().clearShapes();
+              useFormatGalleryStore.getState().resetGallery();
+              useChartStore.setState({
+                hasJSON: false,
+                activeGroupId: DEFAULT_GROUP.id,
+                chartTitle: null,
+                currentSnapshotId: null,
+                originalCloudDimensions: null,
+                chartConfig: getDefaultConfigForType(modeState.chartType),
+              });
+            }
+          }
+        }
+
         try {
-          // First, try to delete from backend
+          // Then delete from backend
           const response = await dataService.deleteConversation(id);
           if (response.error) {
             console.error('Failed to delete conversation from backend:', response.error);
-            // Still remove from local state even if backend fails
           } else {
             console.log('✅ Conversation deleted from backend:', id);
           }
         } catch (error) {
           console.error('Error deleting conversation from backend:', error);
-          // Still remove from local state even if backend fails
         }
-
-        // Remove from local state
-        set({
-          conversations: get().conversations.filter((c) => c.id !== id)
-        });
       },
       restoreConversation: async (id) => {
         // Try to find conversation in local store first
@@ -505,10 +600,10 @@ export const useHistoryStore = create<HistoryStore>()(
           )
         });
       },
-      loadConversationsFromBackend: async () => {
+      loadConversationsFromBackend: async (forceRefresh = false) => {
         set({ loading: true });
         try {
-          const response = await dataService.getConversations();
+          const response = await dataService.getConversations(50, forceRefresh);
 
           // Check if there was an error in the response
           if (response.error) {
@@ -518,29 +613,31 @@ export const useHistoryStore = create<HistoryStore>()(
           }
 
           if (response.data && response.data.length > 0) {
-            // Transform to lightweight frontend format
-            // We will lazy-load the details (messages & snapshot) when the user actually clicks on a conversation
-            // This prevents "Too Many Requests" (429) errors from firing hundreds of API calls at once
-            const lightweightConversations: Conversation[] = response.data.map((conv: any) => ({
-              id: conv.id,
-              title: conv.title,
-              messages: [], // Empty by default, loaded on open
-              // Construct a "mini" snapshot with just the type for display
-              snapshot: conv.current_chart_type ? {
-                chartType: conv.current_chart_type,
-                // These will be filled in when the conversation is actually opened
-                id: '',
-                conversationId: conv.id,
-                chartData: null,
-                chartConfig: null
-              } as any : null,
-              timestamp: new Date(conv.created_at).getTime(),
-              // Mode metadata from backend
-              is_template_mode: conv.is_template_mode || false,
-              chart_mode: conv.chart_mode || 'single',
-              width: conv.width || undefined,
-              height: conv.height || undefined
-            }));
+            // Transform to lightweight frontend format, preserving any snapshot data already loaded in memory
+            const existingMap = new Map(get().conversations.map(c => [c.id, c]));
+
+            const lightweightConversations: Conversation[] = response.data.map((conv: any) => {
+              const existing = existingMap.get(conv.id);
+              return {
+                id: conv.id,
+                title: conv.title,
+                messages: existing?.messages || [],
+                snapshot: existing?.snapshot?.chartData
+                  ? existing.snapshot
+                  : (conv.current_chart_type ? {
+                      chartType: conv.current_chart_type,
+                      id: existing?.snapshot?.id || '',
+                      conversationId: conv.id,
+                      chartData: null,
+                      chartConfig: null
+                    } as any : null),
+                timestamp: new Date(conv.created_at).getTime(),
+                is_template_mode: conv.is_template_mode || false,
+                chart_mode: conv.chart_mode || 'single',
+                width: conv.width || undefined,
+                height: conv.height || undefined
+              };
+            });
 
             set({
               conversations: lightweightConversations,

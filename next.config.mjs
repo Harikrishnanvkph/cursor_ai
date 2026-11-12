@@ -19,6 +19,16 @@ const nextConfig = {
         hostname: 'lh3.googleusercontent.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
     ],
     minimumCacheTTL: 60 * 60 * 24, // 24h cache
   },
@@ -26,6 +36,8 @@ const nextConfig = {
   experimental: {
     // Improve client-side navigation reliability
     optimisticClientCache: false,
+    cpus: 1,
+    workerThreads: false,
   },
   // Generate source maps in development for better debugging
   productionBrowserSourceMaps: false,

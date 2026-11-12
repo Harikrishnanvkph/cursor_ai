@@ -60,8 +60,8 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
   const { chatInput: input, setChatInput: setInput } = useSidebarInputContext()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Check if chat should be disabled (only template mode requires a template; format mode is always enabled)
-  const isChatDisabled = (generateMode === 'template' && !currentTemplate)
+  // Chat is always enabled in both chart and template modes
+  const isChatDisabled = false
   const hasActiveChart = currentChartState !== null && hasJSON
 
   const userGreetingName = React.useMemo(() => {
@@ -80,7 +80,8 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
       m.content.includes('Please attach a template') ||
       m.content.includes('Select a template from the options') ||
       m.content.includes('Describe your chart content') ||
-      m.content.includes('Please select a format')
+      m.content.includes('select a template') ||
+      m.content.includes('select a format')
     )
   )
 
@@ -286,7 +287,7 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
               <textarea
                 ref={textareaRef}
                 className="flex-1 px-2 py-1 text-sm bg-transparent border-0 outline-none resize-none min-h-[34px] max-h-[58px] leading-relaxed transition-all font-sans text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-0 focus:outline-none disabled:opacity-50"
-                placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
+                placeholder={hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart..."}
                 value={input}
                 onChange={handleInputChange}
                 onPaste={handlePaste}

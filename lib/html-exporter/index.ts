@@ -6,3 +6,4 @@ export { generateChartHTMLForTemplate } from "./template-html-generator"
 
 // Re-export utilities that other modules may need
 export { filterChartDataForExport, convertImageToBase64, processChartDataForExport, buildLegendConfigForExport, generateCustomLabelsFromConfig, syncImagePositionsToConfig, parseTimelineTimestamps, processTimelineDataForExport, calculateTimelineBounds } from "./export-utils"
+export { collectAllChartFonts, generateGoogleFontHeadTags, generatePaddingAndFontPatchesCode, sanitizeScalesCustomPadding, cleanFontFamilyName } from "./html-export-font-utils"

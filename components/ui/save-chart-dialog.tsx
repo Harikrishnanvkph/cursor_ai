@@ -64,7 +64,7 @@ export function SaveChartDialog({
 
     return (
         <div
-            className="fixed inset-0 z-[130] flex items-center justify-center"
+            className="fixed inset-0 z-[130] flex items-center justify-center font-sans"
             role="dialog"
             aria-modal="true"
         >
@@ -72,7 +72,7 @@ export function SaveChartDialog({
                 className="fixed inset-0 bg-black/40"
                 onClick={() => !isSaving && onCancel()}
             />
-            <div className="relative z-[131] w-[92vw] max-w-md rounded-lg bg-white border border-gray-200 shadow-xl p-5">
+            <div className="relative z-[131] w-[92vw] max-w-md rounded-lg bg-white border border-gray-200 shadow-xl p-5 font-sans">
                 <div className="mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                         <Save className="h-5 w-5 text-green-600" />

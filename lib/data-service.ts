@@ -138,14 +138,17 @@ class DataService {
       method: 'POST',
       body: JSON.stringify({ title, description }),
     }, false);
-    if (res.data && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auth:refresh'));
+    if (res.data) {
+      this.clearConversationsCache();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:refresh'));
+      }
     }
     return res;
   }
 
-  async getConversations(limit = 50): Promise<ApiResponse<any[]>> {
-    return this.request(`/api/data/conversations?limit=${limit}`);
+  async getConversations(limit = 50, forceRefresh = false): Promise<ApiResponse<any[]>> {
+    return this.request(`/api/data/conversations?limit=${limit}`, {}, !forceRefresh);
   }
 
   async getConversation(id: string): Promise<ApiResponse<any>> {
@@ -153,18 +156,27 @@ class DataService {
   }
 
   async updateConversation(id: string, updates: { title?: string; description?: string }): Promise<ApiResponse<any>> {
-    return this.request(`/api/data/conversations/${id}`, {
+    const res = await this.request(`/api/data/conversations/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
     }, false);
+    if (!res.error) {
+      this.clearConversationsCache();
+      this.clearConversationCache(id);
+    }
+    return res;
   }
 
   async deleteConversation(id: string): Promise<ApiResponse<void>> {
     const res = await this.request<void>(`/api/data/conversations/${id}`, {
       method: 'DELETE',
     }, false);
-    if (!res.error && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auth:refresh'));
+    if (!res.error) {
+      this.clearConversationsCache();
+      this.clearConversationCache(id);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:refresh'));
+      }
     }
     return res;
   }
@@ -173,8 +185,12 @@ class DataService {
     const res = await this.request<void>('/api/data/conversations', {
       method: 'DELETE',
     }, false);
-    if (!res.error && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auth:refresh'));
+    if (!res.error) {
+      this.clearConversationsCache();
+      this.clearCache();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:refresh'));
+      }
     }
     return res;
   }
@@ -193,6 +209,7 @@ class DataService {
     snapshotId?: string        // Optional: snapshot ID for updates
   ): Promise<ApiResponse<{ id: string }>> {
     this.clearConversationCache(conversationId);
+    this.clearConversationsCache();
     
     const method = snapshotId ? 'PUT' : 'POST';
     const url = snapshotId ? `/api/data/chart-snapshots/${snapshotId}` : '/api/data/chart-snapshots';
@@ -514,6 +531,14 @@ class DataService {
 
   clearCache(): void {
     this.cache.clear();
+  }
+
+  clearConversationsCache(): void {
+    for (const [key] of this.cache) {
+      if (key.includes('/api/data/conversations')) {
+        this.cache.delete(key);
+      }
+    }
   }
 
   clearConversationCache(conversationId: string): void {

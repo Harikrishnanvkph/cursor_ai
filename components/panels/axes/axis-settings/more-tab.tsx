@@ -4,6 +4,8 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect } from "react"
 import { useChartStore } from "@/lib/chart-store"
+import { cn } from "@/lib/utils"
+import { ChevronDown } from "lucide-react"
 
 interface MoreTabProps {
     axis: 'x' | 'y' | 'y1'
@@ -67,11 +69,11 @@ export function MoreTab({ axis, config, onUpdate, updateConfig, chartType }: Mor
                         (axis === 'x' && ['horizontalBar', 'horizontalBar3d', 'funnel'].includes(chartType || ''));
 
     return (
-        <div className="space-y-2 overflow-y-auto overflow-x-hidden h-full">
+        <div className="space-y-3 overflow-y-auto overflow-x-hidden h-full">
             {/* Begin at Zero (Y and Y1 axis) */}
             {['y', 'y1'].includes(axis) && (
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <Label className="text-sm font-medium text-blue-900">Begin at Zero</Label>
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                    <Label className="text-xs font-semibold text-slate-800">Begin at Zero</Label>
                     <Switch
                         checked={!!config?.beginAtZero}
                         onCheckedChange={(checked) => updateConfig('beginAtZero', checked)}
@@ -82,10 +84,10 @@ export function MoreTab({ axis, config, onUpdate, updateConfig, chartType }: Mor
 
             {/* Zero Line Highlight (Value Axis only) */}
             {isValueAxis && (
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 bg-white shadow-2xs">
                     <div className="space-y-0.5">
-                        <Label className="text-sm font-medium text-blue-900 font-sans">Highlight Zero Line</Label>
-                        <p className="text-[11px] text-blue-700/80 font-sans">Bold the 0 baseline on the grid</p>
+                        <Label className="text-xs font-semibold text-slate-800 font-sans">Highlight Zero Line</Label>
+                        <p className="text-[11px] text-slate-500 font-sans">Bold the 0 baseline on the grid</p>
                     </div>
                     <Switch
                         checked={isZeroLineHighlighted}
@@ -96,48 +98,45 @@ export function MoreTab({ axis, config, onUpdate, updateConfig, chartType }: Mor
             )}
 
             {/* Axis Line Section - Dropdown */}
-            <div className="space-y-0">
+            <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                 <div
-                    className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+                    className={cn(
+                        "flex items-center justify-between px-3.5 py-2.5 cursor-pointer select-none transition-colors",
+                        axisLineDropdownOpen ? "bg-slate-50/80 border-b border-slate-100" : "bg-slate-50/40 hover:bg-slate-50/80"
+                    )}
                     onClick={() => setAxisLineDropdownOpen(!axisLineDropdownOpen)}
                 >
-                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    <h3 className="text-sm font-semibold text-gray-900">Axis Line</h3>
-                    <div className="ml-auto flex items-center gap-2">
-                        <div onClick={(e) => e.stopPropagation()}>
-                            <Switch
-                                checked={config?.border?.display !== false}
-                                onCheckedChange={(checked) => updateConfig('border.display', checked)}
-                                className="data-[state=checked]:bg-blue-600"
-                            />
-                        </div>
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className={`transform transition-transform ${axisLineDropdownOpen ? 'rotate-180' : ''}`}
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-blue-600 rounded-full" />
+                        <h3 className="text-xs font-semibold text-slate-800">Axis Line</h3>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Switch
+                            checked={config?.border?.display !== false}
+                            onCheckedChange={(checked) => updateConfig('border.display', checked)}
+                            className="data-[state=checked]:bg-blue-600"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setAxisLineDropdownOpen(!axisLineDropdownOpen)}
+                            className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                            aria-label="Toggle axis line options"
                         >
-                            <path d="M6 9L12 15L18 9" />
-                        </svg>
+                            <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", axisLineDropdownOpen && "rotate-180")} />
+                        </button>
                     </div>
                 </div>
 
                 {/* Dropdown Content */}
                 {axisLineDropdownOpen && (
-                    <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100">
+                    <div className="p-3.5 space-y-3.5 bg-white">
                         <div className="grid grid-cols-2 gap-3">
                             {/* Color */}
-                            <div className="flex flex-col items-start gap-1">
-                                <Label className="text-xs font-medium">Color</Label>
+                            <div className="space-y-1">
+                                <Label className="text-xs font-medium text-slate-700">Line Color</Label>
                                 <div className="flex items-center gap-2">
                                     <div
-                                        className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
+                                        className="w-7 h-7 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
                                         style={{ backgroundColor: config?.border?.color || '#666666' }}
                                         onClick={() => document.getElementById(`axis-line-color-${axis}`)?.click()}
                                     />
@@ -151,25 +150,28 @@ export function MoreTab({ axis, config, onUpdate, updateConfig, chartType }: Mor
                                     <Input
                                         value={config?.border?.color || '#666666'}
                                         onChange={(e) => updateConfig('border.color', e.target.value)}
-                                        className="w-20 h-8 text-xs font-mono uppercase"
+                                        className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
                                         placeholder="#666666"
                                     />
                                 </div>
                             </div>
 
                             {/* Width */}
-                            <div className="flex flex-col items-start gap-1">
-                                <Label className="text-xs font-medium">Width</Label>
-                                <Input
-                                    type="number"
-                                    value={config?.border?.width || ''}
-                                    onChange={(e) => updateConfig('border.width', e.target.value ? Number(e.target.value) : undefined)}
-                                    placeholder="1"
-                                    className="h-8 text-xs w-full"
-                                    min={0}
-                                    max={10}
-                                    step={0.5}
-                                />
+                            <div className="space-y-1">
+                                <Label className="text-xs font-medium text-slate-700">Line Width</Label>
+                                <div className="flex items-center gap-1.5">
+                                    <Input
+                                        type="number"
+                                        value={config?.border?.width || ''}
+                                        onChange={(e) => updateConfig('border.width', e.target.value ? Number(e.target.value) : undefined)}
+                                        placeholder="1"
+                                        className="h-8 text-xs bg-white flex-1 min-w-0"
+                                        min={0}
+                                        max={10}
+                                        step={0.5}
+                                    />
+                                    <span className="text-xs text-slate-400 shrink-0">px</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -177,94 +179,95 @@ export function MoreTab({ axis, config, onUpdate, updateConfig, chartType }: Mor
             </div>
 
             {/* Scale Configuration Section - Dropdown */}
-            <div className="space-y-0">
+            <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                 <div
-                    className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+                    className={cn(
+                        "flex items-center justify-between px-3.5 py-2.5 cursor-pointer select-none transition-colors",
+                        scaleConfigDropdownOpen ? "bg-slate-50/80 border-b border-slate-100" : "bg-slate-50/40 hover:bg-slate-50/80"
+                    )}
                     onClick={() => setScaleConfigDropdownOpen(!scaleConfigDropdownOpen)}
                 >
-                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    <h3 className="text-sm font-semibold text-gray-900">Scale Configuration</h3>
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className={`ml-auto transform transition-transform ${scaleConfigDropdownOpen ? 'rotate-180' : ''}`}
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-blue-600 rounded-full" />
+                        <h3 className="text-xs font-semibold text-slate-800">Scale Bounds & Grace</h3>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setScaleConfigDropdownOpen(!scaleConfigDropdownOpen)}
+                        className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                        aria-label="Toggle scale configuration options"
                     >
-                        <path d="M6 9L12 15L18 9" />
-                    </svg>
+                        <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", scaleConfigDropdownOpen && "rotate-180")} />
+                    </button>
                 </div>
 
-                {/* Dropdown Content — NO overflow-hidden so the tooltip can escape */}
+                {/* Dropdown Content */}
                 {scaleConfigDropdownOpen && (
-                    <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative border-x border-b border-blue-100">
-                        {/* Scale Bounds */}
-                        <div className="space-y-1">
-                            <Label className="text-xs font-medium">Scale Bounds</Label>
-                            <Select
-                                value={config?.bounds || 'ticks'}
-                                onValueChange={(value) => {
-                                    if (value === 'data') {
-                                        onUpdate(`scales.${axis}`, {
-                                            ...config,
-                                            bounds: value,
-                                            grace: 0
-                                        })
-                                    } else {
-                                        updateConfig('bounds', value)
-                                    }
-                                }}
-                            >
-                                <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Select bounds" />
-                                </SelectTrigger>
-                                <SelectContent position="popper" sideOffset={4}>
-                                    <SelectItem value="ticks">Ticks</SelectItem>
-                                    <SelectItem value="data">Data</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Grace */}
-                        <div className="space-y-1">
-                            <Label className="text-xs font-medium">Grace</Label>
-                            <div className="flex items-center gap-1">
-                                <Input
-                                    type="number"
-                                    value={graceNumericValue}
-                                    onChange={(e) => {
-                                        const num = e.target.value === '' ? 0 : Number(e.target.value);
-                                        updateConfig('grace', graceIsPercent ? `${num}%` : num);
+                    <div className="p-3.5 space-y-3.5 bg-white">
+                        <div className="grid grid-cols-2 gap-3 items-end">
+                            {/* Scale Bounds */}
+                            <div className="space-y-1">
+                                <Label className="text-xs font-medium text-slate-700">Scale Bounds</Label>
+                                <Select
+                                    value={config?.bounds || 'ticks'}
+                                    onValueChange={(value) => {
+                                        if (value === 'data') {
+                                            onUpdate(`scales.${axis}`, {
+                                                ...config,
+                                                bounds: value,
+                                                grace: 0
+                                            })
+                                        } else {
+                                            updateConfig('bounds', value)
+                                        }
                                     }}
-                                    placeholder="5"
-                                    className="h-8 text-xs flex-1"
-                                    min={0}
-                                    step={1}
-                                    disabled={config?.bounds === 'data'}
-                                />
-                                <button
-                                    type="button"
-                                    className={`h-8 px-2.5 text-xs font-semibold rounded-md border transition-all flex-shrink-0 ${
-                                        graceIsPercent
-                                            ? 'bg-blue-600 text-white border-blue-600'
-                                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                                    }`}
-                                    disabled={config?.bounds === 'data'}
-                                    onClick={() => {
-                                        const newIsPercent = !graceIsPercent;
-                                        setGraceIsPercent(newIsPercent);
-                                        const num = graceNumericValue;
-                                        updateConfig('grace', newIsPercent ? `${num}%` : num);
-                                    }}
-                                    title={graceIsPercent ? 'Percentage mode (click for absolute)' : 'Absolute mode (click for percentage)'}
                                 >
-                                    {graceIsPercent ? '%' : '#'}
-                                </button>
+                                    <SelectTrigger className="h-8 text-xs bg-white">
+                                        <SelectValue placeholder="Select bounds" />
+                                    </SelectTrigger>
+                                    <SelectContent position="popper" sideOffset={4}>
+                                        <SelectItem value="ticks">Ticks</SelectItem>
+                                        <SelectItem value="data">Data</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Grace */}
+                            <div className="space-y-1">
+                                <Label className="text-xs font-medium text-slate-700">Grace (Headroom)</Label>
+                                <div className="flex items-center gap-1.5">
+                                    <Input
+                                        type="number"
+                                        value={graceNumericValue}
+                                        onChange={(e) => {
+                                            const num = e.target.value === '' ? 0 : Number(e.target.value);
+                                            updateConfig('grace', graceIsPercent ? `${num}%` : num);
+                                        }}
+                                        placeholder="5"
+                                        className="h-8 text-xs bg-white flex-1 min-w-0"
+                                        min={0}
+                                        step={1}
+                                        disabled={config?.bounds === 'data'}
+                                    />
+                                    <button
+                                        type="button"
+                                        className={`h-8 px-2.5 text-xs font-semibold rounded-lg border transition-all shrink-0 ${
+                                            graceIsPercent
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                        disabled={config?.bounds === 'data'}
+                                        onClick={() => {
+                                            const newIsPercent = !graceIsPercent;
+                                            setGraceIsPercent(newIsPercent);
+                                            const num = graceNumericValue;
+                                            updateConfig('grace', newIsPercent ? `${num}%` : num);
+                                        }}
+                                        title={graceIsPercent ? 'Percentage mode (click for absolute)' : 'Absolute mode (click for percentage)'}
+                                    >
+                                        {graceIsPercent ? '%' : '#'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

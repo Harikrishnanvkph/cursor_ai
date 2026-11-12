@@ -22,8 +22,9 @@ import {
 import { toast } from "sonner"
 import { useDecorationStore, type DecorationShapeType, type DrawingMode } from "@/lib/stores/decoration-store"
 import { decorationFileRegistry } from "@/lib/stores/decoration-file-registry"
-import { DESIGN_ELEMENTS_LIBRARY, ELEMENT_CATEGORIES, type CanvasDesignElement, isMulticolorSvg, extractSvgColors, replaceSvgColor } from "@/lib/elements/elements-registry"
+import { isMulticolorSvg, extractSvgColors, replaceSvgColor } from "@/lib/elements/elements-registry"
 import { IconifySearchTab } from "./IconifySearchTab"
+import { PexelsImageTab } from "./PexelsImageTab"
 
 // ═══════════════════════════════════════════════════════
 // Shape definitions for the picker
@@ -722,96 +723,13 @@ export function DecorationsPanel() {
   const [svgCode, setSvgCode] = useState('')
   const svgFileRef = useRef<HTMLInputElement>(null)
   const imgFileRef = useRef<HTMLInputElement>(null)
-  const [activeTab, setActiveTab] = useState<'elements' | 'iconify' | 'shapes' | 'section'>('elements')
-  const [elementSearch, setElementSearch] = useState('')
-  const [elementCategory, setElementCategory] = useState<string>('all')
+  const [activeTab, setActiveTab] = useState<'graphics' | 'shapes' | 'section' | 'images'>('graphics')
   const elementsListRef = useRef<HTMLDivElement>(null)
   const shapesListRef = useRef<HTMLDivElement>(null)
   const sectionListRef = useRef<HTMLDivElement>(null)
+  const imagesListRef = useRef<HTMLDivElement>(null)
 
-  // Dynamic Elements from jsDelivr CDN (Zero SVG code in main repo)
-  const [cdnElements, setCdnElements] = useState<CanvasDesignElement[]>([])
-  const [isLoadingCdn, setIsLoadingCdn] = useState(false)
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.removeItem('cached_cdn_elements_v1')
-      } catch {}
-      const cached = sessionStorage.getItem('cached_cdn_elements_v2')
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached)
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setCdnElements(parsed)
-            return
-          }
-        } catch {}
-      }
-    }
-
-    const loadCdnElements = async () => {
-      setIsLoadingCdn(true)
-      try {
-        const cdnUrl =
-          process.env.NEXT_PUBLIC_ELEMENTS_CDN_URL ||
-          'https://cdn.jsdelivr.net/gh/Harikrishnanvkph/design-elements-cdn@v2.0.0/catalog.json'
-        const res = await fetch(cdnUrl)
-        if (res.ok) {
-          const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
-            setCdnElements(data)
-            try {
-              sessionStorage.setItem('cached_cdn_elements_v2', JSON.stringify(data))
-            } catch {}
-            return
-          }
-        }
-      } catch (err) {
-        console.warn('[Elements CDN] Could not fetch catalog from jsDelivr:', err)
-      } finally {
-        setIsLoadingCdn(false)
-      }
-    }
-
-    loadCdnElements()
-  }, [])
-
-  const elementsPool = cdnElements.length > 0 ? cdnElements : DESIGN_ELEMENTS_LIBRARY
-
-  const filteredElements = React.useMemo(() => {
-    return elementsPool.filter(elem => {
-      const matchCat = elementCategory === 'all' || elem.category === elementCategory
-      const query = elementSearch.toLowerCase().trim()
-      const matchQuery = !query || elem.name.toLowerCase().includes(query) || elem.tags.some(t => t.toLowerCase().includes(query))
-      return matchCat && matchQuery
-    })
-  }, [elementsPool, elementCategory, elementSearch])
-
-  const handleAddDesignElement = (elem: CanvasDesignElement) => {
-    const isMulti = isMulticolorSvg(elem.svg)
-    const newId = addShape({
-      type: 'deco-svg',
-      x: 60,
-      y: 60,
-      width: elem.width,
-      height: elem.height,
-      rotation: 0,
-      fillColor: isMulti ? 'original' : elem.defaultColor,
-      fillOpacity: 100,
-      strokeColor: isMulti ? 'original' : elem.defaultColor,
-      strokeWidth: 0,
-      strokeStyle: 'solid',
-      visible: true,
-      locked: false,
-      zIndex: shapes.length + 1,
-      svgContent: elem.svg,
-      originalSvg: elem.svg,
-    })
-    setSelectedShapeId(newId)
-    setDrawingMode(null)
-    toast.success(`Added "${elem.name}" to canvas! Drag, rotate, or change color.`)
-  }
 
   const handleAddQuickText = (preset: 'heading' | 'subheading' | 'body') => {
     const fontSize = preset === 'heading' ? 24 : preset === 'subheading' ? 18 : 13
@@ -844,8 +762,7 @@ export function DecorationsPanel() {
   }
 
   const handleScrollToHistory = () => {
-    const isSvgTab = activeTab === 'elements' || activeTab === 'iconify'
-    const targetRef = isSvgTab ? elementsListRef : activeTab === 'shapes' ? shapesListRef : sectionListRef
+    const targetRef = activeTab === 'graphics' ? elementsListRef : activeTab === 'shapes' ? shapesListRef : activeTab === 'images' ? imagesListRef : sectionListRef
     if (targetRef.current) {
       targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
       targetRef.current.focus()
@@ -858,10 +775,13 @@ export function DecorationsPanel() {
   const SECTION_TYPE_LIST = ['textbox', 'textbox-auto', 'deco-image', 'deco-svg']
   const shapeElements = shapes.filter(s => !SECTION_TYPE_LIST.includes(s.type))
   const sectionElements = shapes.filter(s => SECTION_TYPE_LIST.includes(s.type))
-  const activeCount = (activeTab === 'elements' || activeTab === 'iconify')
+  const imageElements = shapes.filter(s => s.type === 'deco-image')
+  const activeCount = activeTab === 'graphics'
     ? shapes.filter(s => s.type === 'deco-svg').length
     : activeTab === 'shapes'
     ? shapeElements.length
+    : activeTab === 'images'
+    ? imageElements.length
     : sectionElements.length
 
   const handleSelectTool = (type: DrawingMode | 'select') => {
@@ -956,7 +876,7 @@ export function DecorationsPanel() {
   }
 
   // Build list renderer for any set of shapes
-  const renderElementList = (elements: typeof shapes, emptyIcon: React.ElementType, emptyText: string, listType?: 'section' | 'shapes') => {
+  const renderElementList = (elements: typeof shapes, emptyIcon: React.ElementType, emptyText: string, listType?: 'section' | 'shapes' | 'elements') => {
     const EmptyIcon = emptyIcon
     const isSection = listType === 'section'
     const isShapes = listType === 'shapes'
@@ -1024,14 +944,15 @@ export function DecorationsPanel() {
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex w-full items-center justify-between mb-1">
+    <div className="space-y-2.5">
+      <div className="flex w-full items-center justify-between pb-2 mb-1 border-b border-slate-100">
         <button
+          type="button"
           onClick={handleScrollToHistory}
-          className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 hover:underline focus:outline-none transition-colors"
+          className="text-xs font-semibold text-slate-700 hover:text-blue-600 flex items-center gap-1.5 focus:outline-none transition-colors group cursor-pointer"
         >
-          <span>History</span>
-          <span className="inline-flex items-center justify-center bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded-full min-w-[18px] h-[18px]">
+          <span>Canvas Elements</span>
+          <span className="inline-flex items-center justify-center bg-slate-100 group-hover:bg-blue-100 text-slate-600 group-hover:text-blue-700 text-[11px] font-medium px-2 py-0.5 rounded-full min-w-[18px] h-[18px] transition-colors">
             {activeCount}
           </span>
         </button>
@@ -1039,7 +960,7 @@ export function DecorationsPanel() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 hover:bg-slate-100 disabled:opacity-30"
+            className="h-7 w-7 p-0 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-30"
             disabled={!canUndo()}
             onClick={() => undoShapeAction()}
             title="Undo (Ctrl+Z)"
@@ -1049,7 +970,7 @@ export function DecorationsPanel() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 hover:bg-slate-100 disabled:opacity-30"
+            className="h-7 w-7 p-0 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-30"
             disabled={!canRedo()}
             onClick={() => redoShapeAction()}
             title="Redo (Ctrl+Shift+Z)"
@@ -1058,152 +979,47 @@ export function DecorationsPanel() {
           </Button>
         </div>
       </div>
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'elements' | 'iconify' | 'shapes' | 'section')} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'graphics' | 'shapes' | 'section' | 'images')} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 gap-1.5 h-auto p-1 bg-slate-100/70 rounded-xl border border-slate-200/50">
           <TabsTrigger
-            value="elements"
-            className="flex items-center justify-center gap-1 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            value="graphics"
+            className="group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
           >
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            Elements
-          </TabsTrigger>
-          <TabsTrigger
-            value="iconify"
-            className="flex items-center justify-center gap-1 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
-          >
-            <Globe className="h-3.5 w-3.5 text-indigo-500" />
-            Graphics
+            <Sparkles className="h-4 w-4 mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-indigo-600 transition-colors" />
+            <span className="text-[11px] font-medium leading-none tracking-tight group-data-[state=active]:font-semibold">
+              Graphics
+            </span>
           </TabsTrigger>
           <TabsTrigger
             value="shapes"
-            className="flex items-center justify-center gap-1 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            className="group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
           >
-            <Hexagon className="h-3.5 w-3.5" />
-            Shapes
+            <Hexagon className="h-4 w-4 mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-violet-600 transition-colors" />
+            <span className="text-[11px] font-medium leading-none tracking-tight group-data-[state=active]:font-semibold">
+              Shapes
+            </span>
           </TabsTrigger>
           <TabsTrigger
             value="section"
-            className="flex items-center justify-center gap-1 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            className="group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
           >
-            <Type className="h-3.5 w-3.5 text-blue-500" />
-            Text
+            <Type className="h-4 w-4 mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-blue-600 transition-colors" />
+            <span className="text-[11px] font-medium leading-none tracking-tight group-data-[state=active]:font-semibold">
+              Text
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="images"
+            className="group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
+          >
+            <ImageIcon className="h-4 w-4 mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-emerald-600 transition-colors" />
+            <span className="text-[11px] font-medium leading-none tracking-tight group-data-[state=active]:font-semibold">
+              Image
+            </span>
           </TabsTrigger>
         </TabsList>
-
-        {/* ═══════════ ELEMENTS TAB (Canva Style Designs) ═══════════ */}
-        <TabsContent value="elements" className="space-y-4 mt-3">
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-            <Input
-              type="text"
-              placeholder="Search brushes, splatters, markers..."
-              value={elementSearch}
-              onChange={(e) => setElementSearch(e.target.value)}
-              className="h-8 pl-8 text-xs bg-slate-50/60 focus:bg-white"
-            />
-            {elementSearch && (
-              <button
-                type="button"
-                onClick={() => setElementSearch('')}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
-              >
-                <XIcon className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[11px] no-scrollbar">
-            {ELEMENT_CATEGORIES.map((cat) => {
-              const isSelected = elementCategory === cat.id
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setElementCategory(cat.id)}
-                  className={`px-2.5 py-1 rounded-full whitespace-nowrap transition-all font-medium ${
-                    isSelected
-                      ? 'bg-amber-500 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Elements Gallery Grid */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center px-1">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1.5">
-                {isLoadingCdn && <Loader2 className="h-3 w-3 animate-spin text-amber-500" />}
-                Design Library ({filteredElements.length})
-              </span>
-              <span className="text-[10px] text-slate-400">Click to add to canvas</span>
-            </div>
-
-            {isLoadingCdn && filteredElements.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-                <Loader2 className="h-6 w-6 animate-spin text-amber-500 mb-2" />
-                <span className="text-xs">Streaming elements from CDN...</span>
-              </div>
-            ) : filteredElements.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 border border-dashed border-slate-200 rounded-xl">
-                <p className="text-xs font-medium">No elements found</p>
-                <p className="text-[10px] text-slate-400 mt-1">Try another search keyword or category</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 max-h-[340px] overflow-y-auto pr-1">
-                {filteredElements.map((elem) => (
-                  <button
-                    key={elem.id}
-                    type="button"
-                    onClick={() => handleAddDesignElement(elem)}
-                    className="group relative flex flex-col items-center justify-between p-2 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50/90 hover:border-amber-400 hover:shadow-xs transition-all text-left"
-                  >
-                    <div className="w-full h-16 flex items-center justify-center overflow-hidden p-1">
-                      <div
-                        className="w-full h-full flex items-center justify-center transition-transform group-hover:scale-105"
-                        style={{ color: elem.defaultColor }}
-                        dangerouslySetInnerHTML={{ __html: elem.svg }}
-                      />
-                    </div>
-                    <div className="w-full mt-1.5 pt-1 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-[10px] font-medium text-slate-700 truncate block group-hover:text-amber-600 transition-colors">
-                        {elem.name}
-                      </span>
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10"
-                        style={{ backgroundColor: elem.defaultColor }}
-                        title={elem.defaultColor}
-                      />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Layered Design Elements On Canvas */}
-          <div ref={elementsListRef} className="pt-2 border-t border-slate-100">
-            <div className="flex justify-between items-center mb-1.5">
-              <Label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                Active Elements On Canvas
-              </Label>
-            </div>
-            {renderElementList(
-              shapes.filter(s => s.type === 'deco-svg'),
-              Sparkles,
-              "No design elements on canvas yet. Click any brush or splatter above to add!",
-              'section'
-            )}
-          </div>
-        </TabsContent>
-
-        {/* ═══════════ ICONIFY TAB (Online 200,000+ Vector SVGs) ═══════════ */}
-        <TabsContent value="iconify" className="mt-3">
+        {/* ═══════════ GRAPHICS TAB (Elements + Icons + Emojis) ═══════════ */}
+        <TabsContent value="graphics" className="mt-3">
           <IconifySearchTab
             renderElementList={renderElementList}
             elementsListRef={elementsListRef}
@@ -1621,6 +1437,14 @@ export function DecorationsPanel() {
           >
             {renderElementList(sectionElements, Type, 'No section elements yet. Add a textbox, image, or SVG above.', 'section')}
           </div>
+        </TabsContent>
+
+        {/* ═══════════ IMAGES TAB (Pexels Stock Photos + Custom Uploads) ═══════════ */}
+        <TabsContent value="images" className="mt-3">
+          <PexelsImageTab
+            renderElementList={renderElementList}
+            imagesListRef={imagesListRef}
+          />
         </TabsContent>
       </Tabs>
     </div>

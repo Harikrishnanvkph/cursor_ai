@@ -28,6 +28,7 @@ import { UpgradeProDialog } from "@/components/dialogs/upgrade-pro-dialog"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useChartRename } from "@/lib/hooks/use-chart-rename"
 import { useChartExport } from "@/lib/hooks/use-chart-export"
 import { useSidebarInputContext } from "@/components/landing/sidebar-context"
@@ -421,11 +422,9 @@ export function MobileLandingView({
                     onClick={(e) => {
                       e.stopPropagation()
                       const templateStore = useTemplateStore.getState()
-                      templateStore.setGenerateMode('template')
-                      if (!templateStore.currentTemplate) {
-                        templateStore.applyTemplate('template-1')
-                      }
+                      templateStore.setGenerateMode('format')
                       templateStore.setEditorMode('template')
+                      useFormatGalleryStore.getState().openGallery()
                     }}
                     className={`flex-1 py-1 text-[11px] font-semibold rounded-full transition-colors text-center antialiased subpixel-antialiased ${
                       editorMode === 'template'
@@ -916,11 +915,9 @@ export function MobileLandingView({
               onPaste={handlePaste}
               rows={1}
               placeholder={
-                isChatDisabled
-                  ? "Attach a template to start..."
-                  : hasActiveChart
+                hasActiveChart
                   ? "Modify (colors, title, data)..."
-                  : "Ask Chartography..."
+                  : "Ask AI to Generate Chart..."
               }
               disabled={isProcessing || isChatDisabled}
               onKeyDown={(e) => {

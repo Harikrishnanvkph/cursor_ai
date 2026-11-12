@@ -56,7 +56,7 @@ export function ConfirmDialog({
 
   const dialogContent = (
     <div
-      className="fixed inset-0 z-[130] flex items-center justify-center"
+      className="fixed inset-0 z-[130] flex items-center justify-center font-sans"
       role="dialog"
       aria-modal="true"
     >
@@ -64,7 +64,7 @@ export function ConfirmDialog({
         className="fixed inset-0 bg-black/40"
         onClick={() => (dismissible ? onCancel() : undefined)}
       />
-      <div className="relative z-[131] w-[92vw] max-w-sm rounded-lg bg-white border border-gray-200 shadow-xl p-4">
+      <div className="relative z-[131] w-[92vw] max-w-sm rounded-lg bg-white border border-gray-200 shadow-xl p-4 font-sans">
         <div className="mb-2">
           <h3 className="text-base font-semibold text-gray-900">{title}</h3>
           {description && (

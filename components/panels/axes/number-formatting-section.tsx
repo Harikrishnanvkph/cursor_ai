@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
+import { ChevronDown } from "lucide-react"
 
 export interface NumberFormatConfig {
     preset?: 'none' | 'currency' | 'compact' | 'percent' | 'number'
@@ -56,33 +57,30 @@ export function NumberFormattingSection({
     }
 
     return (
-        <div className={cn("space-y-0", className)}>
+        <div className={cn("rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs transition-all", className)}>
             <div
-                className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+                className={cn(
+                    "flex items-center justify-between px-3.5 py-2.5 cursor-pointer select-none transition-colors",
+                    dropdownOpen ? "bg-slate-50/80 border-b border-slate-100" : "bg-slate-50/40 hover:bg-slate-50/80"
+                )}
                 onClick={() => setDropdownOpen(!dropdownOpen)}
             >
-                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-                <div className="ml-auto flex items-center gap-2">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className={`transform transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
-                    >
-                        <path d="M6 9L12 15L18 9" />
-                    </svg>
+                <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-blue-600 rounded-full" />
+                    <h3 className="text-xs font-semibold text-slate-800">{title}</h3>
                 </div>
+                <button
+                    type="button"
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                    aria-label="Toggle number format section"
+                >
+                    <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", dropdownOpen && "rotate-180")} />
+                </button>
             </div>
 
             {dropdownOpen && (
-                <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden border-x border-b border-blue-100">
+                <div className="p-3.5 space-y-3.5 bg-white">
                     {/* Format Preset */}
                     <div className="space-y-1">
                         <Label className="text-xs font-medium">Format Preset</Label>

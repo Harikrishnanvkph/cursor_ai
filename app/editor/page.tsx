@@ -348,7 +348,7 @@ function EditorPageContent() {
   const { user, signOut } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { activeTab, setActiveTab, leftSidebarCollapsed, setLeftSidebarCollapsed } = useEditorSidebarContext()
+  const { activeTab, setActiveTab, leftSidebarCollapsed, setLeftSidebarCollapsed, sidebarView, setSidebarView } = useEditorSidebarContext()
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
   const chartConfig = useChartConfig()
   const chartType = useChartType()
@@ -761,6 +761,8 @@ function EditorPageContent() {
       const { tab } = event.detail;
       setActiveTab(tab);
       setMobilePanel(tab);
+      setSidebarView('tools');
+      setLeftSidebarCollapsed(false);
       
       // Explicitly sync editor mode if a specific tab is targeted
       if (tab.startsWith('tpl_')) {
@@ -774,7 +776,7 @@ function EditorPageContent() {
     return () => {
       window.removeEventListener('changeActiveTab', handleTabChange as EventListener);
     };
-  }, [setActiveTab, setEditorMode]);
+  }, [setActiveTab, setEditorMode, setSidebarView, setLeftSidebarCollapsed]);
 
 
 
@@ -872,6 +874,11 @@ function EditorPageContent() {
         setCurrentSnapshotId(snapshotResult.data.id)
       }
 
+      // Refresh history store immediately so newly saved chart appears in Recents / History
+      try {
+        await loadConversationsFromBackend(true)
+      } catch (e) {}
+
       // Close dialog
       setShowDimensionDialog(false)
       setDimensionMismatchInfo(null)
@@ -958,6 +965,12 @@ function EditorPageContent() {
       }
       // Clear template state locally
       useTemplateStore.getState().clearAllTemplateState()
+
+      // Refresh history store immediately so newly saved chart appears in Recents / History
+      try {
+        await loadConversationsFromBackend(true)
+      } catch (e) {}
+
       toast.success("Chart saved as separate copy!")
     } catch (error) {
       console.error('Save as separate chart failed:', error)

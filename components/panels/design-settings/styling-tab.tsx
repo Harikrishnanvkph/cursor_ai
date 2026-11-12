@@ -48,6 +48,26 @@ interface StylingTabProps {
     handleConfigUpdate: (path: string, value: any) => void
 }
 
+/**
+ * Safely converts numbers, numeric strings, or Chart.js corner/padding objects to finite numbers,
+ * preventing NaN from ever being passed to React inputs.
+ */
+function toSafeNumber(val: any, fallback = 0): number {
+    if (typeof val === 'number') {
+        return Number.isFinite(val) ? val : fallback
+    }
+    if (typeof val === 'object' && val !== null) {
+        const corner = val.topLeft ?? val.topRight ?? val.bottomLeft ?? val.bottomRight ?? val.top ?? val.bottom ?? val.left ?? val.right
+        if (typeof corner === 'number' && Number.isFinite(corner)) return corner
+        return fallback
+    }
+    if (typeof val === 'string') {
+        const parsed = parseFloat(val)
+        return Number.isFinite(parsed) ? parsed : fallback
+    }
+    return fallback
+}
+
 export function StylingTab({ chartData, chartConfig, chartType, handleUpdateDataset, handleConfigUpdate }: StylingTabProps) {
     const [borderColorMode, setBorderColorMode] = useState<'auto' | 'manual'>('auto')
     const [manualBorderColor, setManualBorderColor] = useState('#000000')
@@ -131,9 +151,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <div className="flex items-center gap-2">
                                 <Input
                                     type="number"
-                                    value={Number(readSliceAwareValue('borderWidth', 2))}
+                                    value={toSafeNumber(readSliceAwareValue('borderWidth', 2), 2)}
                                     onChange={(e) => {
-                                        const value = e.target.value ? Number(e.target.value) : 2
+                                        const value = e.target.value === '' ? 0 : toSafeNumber(e.target.value, 2)
                                         handleSliceAwareUpdate('borderWidth', value, 2)
                                     }}
                                     className="w-full h-8 text-xs"
@@ -152,10 +172,20 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <div className="flex items-center gap-2">
                                 <Input
                                     type="number"
-                                    value={Number(readSliceAwareValue('borderRadius', 0))}
+                                    value={toSafeNumber(readSliceAwareValue('borderRadius', 0), 0)}
                                     onChange={(e) => {
-                                        const value = e.target.value ? Number(e.target.value) : 0
-                                        handleSliceAwareUpdate('borderRadius', value, 0)
+                                        const raw = e.target.value === '' ? 0 : toSafeNumber(e.target.value, 0)
+                                        const current = readSliceAwareValue('borderRadius', 0)
+                                        if (typeof current === 'object' && current !== null) {
+                                            handleSliceAwareUpdate('borderRadius', {
+                                                topLeft: raw,
+                                                topRight: raw,
+                                                bottomLeft: current.bottomLeft ?? 0,
+                                                bottomRight: current.bottomRight ?? 0,
+                                            }, 0)
+                                        } else {
+                                            handleSliceAwareUpdate('borderRadius', raw, 0)
+                                        }
                                     }}
                                     className="w-full h-8 text-xs"
                                     placeholder="0"
@@ -275,9 +305,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                 <Label className="text-xs font-medium">Point Radius</Label>
                                 <Input
                                     type="number"
-                                    value={Number(readSliceAwareValue('pointRadius', 5))}
+                                    value={toSafeNumber(readSliceAwareValue('pointRadius', 5), 5)}
                                     onChange={(e) => {
-                                        const value = e.target.value ? Number(e.target.value) : 5
+                                        const value = e.target.value === '' ? 0 : toSafeNumber(e.target.value, 5)
                                         handleSliceAwareUpdate('pointRadius', value, 5)
                                     }}
                                     className="h-8 text-xs"
@@ -293,9 +323,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <Label className="text-xs font-medium">Hover Radius</Label>
                             <Input
                                 type="number"
-                                value={Number(readSliceAwareValue('pointHoverRadius', 8))}
+                                value={toSafeNumber(readSliceAwareValue('pointHoverRadius', 8), 8)}
                                 onChange={(e) => {
-                                    const value = e.target.value ? Number(e.target.value) : 8
+                                    const value = e.target.value === '' ? 0 : toSafeNumber(e.target.value, 8)
                                     handleSliceAwareUpdate('pointHoverRadius', value, 8)
                                 }}
                                 className="h-8 text-xs"
@@ -310,9 +340,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <Label className="text-xs font-medium">Border Width</Label>
                             <Input
                                 type="number"
-                                value={Number(readSliceAwareValue('pointBorderWidth', 1))}
+                                value={toSafeNumber(readSliceAwareValue('pointBorderWidth', 1), 1)}
                                 onChange={(e) => {
-                                    const value = e.target.value ? Number(e.target.value) : 1
+                                    const value = e.target.value === '' ? 0 : toSafeNumber(e.target.value, 1)
                                     handleSliceAwareUpdate('pointBorderWidth', value, 1)
                                 }}
                                 className="h-8 text-xs"
@@ -356,9 +386,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <Label className="text-xs font-medium">Hover Border Width</Label>
                             <Input
                                 type="number"
-                                value={Number(readSliceAwareValue('pointHoverBorderWidth', 2))}
+                                value={toSafeNumber(readSliceAwareValue('pointHoverBorderWidth', 2), 2)}
                                 onChange={(e) => {
-                                    const value = e.target.value ? Number(e.target.value) : 2
+                                    const value = e.target.value === '' ? 0 : toSafeNumber(e.target.value, 2)
                                     handleSliceAwareUpdate('pointHoverBorderWidth', value, 2)
                                 }}
                                 className="h-8 text-xs"
@@ -379,9 +409,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                     <Label className="text-xs font-medium">Min Radius</Label>
                                     <Input
                                         type="number"
-                                        value={Number((chartConfig as any)?.elements?.point?.radius ?? 3)}
+                                        value={toSafeNumber((chartConfig as any)?.elements?.point?.radius, 3)}
                                         onChange={(e) => {
-                                            const value = e.target.value ? Number(e.target.value) : 3
+                                            const value = e.target.value === '' ? 0 : toSafeNumber(e.target.value, 3)
                                             handleConfigUpdate('elements.point.radius', value)
                                         }}
                                         className="h-8 text-xs"
@@ -395,9 +425,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                     <Label className="text-xs font-medium">Max Radius</Label>
                                     <Input
                                         type="number"
-                                        value={Number((chartConfig as any)?.elements?.point?.hoverRadius ?? 20)}
+                                        value={toSafeNumber((chartConfig as any)?.elements?.point?.hoverRadius, 20)}
                                         onChange={(e) => {
-                                            const value = e.target.value ? Number(e.target.value) : 20
+                                            const value = e.target.value === '' ? 0 : toSafeNumber(e.target.value, 20)
                                             handleConfigUpdate('elements.point.hoverRadius', value)
                                         }}
                                         className="h-8 text-xs"
@@ -431,9 +461,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <Label className="text-xs font-medium">Line Width</Label>
                             <Input
                                 type="number"
-                                value={Number(primaryDataset.borderWidth ?? 2)}
+                                value={toSafeNumber(primaryDataset.borderWidth, 2)}
                                 onChange={(e) => {
-                                    const value = e.target.value ? Number(e.target.value) : 2
+                                    const value = e.target.value === '' ? 0 : toSafeNumber(e.target.value, 2)
                                     getTargetDatasetIndices().forEach(index => {
                                         handleUpdateDataset(index, 'borderWidth', value)
                                     })
@@ -449,7 +479,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                         <div className="space-y-1">
                             <Label className="text-xs font-medium">Line Tension</Label>
                             <Slider
-                                value={[Number(primaryDataset.tension ?? 0)]}
+                                value={[toSafeNumber(primaryDataset.tension, 0)]}
                                 onValueChange={([value]) => {
                                     getTargetDatasetIndices().forEach(index => {
                                         handleUpdateDataset(index, 'tension', value)
@@ -460,7 +490,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                 step={0.1}
                                 className="mt-2"
                             />
-                            <div className="text-xs text-gray-500 mt-1">{Number(primaryDataset.tension ?? 0).toFixed(1)}</div>
+                            <div className="text-xs text-gray-500 mt-1">{toSafeNumber(primaryDataset.tension, 0).toFixed(1)}</div>
                         </div>
 
                         <div className="space-y-1">

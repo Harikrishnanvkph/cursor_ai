@@ -166,7 +166,7 @@ export function TabletLandingView({
   }, [currentSnapshotId])
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex overflow-hidden">
+    <div className="fixed inset-0 w-full h-full bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex overflow-hidden font-sans">
       <AnimatedBackground />
 
       {/* Header */}
@@ -434,7 +434,7 @@ export function TabletLandingView({
                       <textarea
                         ref={textareaRef}
                         className="flex-1 px-2 py-1 text-sm bg-transparent border-0 outline-none resize-none min-h-[34px] max-h-[58px] leading-relaxed transition-all font-sans text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
+                        placeholder={hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart..."}
                         value={input}
                         onChange={handleInputChange}
                         onPaste={handlePaste}
@@ -485,7 +485,7 @@ export function TabletLandingView({
                     messagesEndRef={messagesEndRef}
                     textareaRef={textareaRef}
                     isChatDisabled={isChatDisabled}
-                    disabledMessage="Please attach a template to start the conversation."
+                    disabledMessage="Type a message to get started."
                     compact={true}
                     currentChartState={currentChartState}
                   />

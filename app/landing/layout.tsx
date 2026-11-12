@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react"
 import { LandingSidebar } from "@/components/landing/landing-sidebar"
 import { SidebarProvider, useSidebarContext } from "@/components/landing/sidebar-context"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
+import { GeistSans } from "geist/font/sans"
+import { LandingFontProvider } from "@/components/landing/landing-font-provider"
 
 /**
  * Landing Layout — App Shell Architecture
@@ -19,9 +21,11 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 export default function LandingLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute>
-      <SidebarProvider>
-        <LandingLayoutInner>{children}</LandingLayoutInner>
-      </SidebarProvider>
+      <LandingFontProvider>
+        <SidebarProvider>
+          <LandingLayoutInner>{children}</LandingLayoutInner>
+        </SidebarProvider>
+      </LandingFontProvider>
     </ProtectedRoute>
   )
 }
@@ -47,12 +51,16 @@ function LandingLayoutInner({ children }: { children: React.ReactNode }) {
   // On tablet/mobile, the page handles its own layout (inline headers, bottom bars, etc.)
   // Only desktop gets the persistent sidebar shell.
   if (!isDesktop) {
-    return <>{children}</>
+    return (
+      <div className={`landing-page-container ${GeistSans.variable} ${GeistSans.className} font-sans min-h-screen w-full`}>
+        {children}
+      </div>
+    )
   }
 
   // Desktop: App Shell — sidebar is persistent, children swap on navigation
   return (
-    <div className="flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden">
+    <div className={`landing-page-container ${GeistSans.variable} ${GeistSans.className} font-sans flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden`}>
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/20 blur-[100px]"></div>

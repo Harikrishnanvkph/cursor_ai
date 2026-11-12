@@ -30,7 +30,8 @@ import {
   DoughnutController,
   PolarAreaController,
   RadarController,
-  Decimation
+  Decimation,
+  Scale
 } from "chart.js"
 import { Chart } from "react-chartjs-2"
 import { useChartStore } from "@/lib/chart-store"
@@ -100,6 +101,104 @@ ChartJS.register(
   Decimation,
   Tooltip
 );
+
+// Ensure Chart.js Title and SubTitle layout elements respect 4-way individual padding (top, right, bottom, left)
+const TitleElement = (Title as any)?._element;
+if (TitleElement && !TitleElement._drawArgs4WayPatched) {
+  const originalDrawArgs = TitleElement.prototype._drawArgs;
+  TitleElement.prototype._drawArgs = function (offset: number) {
+    const args = originalDrawArgs.call(this, offset);
+    if (this.isHorizontal()) {
+      const padLeft = this._padding?.left || 0;
+      const padRight = this._padding?.right || 0;
+      const align = this.options?.align || 'center';
+      if (align === 'start') {
+        args.titleX += padLeft;
+      } else if (align === 'end') {
+        args.titleX -= padRight;
+      } else {
+        args.titleX += (padLeft - padRight) / 2;
+      }
+    } else {
+      const padTop = this._padding?.top || 0;
+      const padBottom = this._padding?.bottom || 0;
+      const align = this.options?.align || 'center';
+      if (align === 'start') {
+        args.titleY += padTop;
+      } else if (align === 'end') {
+        args.titleY -= padBottom;
+      } else {
+        args.titleY += (padTop - padBottom) / 2;
+      }
+    }
+    return args;
+  };
+  TitleElement._drawArgs4WayPatched = true;
+}
+
+// Ensure Chart.js Scale (X-axis, Y-axis) titles respect 4-way individual horizontal padding (left, right)
+if (Scale && !(Scale.prototype as any)._drawTitle4WayPatched) {
+  const originalScaleDrawTitle = Scale.prototype.drawTitle;
+  Scale.prototype.drawTitle = function (...args: any[]) {
+    const title = this.options?.title;
+    if (!title?.display) return (originalScaleDrawTitle as any).apply(this, args);
+
+    const pad = title.padding;
+    const isObj = typeof pad === 'object' && pad !== null;
+    const padLeft = isObj ? Number(pad.left) || 0 : 0;
+    const padRight = isObj ? Number(pad.right) || 0 : 0;
+
+    const ctx = this.ctx;
+    ctx.save();
+    if (this.isHorizontal()) {
+      // Horizontal scale (e.g. X-axis):
+      // left / right moves title horizontally along the axis
+      const hShift = padLeft - padRight;
+      if (hShift !== 0) {
+        ctx.translate(hShift, 0);
+      }
+    } else {
+      // Vertical scale (e.g. Left/Right Y-axis):
+      // left / right moves title horizontally perpendicular to axis
+      const isRight = this.options?.position === 'right';
+      const hShift = isRight ? padRight - padLeft : -padLeft + padRight;
+      if (hShift !== 0) {
+        ctx.translate(hShift, 0);
+      }
+    }
+
+    try {
+      (originalScaleDrawTitle as any).apply(this, args);
+    } finally {
+      ctx.restore();
+    }
+  };
+  (Scale.prototype as any)._drawTitle4WayPatched = true;
+}
+
+// Ensure Chart.js Scale fit accurately allocates asymmetric top & bottom padding for ticks
+if (Scale && !(Scale.prototype as any)._fitCustomPaddingPatched) {
+  const originalScaleFit = Scale.prototype.fit;
+  Scale.prototype.fit = function () {
+    const customPad = (this.options?.ticks as any)?._customPadding;
+    if (customPad && this.options?.ticks) {
+      const padTop = Number(customPad.top) || 0;
+      const padBottom = Number(customPad.bottom) || 0;
+      const originalPadding = this.options.ticks.padding;
+      // In fit(), Chart.js calculates tickPadding = ticks.padding * 2.
+      // Setting ticks.padding to (padTop + padBottom) / 2 ensures total tickPadding = padTop + padBottom!
+      this.options.ticks.padding = (padTop + padBottom) / 2;
+      try {
+        originalScaleFit.call(this);
+      } finally {
+        this.options.ticks.padding = originalPadding;
+      }
+      return;
+    }
+    originalScaleFit.call(this);
+  };
+  (Scale.prototype as any)._fitCustomPaddingPatched = true;
+}
 
 // Plugin registration verified
 
@@ -2119,6 +2218,18 @@ export const ChartGenerator = memo(function ChartGenerator({
     Object.keys(appliedOptions.scales).forEach((axisKey) => {
       const scale = appliedOptions.scales[axisKey];
       if (!scale || typeof scale !== 'object') return;
+
+      // Sanitize scale.ticks.padding if it's an object { top, bottom }
+      if (scale.ticks && typeof scale.ticks.padding === 'object' && scale.ticks.padding !== null) {
+        const rawPad = scale.ticks.padding as any;
+        const padTop = Number(rawPad.top) || 0;
+        const padBottom = Number(rawPad.bottom) || 0;
+        scale.ticks = {
+          ...scale.ticks,
+          _customPadding: { top: padTop, bottom: padBottom },
+          padding: padTop,
+        };
+      }
 
       const prefix = typeof scale.ticks?.prefix === 'string' ? scale.ticks.prefix : '';
       const suffix = typeof scale.ticks?.suffix === 'string' ? scale.ticks.suffix : '';

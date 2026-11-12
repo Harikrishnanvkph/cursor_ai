@@ -10,6 +10,7 @@ import { generateFunnelPluginCode } from "./funnel-plugin-code";
 import { generateGaugePluginCode } from "./gauge-plugin-code";
 import { generateWaterfallPluginCode } from "./waterfall-plugin-code";
 import { generateTimelineCrosshairPluginCode } from "./timeline-crosshair-plugin-code";
+import { generatePaddingAndFontPatchesCode } from "../html-exporter/html-export-font-utils";
 
 // Re-export individual generators for direct use
 export {
@@ -104,6 +105,9 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     if (hasWatermark) {
         pluginCode += generateWatermarkPluginCode();
     }
+
+    // Always include Chart.js 4-way padding, title alignment, and asymmetric tick padding runtime patches
+    pluginCode += generatePaddingAndFontPatchesCode();
 
     // Note: SubTitle plugin is built into Chart.js (chart.umd.js includes it)
     // No need to generate custom subtitle plugin code

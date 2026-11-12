@@ -143,7 +143,7 @@ function BoardPageContent() {
   // Load conversations from backend on mount
   useEffect(() => {
     if (user) {
-      loadConversationsFromBackend()
+      loadConversationsFromBackend(true)
     }
   }, [user, loadConversationsFromBackend])
 
