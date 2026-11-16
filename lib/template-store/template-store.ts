@@ -881,13 +881,15 @@ if (typeof window !== 'undefined') {
     const prevTemplate = prevState.currentTemplate;
 
     const templateChanged = currentTemplate?.id !== prevTemplate?.id;
-    const decorationsChanged = JSON.stringify(currentTemplate?.decorations || []) !== JSON.stringify(prevTemplate?.decorations || []);
+    const decorationsRefChanged = currentTemplate?.decorations !== prevTemplate?.decorations;
+    const decorationsChanged = decorationsRefChanged &&
+      JSON.stringify(currentTemplate?.decorations || []) !== JSON.stringify(prevTemplate?.decorations || []);
 
     if (templateChanged || decorationsChanged) {
       const incomingShapes = currentTemplate?.decorations || [];
       const currentDecoShapes = useDecorationStore.getState().shapes;
 
-      if (JSON.stringify(incomingShapes) !== JSON.stringify(currentDecoShapes)) {
+      if (incomingShapes !== currentDecoShapes && JSON.stringify(incomingShapes) !== JSON.stringify(currentDecoShapes)) {
         useDecorationStore.getState().setShapes(incomingShapes, 'template');
         useDecorationStore.getState().clearShapeHistory();
       }

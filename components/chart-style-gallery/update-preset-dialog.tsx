@@ -3,7 +3,11 @@
 import React, { useState, useEffect } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
-import { extractPresetFromCurrentChart } from "@/lib/chart-style-engine"
+import {
+  extractPresetFromCurrentChart,
+  resolvePublishDatasets,
+  resolveTargetColorMode,
+} from "@/lib/chart-style-engine"
 import { dataService } from "@/lib/data-service"
 import type { PresetCategory, PresetPublishData, ColorMode } from "@/lib/chart-style-types"
 import type { SupportedChartType } from "@/lib/chart-defaults"
@@ -50,7 +54,15 @@ interface UpdatePresetDialogProps {
 }
 
 export function UpdatePresetDialog({ open, onOpenChange, presetId, initialData, isBuiltIn = false, onSuccess }: UpdatePresetDialogProps) {
-  const { chartType, chartData, chartConfig } = useChartStore()
+  const {
+    chartType,
+    chartData,
+    chartConfig,
+    activeDatasetIndex,
+    activeGroupId,
+    chartMode,
+    getActiveChartConfig,
+  } = useChartStore()
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -83,8 +95,13 @@ export function UpdatePresetDialog({ open, onOpenChange, presetId, initialData, 
         .map(t => t.trim().toLowerCase())
         .filter(Boolean)
 
-      const firstDs = chartData.datasets?.[0] as any
-      const detectedColorMode: ColorMode = firstDs?.datasetColorMode === 'single' ? 'single' : 'slice'
+      const { primaryDataset } = resolvePublishDatasets(chartData, {
+        activeDatasetIndex,
+        activeGroupId,
+        chartMode,
+      })
+      const detectedColorMode: ColorMode = resolveTargetColorMode(primaryDataset)
+      const activeConfig = getActiveChartConfig ? getActiveChartConfig() : chartConfig
 
       const publishData: PresetPublishData = {
         name: name.trim(),
@@ -94,13 +111,16 @@ export function UpdatePresetDialog({ open, onOpenChange, presetId, initialData, 
         colorMode: detectedColorMode,
         isOfficial: isOfficial,
         applyDimensions: true,
+        activeDatasetIndex,
+        activeGroupId,
+        chartMode,
       }
 
       // Extract preset style properties from editor state
       const preset = extractPresetFromCurrentChart(
         chartType as SupportedChartType,
         chartData,
-        chartConfig,
+        activeConfig,
         publishData
       )
 

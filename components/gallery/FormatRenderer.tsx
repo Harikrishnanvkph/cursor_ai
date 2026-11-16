@@ -1286,10 +1286,10 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
     wasEditingRef.current = isEditing
   }, [isEditing, contentPackage, zone.id, zone.role, updateZoneContent])
 
-  // Focus when entering edit mode — set innerHTML via ref
+  // Focus when entering edit mode — set sanitized innerHTML via ref
   useEffect(() => {
     if (isEditing && textRef.current) {
-      textRef.current.innerHTML = text
+      textRef.current.innerHTML = sanitizeHTML(text)
       textRef.current.focus()
       // Place cursor at the end
       const range = document.createRange()

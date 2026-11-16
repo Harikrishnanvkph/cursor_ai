@@ -1,66 +1,170 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
+import { ArrowLeft, Pencil, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { authApi } from '@/lib/auth-client'
-import { toast } from 'sonner'
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
+import {
+  AuthCardFrame,
+  AuthLoadingCard,
+  AuthGoogleSection,
+  authInputClassName,
+  authPrimaryButtonClassName,
+} from '@/components/auth/AuthPageShell'
+
+const USER_NAME_EMPTY_ERROR = 'User name cannot be empty'
+
+/** Returns the part before "@" once the user has typed "@", otherwise an empty string. */
+function deriveNameFromEmail(email: string): string {
+  const atIndex = email.indexOf('@')
+  if (atIndex === -1) return ''
+  return email.slice(0, atIndex).trim()
+}
 
 export function SignUpForm() {
-  const { user, loading, signUp, signInWithGoogle, signInAsGuest } = useAuth()
+  const { user, loading, sendOtp, verifyOtp, signInWithGoogle, signInWithGitHub } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [fullName, setFullName] = useState('')
+  const [userName, setUserName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [resending, setResending] = useState(false)
-  const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [fullNameError, setFullNameError] = useState<string | null>(null)
+  const [otp, setOtp] = useState('')
+  const [otpError, setOtpError] = useState<string | null>(null)
+  const [step, setStep] = useState<'details' | 'otp'>('details')
+  const [isEditingName, setIsEditingName] = useState(false)
+  // True once the user has typed their own (non-empty) name; stops email from overwriting it.
+  const [nameManuallySet, setNameManuallySet] = useState(false)
+  const [userNameError, setUserNameError] = useState<string | null>(null)
+  const [resendCooldown, setResendCooldown] = useState(0)
   const [isPending, setIsPending] = useState(false)
+  const userNameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const redirect = searchParams.get('redirect')
-    if (redirect && redirect !== '/signin' && redirect !== '/signup') {
+    if (
+      redirect &&
+      redirect !== '/signin' &&
+      redirect !== '/signup' &&
+      !redirect.startsWith('/admin/signin')
+    ) {
       sessionStorage.setItem('redirectAfterSignIn', redirect)
     }
   }, [searchParams])
 
   useEffect(() => {
     if (!loading && user) {
-      const defaultRedirect = user.is_admin ? '/admin' : '/'
-      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || defaultRedirect
+      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/board'
       sessionStorage.removeItem('redirectAfterSignIn')
       router.replace(redirectPath)
     }
   }, [user, loading, router])
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((prev) => prev - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
+
+  useEffect(() => {
+    if (isEditingName) {
+      userNameInputRef.current?.focus()
+      userNameInputRef.current?.select()
+    }
+  }, [isEditingName])
+
   if (loading || user) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 bg-card border border-border/60 rounded-xl shadow-lg w-full max-w-md min-h-[300px]">
-        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
-        <p className="text-sm text-muted-foreground font-medium">Verifying session...</p>
-      </div>
-    )
+    return <AuthLoadingCard message={user ? 'Redirecting…' : 'Verifying session…'} />
   }
 
-  function validatePassword(pw: string): string | null {
-    if (!pw || pw.length < 8) return 'Password must be at least 8 characters'
-    const hasLetterAndNumber = /^(?=.*[A-Za-z])(?=.*\d).+$/.test(pw)
-    if (!hasLetterAndNumber) return 'Password must include at least 1 letter and 1 number'
-    return null
+  function handleEmailChange(value: string) {
+    setEmail(value)
+    // Keep auto-filling from the email until the user has set their own name
+    if (!nameManuallySet && !isEditingName) {
+      const derived = deriveNameFromEmail(value)
+      setUserName(derived)
+      if (derived) setUserNameError(null)
+    }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function startEditingName() {
+    setIsEditingName(true)
+  }
+
+  function finishEditingName() {
+    const trimmed = userName.trim()
+    const derived = deriveNameFromEmail(email)
+
+    if (!trimmed) {
+      // Leaving the box empty falls back to the name before "@"
+      setUserName(derived)
+      setNameManuallySet(false)
+      setUserNameError(null)
+    } else {
+      setUserName(trimmed)
+      setNameManuallySet(trimmed !== derived)
+      setUserNameError(null)
+    }
+    setIsEditingName(false)
+  }
+
+  async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
-    if (!password || passwordError) return
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) return
+
+    // Fall back to the email-derived name if the field is somehow empty
+    const finalName = userName.trim() || deriveNameFromEmail(trimmedEmail)
+    if (!finalName) {
+      setUserNameError(USER_NAME_EMPTY_ERROR)
+      return
+    }
+    if (isEditingName) {
+      setUserName(finalName)
+      setNameManuallySet(finalName !== deriveNameFromEmail(trimmedEmail))
+      setIsEditingName(false)
+    }
+    setUserNameError(null)
+
     setIsPending(true)
     try {
-      const result = await signUp(email.trim(), password, fullName.trim() || undefined)
-      if (!result.wasNewUser) return
-    } catch {
-      // error toast handled inside AuthProvider.signUp
+      const ok = await sendOtp(trimmedEmail, 'signup', finalName)
+      if (ok) {
+        setOtp('')
+        setOtpError(null)
+        setStep('otp')
+        setResendCooldown(30)
+      }
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault()
+    if (otp.length !== 6) return
+    setOtpError(null)
+    setIsPending(true)
+    try {
+      const res = await verifyOtp(email.trim(), otp)
+      if (!res.ok) {
+        setOtpError(res.error || 'Invalid or expired verification code. Please try again.')
+      }
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0 || isPending) return
+    setOtpError(null)
+    setIsPending(true)
+    try {
+      const finalName = userName.trim() || deriveNameFromEmail(email.trim())
+      const ok = await sendOtp(email.trim(), 'signup', finalName)
+      if (ok) {
+        setResendCooldown(30)
+      }
     } finally {
       setIsPending(false)
     }
@@ -76,153 +180,160 @@ export function SignUpForm() {
     }
   }
 
-  async function handleGuestSignIn() {
+  async function handleGitHubSignIn() {
     setIsPending(true)
     try {
-      await signInAsGuest()
+      await signInWithGitHub()
     } catch (error) {
-      console.error('Unexpected error in Guest sign in:', error)
+      console.error('Unexpected error in GitHub sign in:', error)
       setIsPending(false)
     }
   }
 
+  const userNameReadOnlyClassName = isEditingName
+    ? ''
+    : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 cursor-default focus-visible:ring-0 focus-visible:border-slate-200 dark:focus-visible:border-slate-800'
+
   return (
-    <Card className="w-full max-w-md shadow-lg border border-border/60">
-      <CardHeader className="pb-4 space-y-1">
-        <CardTitle className="text-2xl font-bold">Create your account</CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
-          Join to save charts and sync history
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="space-y-1">
+    <AuthCardFrame
+      title={step === 'details' ? 'Create your account' : 'Verify your email'}
+      description={
+        step === 'details'
+          ? 'Start generating and styling charts with AI'
+          : `Enter the 6-digit code sent to ${email.trim()}`
+      }
+    >
+      {step === 'details' ? (
+        <>
+          <form onSubmit={handleSendCode} className="space-y-3.5">
             <Input
-              placeholder="Full name"
-              value={fullName}
-              onChange={(e) => {
-                const val = e.target.value
-                setFullName(val)
-                setFullNameError(val.trim() ? null : 'Full name is required')
-              }}
-              aria-invalid={Boolean(fullNameError)}
-              className="h-11"
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              required
+              autoComplete="email"
+              className={authInputClassName}
             />
-            {fullNameError && (
-              <p className="text-xs text-red-600">{fullNameError}</p>
+
+            <div className="relative">
+              <Input
+                ref={userNameInputRef}
+                placeholder={isEditingName ? 'User Name' : 'User Name (optional)'}
+                value={userName}
+                readOnly={!isEditingName}
+                tabIndex={isEditingName ? 0 : -1}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setUserName(val)
+                  setUserNameError(val.trim() ? null : USER_NAME_EMPTY_ERROR)
+                }}
+                onBlur={() => {
+                  if (isEditingName) finishEditingName()
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && isEditingName) {
+                    e.preventDefault()
+                    finishEditingName()
+                  }
+                }}
+                aria-label="User Name"
+                aria-invalid={Boolean(userNameError)}
+                className={`${authInputClassName} pr-10 ${userNameReadOnlyClassName}`}
+              />
+              <button
+                type="button"
+                // preventDefault keeps the input from blurring before the click is handled
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => (isEditingName ? finishEditingName() : startEditingName())}
+                aria-label={isEditingName ? 'Save user name' : 'Edit user name'}
+                title={isEditingName ? 'Done' : 'Edit user name'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                {isEditingName ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+              </button>
+            </div>
+
+            <Button
+              type="submit"
+              className={authPrimaryButtonClassName}
+              disabled={isPending || !email.trim() || Boolean(userNameError)}
+            >
+              {isPending ? 'Sending code…' : 'Continue with email'}
+            </Button>
+
+            {userNameError && (
+              <p role="alert" className="text-xs text-red-600 dark:text-red-400 text-center">
+                {userNameError}
+              </p>
+            )}
+          </form>
+
+          <AuthGoogleSection disabled={isPending} onClick={handleGoogleSignIn} onGitHubClick={handleGitHubSignIn} />
+        </>
+      ) : (
+        <form onSubmit={handleVerifyCode} className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-center py-1">
+              <InputOTP
+                maxLength={6}
+                value={otp}
+                onChange={(val) => {
+                  setOtp(val.replace(/\D/g, ''))
+                  if (otpError) setOtpError(null)
+                }}
+                disabled={isPending}
+              >
+                <InputOTPGroup className="gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <InputOTPSlot
+                      key={index}
+                      index={index}
+                      className={`h-12 w-11 rounded-xl border bg-slate-50/80 dark:bg-slate-950/60 text-base font-semibold text-slate-900 dark:text-slate-100 first:rounded-xl last:rounded-xl ${
+                        otpError
+                          ? 'border-red-400 dark:border-red-500'
+                          : 'border-slate-200 dark:border-slate-700'
+                      }`}
+                    />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            {otpError && (
+              <p role="alert" className="text-xs text-red-600 dark:text-red-400 text-center">
+                {otpError}
+              </p>
             )}
           </div>
 
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="h-11"
-          />
-
-          <div className="space-y-1">
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => {
-                const val = e.target.value
-                setPassword(val)
-                setPasswordError(validatePassword(val))
-              }}
-              required
-              aria-invalid={Boolean(passwordError)}
-              className="h-11"
-            />
-            <p className={`text-xs ${password ? (passwordError ? 'text-red-600' : 'text-green-600') : 'text-muted-foreground'}`}>
-              {password
-                ? (passwordError ? passwordError : '✓ Password meets the criteria')
-                : 'Min 8 characters, at least 1 letter & 1 number'}
-            </p>
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full h-11 font-semibold"
-            disabled={isPending || Boolean(passwordError) || !password || Boolean(fullNameError) || !fullName.trim()}
-          >
-            {isPending ? 'Creating account…' : 'Sign up'}
+          <Button type="submit" className={authPrimaryButtonClassName} disabled={isPending || otp.length !== 6}>
+            {isPending ? 'Creating account…' : 'Verify & create account'}
           </Button>
+
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setStep('details')
+                setOtp('')
+              }}
+              className="inline-flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Edit details
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendCooldown > 0 || isPending}
+              className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline disabled:opacity-50 disabled:no-underline"
+            >
+              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+            </button>
+          </div>
         </form>
-
-        <p className="text-xs text-muted-foreground">
-          Didn\'t receive a verification email? Check spam/promotions or{' '}
-          <button
-            type="button"
-            className="underline hover:text-foreground transition-colors"
-            disabled={resending || !email}
-            onClick={async () => {
-              if (!email) return
-              try {
-                setResending(true)
-                await authApi.resendVerification({ email })
-                toast.success('Verification email resent')
-              } catch {
-                toast.error('Unable to resend verification email. Try again later.')
-              } finally {
-                setResending(false)
-              }
-            }}
-          >
-            {resending ? 'Sending…' : 'resend it'}
-          </button>
-        </p>
-
-        <div className="relative my-2">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs text-muted-foreground">
-            <span className="bg-card px-2">or</span>
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          className="w-full h-11 font-medium"
-          onClick={handleGoogleSignIn}
-          disabled={isPending}
-          type="button"
-        >
-          <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-          </svg>
-          Continue with Google
-        </Button>
-
-        <div className="relative my-2">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs text-muted-foreground">
-            <span className="bg-card px-2">or</span>
-          </div>
-        </div>
-
-        <Button
-          variant="ghost"
-          className="w-full h-11 font-medium text-muted-foreground"
-          onClick={handleGuestSignIn}
-          disabled={isPending}
-          type="button"
-        >
-          <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          Sign in as Guest
-        </Button>
-      </CardContent>
-    </Card>
+      )}
+    </AuthCardFrame>
   )
 }

@@ -2,6 +2,7 @@
 
 import html2canvas from 'html2canvas'
 import { ensureGoogleFontLoaded } from '@/lib/typography-registry'
+import { sanitizeHTML } from '@/lib/utils/sanitize'
 
 /**
  * Helper to convert hex color to rgba with opacity
@@ -360,7 +361,7 @@ export async function renderHTMLToCanvas(
     white-space: normal;
     background: transparent;
   `
-    container.innerHTML = htmlContent
+    container.innerHTML = sanitizeHTML(htmlContent)
     document.body.appendChild(container)
 
     if (style.fontFamily) {

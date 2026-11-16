@@ -16,8 +16,20 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const t = params.get('access_token') || params.get('token')
-    if (t) setToken(t)
+    // Supabase recovery links deliver tokens in the URL hash (#access_token=...&type=recovery)
+    // or occasionally in query parameters (?access_token=... or ?token=...).
+    let foundToken = params.get('access_token') || params.get('token') || ''
+    if (!foundToken && typeof window !== 'undefined' && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      foundToken = hashParams.get('access_token') || ''
+    }
+    if (foundToken) {
+      setToken(foundToken)
+      // Remove sensitive tokens from browser address bar / history
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
   }, [params])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -26,7 +38,7 @@ export default function ResetPasswordPage() {
       return
     }
     if (!token) {
-      toast.error('Missing or invalid reset token.')
+      toast.error('Missing or invalid reset token. Please request a new reset link.')
       return
     }
     setLoading(true)
@@ -34,8 +46,8 @@ export default function ResetPasswordPage() {
       await authApi.resetPassword({ token, password })
       toast.success('Password has been reset. You can now sign in.')
       router.replace('/signin')
-    } catch {
-      toast.error('Failed to reset password. Please request a new link.')
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to reset password. Please request a new link.')
     } finally {
       setLoading(false)
     }

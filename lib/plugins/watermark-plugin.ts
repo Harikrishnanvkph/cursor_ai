@@ -19,9 +19,6 @@ export const watermarkPlugin: Plugin = {
     // We need either text or an image URL to draw something
     if (!text && !imageUrl) return;
 
-    // Debug log to verify plugin is running
-    console.log('[WatermarkPlugin] Drawing watermark:', { text, imageUrl, position, opacity, style, angle: rotAngle });
-
     ctx.save();
     
     // Default opacity is 30% if not specified or invalid
@@ -58,8 +55,10 @@ export const watermarkPlugin: Plugin = {
           ctx.rotate(rotRadians);
           ctx.translate(-width, -height);
 
-          for (let x = -width; x < width * 3; x += imgWidth + spX) {
-            for (let y = -height; y < height * 3; y += imgHeight + spY) {
+          const stepX = Math.max(10, imgWidth + spX);
+          const stepY = Math.max(10, imgHeight + spY);
+          for (let x = -width; x < width * 3; x += stepX) {
+            for (let y = -height; y < height * 3; y += stepY) {
               ctx.drawImage(img, x, y, imgWidth, imgHeight);
             }
           }
@@ -108,8 +107,10 @@ export const watermarkPlugin: Plugin = {
         ctx.rotate(rotRadians); 
         ctx.translate(-width, -height);
         
-        for (let x = -width; x < width * 3; x += textWidth + spX) {
-          for (let y = -height; y < height * 3; y += fontSize + spY) {
+        const stepX = Math.max(10, textWidth + spX);
+        const stepY = Math.max(10, fontSize + spY);
+        for (let x = -width; x < width * 3; x += stepX) {
+          for (let y = -height; y < height * 3; y += stepY) {
             ctx.fillText(text, x, y);
           }
         }

@@ -53,6 +53,9 @@ export const ChartTypeSelector = memo(function ChartTypeSelector({
   disabled = false,
   isLeftSidebarCollapsed
 }: ChartTypeSelectorProps) {
+  const isCompactDesktop = useIsCompactDesktop();
+  const sidebarContext = useEditorSidebarContext();
+
   if (variant === "sidebar") {
     return (
       <Select value={value} onValueChange={onChange} disabled={disabled}>
@@ -117,8 +120,6 @@ export const ChartTypeSelector = memo(function ChartTypeSelector({
     )
   }
 
-  const isCompactDesktop = useIsCompactDesktop();
-  const sidebarContext = useEditorSidebarContext();
   const effectiveLeftSidebarCollapsed = isLeftSidebarCollapsed !== undefined 
     ? isLeftSidebarCollapsed 
     : sidebarContext.leftSidebarCollapsed;

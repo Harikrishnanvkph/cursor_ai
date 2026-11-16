@@ -8,6 +8,7 @@ import { ZONE_COLORS, getZoneLabel } from './format-builder-utils'
 import type { FormatZone, BaseZone } from '@/lib/format-types'
 import { useDecorationStore } from '@/lib/stores/decoration-store'
 import { DecorationShapeRenderer } from '@/components/decorations/DecorationShapeRenderer'
+import { sanitizeSVG } from '@/lib/utils/sanitize'
 
 function DecorationStoreSync({ skeleton, setSkeleton }: { skeleton: any, setSkeleton: any }) {
   const shapes = useDecorationStore(s => s.shapes)
@@ -548,7 +549,7 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
             <div
               className="w-full h-full flex items-center justify-center"
               style={{ color: s.svgColor || colors.accent, opacity: s.svgOpacity || 0.8 }}
-              dangerouslySetInnerHTML={{ __html: s.svgContent }}
+              dangerouslySetInnerHTML={{ __html: sanitizeSVG(s.svgContent) }}
             />
           ) : (
             <div className="flex flex-col items-center justify-center text-center opacity-70">

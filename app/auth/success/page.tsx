@@ -30,7 +30,9 @@ export default function AuthSuccessPage() {
 
     // If user is already authenticated, redirect to workspace
     if (user) {
-      router.replace(user.is_admin ? '/admin' : '/board')
+      const savedRedirect = sessionStorage.getItem('redirectAfterSignIn')
+      sessionStorage.removeItem('redirectAfterSignIn')
+      router.replace(savedRedirect || '/board')
       return
     }
 
@@ -101,7 +103,14 @@ export default function AuthSuccessPage() {
                   )}
                 </div>
               </div>
-              <Button onClick={() => router.replace(user?.is_admin ? '/admin' : '/board')} className="w-full">
+              <Button
+                onClick={() => {
+                  const savedRedirect = sessionStorage.getItem('redirectAfterSignIn')
+                  sessionStorage.removeItem('redirectAfterSignIn')
+                  router.replace(savedRedirect || '/board')
+                }}
+                className="w-full"
+              >
                 Continue to Dashboard
               </Button>
             </div>

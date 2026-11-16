@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export default function AdminTemplatesPage() {
-  const { user, loading } = useAuth()
+  const { user, sessionVerified } = useAuth()
   const router = useRouter()
   const [templates, setTemplates] = useState<TemplateLayout[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -23,20 +23,15 @@ export default function AdminTemplatesPage() {
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null)
 
   useEffect(() => {
-    if (loading) return
+    if (!sessionVerified) return
 
-    if (!user) {
-      router.push('/signin')
-      return
-    }
-
-    if (!user.is_admin) {
-      router.push('/')
+    if (!user || !user.is_admin) {
+      router.replace('/admin/signin?redirect=/admin/templates')
       return
     }
 
     fetchTemplates()
-  }, [user, loading, router])
+  }, [user, sessionVerified, router])
 
   const fetchTemplates = async () => {
     try {
@@ -111,7 +106,7 @@ export default function AdminTemplatesPage() {
     router.push('/admin/templates/custom-template')
   }
 
-  if (loading) {
+  if (!sessionVerified) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

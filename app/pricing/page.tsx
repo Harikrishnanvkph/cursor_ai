@@ -1,17 +1,15 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import Link from "next/link"
+import { GeistSans } from "geist/font/sans"
 import { useAuth } from "@/components/auth/AuthProvider"
-import { SiteHeader } from "@/components/site-header"
+import { HomeNewNavbar } from "@/components/home-new/home-new-navbar"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Check,
   Zap,
   Cloud,
-  ArrowRight,
   ChevronDown,
   Globe,
   Terminal,
@@ -36,7 +34,7 @@ function renderFeatureText(text: string, highlightWord?: string, isProPack?: boo
     <>
       {parts[0]}
       <span
-        className={`px-1.5 py-0.5 rounded font-bold text-xs inline-block ${
+        className={`px-1.5 py-0.5 rounded font-bold text-[11px] sm:text-xs inline-block ${
           isProPack
             ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
             : "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/60"
@@ -55,6 +53,18 @@ export default function PricingPage() {
   const [creditTab, setCreditTab] = useState<"ai" | "cloud">("ai")
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
   const [purchasingPackId, setPurchasingPackId] = useState<CreditPackId | null>(null)
+
+  useEffect(() => {
+    const htmlEl = document.documentElement
+    const bodyEl = document.body
+    htmlEl.classList.add(GeistSans.variable)
+    bodyEl.classList.add("home-page-active", GeistSans.variable, GeistSans.className)
+
+    return () => {
+      htmlEl.classList.remove(GeistSans.variable)
+      bodyEl.classList.remove("home-page-active", GeistSans.variable, GeistSans.className)
+    }
+  }, [])
 
   const firstAiBonusClaimed = Boolean(user?.first_ai_bonus_claimed)
   const freeCard = FREE_CARD_BY_CATEGORY[creditTab]
@@ -93,11 +103,6 @@ export default function PricingPage() {
 
   const faqs = [
     {
-      question: "How many AI credits does each chart or template use?",
-      answer:
-        "Generating or modifying a Chart uses 1 AI credit. Generating or modifying a Template or Format layout (which generates multiple coordinated visual elements and structured text) uses 2 AI credits.",
-    },
-    {
       question: "What is included for free on every account?",
       answer:
         "Every AIChartor user receives 10 Free AI Credits every month (auto-resetting every 30 days) and 5 Free Cloud Save Credits that never expire, along with full, unrestricted access to the Advanced Editor, sharing, and exports.",
@@ -124,33 +129,71 @@ export default function PricingPage() {
     },
   ]
 
+  const highlights = [
+    {
+      icon: Globe,
+      iconClass: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200/60 dark:border-indigo-800/50",
+      title: "AI Credits Never Expire",
+      description:
+        "Your 10 monthly free AI credits are always used first. Purchased AI credits stay in your balance forever until used.",
+    },
+    {
+      icon: Terminal,
+      iconClass: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 border-purple-200/60 dark:border-purple-800/50",
+      title: "Free Advanced Editor",
+      description:
+        "Every user gets complete access to our Advanced Editor, templates, sharing, and high-res exports.",
+    },
+    {
+      icon: Clock,
+      iconClass: "text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border-sky-200/60 dark:border-sky-800/50",
+      title: "No Recurring Lock-In",
+      description:
+        "Simple $2 and $5 one-time credit packs. Top up AI credits or cloud save slots whenever your workflow demands.",
+    },
+  ]
+
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300 flex flex-col">
-      <SiteHeader />
+    <div
+      className={`home-new-container ${GeistSans.variable} ${GeistSans.className} font-sans min-h-screen flex flex-col bg-white dark:bg-slate-950 transition-colors duration-300 relative overflow-x-clip`}
+    >
+      {/* Ambient background glows & subtle grid matching / */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="animate-float-slow absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/20 blur-[100px]" />
+        <div className="animate-float-medium absolute top-1/3 right-0 w-[350px] h-[350px] rounded-full bg-purple-500/10 dark:bg-purple-600/20 blur-[100px]" />
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage: `linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)`,
+            backgroundSize: "60px 60px",
+          }}
+        />
+      </div>
 
-      {/* ─── HERO HEADER SECTION ─── */}
-      <section className="relative overflow-hidden pt-28 pb-12 sm:pt-36 sm:pb-14 bg-gradient-to-b from-indigo-50/40 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900/50 dark:to-slate-950 transition-colors duration-300">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="animate-float-slow absolute -top-24 -left-24 w-[380px] h-[380px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/15 blur-[100px]" />
-          <div className="animate-float-medium absolute top-1/4 right-0 w-[300px] h-[300px] rounded-full bg-purple-500/10 dark:bg-purple-600/15 blur-[100px]" />
-        </div>
+      <HomeNewNavbar />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-5">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
-            Simple, Transparent
-            <br />
-            <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 dark:from-indigo-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">
-              Credit Packs
+      <main className="relative z-10 flex-1">
+        {/* ─── HERO HEADER SECTION ─── */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-8 sm:pb-10 text-center">
+          <div className="max-w-2xl mx-auto">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-slate-50 dark:bg-slate-900/60 text-xs font-medium text-slate-700 dark:text-slate-300 mb-4">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+              <span>One-Time Credit Packs</span>
             </span>
-          </h1>
 
-          <p className="max-w-2xl mx-auto text-base sm:text-lg text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
-            Start free every month, or top up AI and Cloud credits whenever you need.
-          </p>
+            <h1 className="text-3xl xs:text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900 dark:text-white leading-tight">
+              Simple, Transparent{" "}
+              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                Pricing
+              </span>
+            </h1>
 
-          {/* Category Switcher: AI Credits | Cloud Credits */}
-          <div className="pt-3 flex justify-center">
-            <div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 select-none">
+            <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 font-normal leading-relaxed">
+              Start free every month, or top up AI and Cloud credits whenever you need.
+            </p>
+
+            {/* Category Switcher: AI Credits | Cloud Credits */}
+            <div className="mt-6 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 select-none">
               <button
                 type="button"
                 onClick={() => setCreditTab("ai")}
@@ -177,39 +220,35 @@ export default function PricingPage() {
               </button>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ─── 3-COLUMN PRICING CARDS SECTION: Free | Lite User | Pro User ─── */}
-      <section className="py-12 bg-white dark:bg-slate-950 transition-colors duration-300 relative">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+        {/* ─── 3-COLUMN PRICING CARDS SECTION: Free | Lite User | Pro User ─── */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 sm:pb-20">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             {/* Column 1: Free Card */}
-            <div className="rounded-3xl flex flex-col justify-between p-8 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-lg">
+            <div className="rounded-2xl p-6 sm:p-7 flex flex-col justify-between bg-white dark:bg-slate-900/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-md">
               <div>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-bold">{freeCard.userTitle}</h3>
-                  <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold px-3 py-1 rounded-full">
+                  <h3 className="text-xl font-bold">{freeCard.userTitle}</h3>
+                  <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
                     {freeCard.badge}
                   </span>
                 </div>
 
-                <div className="mt-6 pb-5 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline">
-                  <span className="text-5xl font-extrabold tracking-tight">{currencySymbol}0</span>
+                <div className="mt-5 pb-4 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline gap-1.5">
+                  <span className="text-4xl font-extrabold tracking-tight">{currencySymbol}0</span>
                 </div>
 
                 <div className="py-4 border-b border-slate-200/80 dark:border-slate-800">
-                  <span className="text-lg font-bold text-slate-900 dark:text-white">
+                  <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
                     {freeCard.headlineGrant}
                   </span>
                 </div>
 
-                <ul className="mt-6 space-y-3.5">
-                  {freeCard.features.map((feat, fIndex) => (
-                    <li key={fIndex} className="flex items-start text-sm">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center mr-3 mt-0.5">
-                        <Check className="w-3.5 h-3.5" strokeWidth={3} />
-                      </span>
+                <ul className="mt-5 space-y-3">
+                  {freeCard.features.map((feat, idx) => (
+                    <li key={idx} className="flex items-start gap-2.5 text-xs">
+                      <Check className="w-4 h-4 shrink-0 mt-0.5 text-indigo-600 dark:text-indigo-400" />
                       <span className="text-slate-700 dark:text-slate-300 font-medium">{feat.text}</span>
                     </li>
                   ))}
@@ -217,14 +256,12 @@ export default function PricingPage() {
               </div>
 
               <div className="mt-8 pt-4">
-                <Button
-                  asChild
-                  className="w-full py-6 text-sm font-bold rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200"
+                <Link
+                  href={user ? "/landing" : "/signin"}
+                  className="block text-center w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200"
                 >
-                  <Link href={user ? "/landing" : "/signin"}>
-                    {user ? "Included Free" : "Get Started Free"}
-                  </Link>
-                </Button>
+                  {user ? "Included Free" : "Get Started Free"}
+                </Link>
               </div>
             </div>
 
@@ -237,52 +274,60 @@ export default function PricingPage() {
               return (
                 <div
                   key={pack.id}
-                  className={`group relative rounded-3xl flex flex-col justify-between p-8 transition-all duration-300 ${
+                  className={`rounded-2xl p-6 sm:p-7 flex flex-col justify-between relative transition-all duration-300 ${
                     isProPack
-                      ? "bg-slate-900 text-white dark:bg-slate-900/90 border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10"
-                      : "bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-lg"
+                      ? "bg-slate-900 text-white dark:bg-slate-900/95 border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10"
+                      : "bg-white dark:bg-slate-900/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-md"
                   }`}
                 >
                   {isProPack && (
-                    <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider shadow-md">
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full shadow-md">
                       {pack.badge}
-                    </span>
+                    </div>
                   )}
 
                   <div>
                     <div className="flex items-center justify-between">
-                      <h3 className="text-2xl font-bold">{pack.userTitle}</h3>
+                      <h3 className="text-xl font-bold">{pack.userTitle}</h3>
                       {!isProPack && pack.badge && (
-                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold px-3 py-1 rounded-full">
+                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
                           {pack.badge}
                         </span>
                       )}
                     </div>
 
-                    <div className="mt-6 pb-5 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline">
-                      <span className="text-5xl font-extrabold tracking-tight">{currencySymbol}{displayPrice}</span>
+                    <div className="mt-5 pb-4 border-b border-slate-200/80 dark:border-slate-800 flex items-baseline gap-1.5">
+                      <span className="text-4xl font-extrabold tracking-tight">{currencySymbol}{displayPrice}</span>
                     </div>
 
                     <div className="py-4 border-b border-slate-200/80 dark:border-slate-800">
-                      <span className={`text-lg font-bold ${isProPack ? "text-indigo-300" : "text-indigo-600 dark:text-indigo-400"}`}>
+                      <span className={`text-base sm:text-lg font-bold ${isProPack ? "text-indigo-300" : "text-indigo-600 dark:text-indigo-400"}`}>
                         {pack.headlineGrant}
                       </span>
                     </div>
 
-                    <ul className="mt-6 space-y-3.5">
-                      {pack.features.map((feat, fIndex) => {
+                    <ul className="mt-5 space-y-3">
+                      {pack.features.map((feat, idx) => {
                         const alreadyClaimedBonus = feat.firstPurchaseOnly && firstAiBonusClaimed
                         return (
-                          <li key={fIndex} className="flex items-start text-sm">
-                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center mr-3 mt-0.5">
-                              <Check className="w-3.5 h-3.5" strokeWidth={3} />
-                            </span>
+                          <li key={idx} className="flex items-start gap-2.5 text-xs">
+                            <Check
+                              className={`w-4 h-4 shrink-0 mt-0.5 ${
+                                isProPack ? "text-indigo-400" : "text-indigo-600 dark:text-indigo-400"
+                              }`}
+                            />
                             <div className="flex flex-col">
-                              <span className={isProPack ? "text-slate-200 font-medium" : "text-slate-700 dark:text-slate-300 font-medium"}>
+                              <span
+                                className={
+                                  isProPack
+                                    ? "text-slate-200 font-medium"
+                                    : "text-slate-700 dark:text-slate-300 font-medium"
+                                }
+                              >
                                 {renderFeatureText(feat.text, feat.highlightWord, isProPack)}
                               </span>
                               {alreadyClaimedBonus && (
-                                <span className="text-xs text-emerald-500 font-semibold mt-0.5">
+                                <span className="text-[10.5px] text-emerald-500 font-semibold mt-0.5">
                                   ✓ Already claimed on first purchase
                                 </span>
                               )}
@@ -294,128 +339,107 @@ export default function PricingPage() {
                   </div>
 
                   <div className="mt-8 pt-4">
-                    <Button
+                    <button
+                      type="button"
                       onClick={() => handleBuyPack(pack.id)}
                       disabled={purchasingPackId !== null}
-                      className={`w-full py-6 text-sm font-bold rounded-2xl transition-all duration-200 cursor-pointer ${
+                      className={`w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                         isProPack
-                          ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/25"
-                          : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                      }`}
+                          ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-[0.98]"
+                          : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 active:scale-[0.98]"
+                      } disabled:opacity-60`}
                     >
-                      {isBuyingThis ? (
-                        "Processing..."
-                      ) : (
-                        <>
-                          <span>{pack.ctaLabel}</span>
-                          <ArrowRight className="w-4 h-4 ml-2" />
-                        </>
-                      )}
-                    </Button>
+                      {isBuyingThis ? "Processing..." : pack.ctaLabel}
+                    </button>
                   </div>
                 </div>
               )
             })}
           </div>
 
-          {/* Custom Request Box */}
-          <div className="mt-8 rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/60 p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-            <div className="text-center sm:text-left">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                {CUSTOM_REQUEST_CONFIG.title}
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                {CUSTOM_REQUEST_CONFIG.description}
-              </p>
-            </div>
-            <div className="flex flex-col sm:items-end text-center sm:text-right shrink-0">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                {CUSTOM_REQUEST_CONFIG.contactLabel}
-              </span>
-              <a
-                href={`mailto:${CUSTOM_REQUEST_CONFIG.email}`}
-                className="text-base sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 hover:underline mt-0.5"
-              >
-                {CUSTOM_REQUEST_CONFIG.email}
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── CORE VALUES & TRUST INDICATORS ─── */}
-      <section className="py-12 bg-slate-50/50 dark:bg-slate-900/30 transition-colors duration-300 relative border-y border-slate-100 dark:border-slate-900">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="flex gap-4 items-start">
-              <div className="w-12 h-12 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-indigo-500">
-                <Globe className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-bold text-slate-900 dark:text-white text-base">AI Credits Never Expire</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-light">
-                  Your 10 monthly free AI credits are always used first. Purchased AI credits stay in your balance forever until used.
+          {/* Custom Request Banner */}
+          <div className="max-w-6xl mx-auto mt-6 sm:mt-8">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/70 px-6 py-5 sm:px-8 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+              <div className="text-center sm:text-left">
+                <h4 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                  {CUSTOM_REQUEST_CONFIG.title}
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                  {CUSTOM_REQUEST_CONFIG.description}
                 </p>
               </div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="w-12 h-12 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-purple-500">
-                <Terminal className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-bold text-slate-900 dark:text-white text-base">Free Advanced Editor</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-light">
-                  Every user gets complete access to our Advanced Editor, templates, sharing, and high-res exports.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="w-12 h-12 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-cyan-500">
-                <Clock className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-bold text-slate-900 dark:text-white text-base">No Recurring Lock-In</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-light">
-                  Simple $2 and $5 one-time credit packs. Top up AI credits or cloud save slots whenever your workflow demands.
-                </p>
+              <div className="flex flex-col sm:items-end text-center sm:text-right shrink-0">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {CUSTOM_REQUEST_CONFIG.contactLabel}
+                </span>
+                <a
+                  href={`mailto:${CUSTOM_REQUEST_CONFIG.email}`}
+                  className="mt-0.5 text-sm sm:text-base font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  {CUSTOM_REQUEST_CONFIG.email}
+                </a>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ─── INTERACTIVE FAQ SECTION ─── */}
-      <section className="py-20 sm:py-24 bg-white dark:bg-slate-950 transition-colors duration-300">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14 space-y-3">
-            <Badge className="px-3.5 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200/50 dark:border-purple-500/20 font-medium">
+        {/* ─── CORE VALUES & TRUST INDICATORS ─── */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 sm:pb-20">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-5">
+            {highlights.map((item) => {
+              const Icon = item.icon
+              return (
+                <div
+                  key={item.title}
+                  className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm p-6 flex gap-4 items-start shadow-2xs"
+                >
+                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${item.iconClass}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">
+                      {item.title}
+                    </h4>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+        {/* ─── INTERACTIVE FAQ SECTION ─── */}
+        <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 sm:pb-24">
+          <div className="text-center mb-10 sm:mb-12 space-y-2.5">
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/50 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
               Got Questions?
-            </Badge>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
               Frequently Asked Questions
             </h2>
-            <p className="text-base text-slate-500 dark:text-slate-400 max-w-xl mx-auto font-light">
+            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
               Everything you need to know about AI Credits, Cloud Save Credits, and first-purchase bonuses.
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {faqs.map((faq, index) => {
               const isOpen = openFaqIndex === index
               return (
                 <div
                   key={index}
-                  className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/40 overflow-hidden transition-all duration-300"
+                  className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/50 backdrop-blur-sm overflow-hidden transition-all duration-200"
                 >
                   <button
+                    type="button"
                     onClick={() => toggleFaq(index)}
-                    className="w-full flex items-center justify-between p-6 text-left font-semibold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors focus:outline-none"
+                    className="w-full flex items-center justify-between px-5 py-4 sm:px-6 sm:py-5 text-left text-sm sm:text-base font-semibold text-slate-900 dark:text-white hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors focus:outline-none cursor-pointer"
                   >
                     <span className="pr-4 leading-snug">{faq.question}</span>
                     <span
-                      className={`w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500 transition-transform duration-300 ${
+                      className={`w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${
                         isOpen ? "rotate-180" : ""
                       }`}
                     >
@@ -424,11 +448,11 @@ export default function PricingPage() {
                   </button>
 
                   <div
-                    className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                    className={`transition-all duration-200 ease-in-out overflow-hidden ${
                       isOpen ? "max-h-[300px] border-t border-slate-100 dark:border-slate-800" : "max-h-0"
                     }`}
                   >
-                    <p className="p-6 text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-light">
+                    <p className="px-5 py-4 sm:px-6 sm:py-5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                       {faq.answer}
                     </p>
                   </div>
@@ -436,16 +460,26 @@ export default function PricingPage() {
               )
             })}
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       {/* ─── FOOTER ─── */}
-      <footer className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300 border-t border-slate-200 dark:border-slate-800 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-slate-500 dark:text-slate-400 text-sm font-light">
-            © {new Date().getFullYear()} AIChartor. All rights reserved.
+      <footer className="relative z-10 border-t border-slate-200/70 dark:border-slate-800/70 bg-white/60 dark:bg-slate-950/60 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <span>© {new Date().getFullYear()} AIChartor. All rights reserved.</span>
+            <Link href="/about" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              About
+            </Link>
+            <Link href="/privacy" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              Terms
+            </Link>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Theme</span>
             <ThemeToggle className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 shadow-sm transition-colors" />
           </div>
         </div>

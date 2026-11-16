@@ -11,18 +11,16 @@ export default function AdminCustomTemplatePage() {
   const params = useSearchParams()
   const id = params.get('id')
   const { templates, setDraftTemplate } = useTemplateStore()
-  const { user, loading } = useAuth()
+  const { user, sessionVerified } = useAuth()
   const router = useRouter()
 
-  // Redirect non-admin users
+  // Redirect unauthenticated or non-admin users to admin sign-in
   useEffect(() => {
-    if (!loading && user && !user.is_admin) {
-      router.push('/')
+    if (!sessionVerified) return
+    if (!user || !user.is_admin) {
+      router.replace('/admin/signin?redirect=/admin/templates/custom-template')
     }
-    if (!loading && !user) {
-      router.push('/signin')
-    }
-  }, [user, loading, router])
+  }, [user, sessionVerified, router])
 
   // Load template for editing if ID is provided
   useEffect(() => {
@@ -32,7 +30,7 @@ export default function AdminCustomTemplatePage() {
     }
   }, [id, templates, setDraftTemplate])
 
-  if (loading || !user?.is_admin) return null
+  if (!sessionVerified || !user?.is_admin) return null
 
   return (
     <div className="w-full h-[calc(100vh-0px)]">

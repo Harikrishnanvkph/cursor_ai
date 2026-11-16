@@ -831,7 +831,14 @@ export const customLabelPlugin: Plugin = {
     canvas.addEventListener('touchmove', onTouchMove, { passive: false });
     canvas.addEventListener('touchend', onTouchEnd, { passive: false });
     // Cleanup
-    (chart as any)._customLabelListeners = { onMouseDown, onMouseMove, onMouseUp };
+    (chart as any)._customLabelListeners = {
+      onMouseDown,
+      onMouseMove,
+      onMouseUp,
+      onTouchStart,
+      onTouchMove,
+      onTouchEnd,
+    };
   },
   beforeDestroy(chart) {
     const canvas = chart.canvas;
@@ -841,6 +848,9 @@ export const customLabelPlugin: Plugin = {
       canvas.removeEventListener('mousemove', listeners.onMouseMove);
       canvas.removeEventListener('mouseup', listeners.onMouseUp);
       canvas.removeEventListener('mouseleave', listeners.onMouseUp);
+      canvas.removeEventListener('touchstart', listeners.onTouchStart);
+      canvas.removeEventListener('touchmove', listeners.onTouchMove);
+      canvas.removeEventListener('touchend', listeners.onTouchEnd);
     }
     dragStateMap.delete(chart);
   }

@@ -57,7 +57,7 @@ interface FormatRow {
 }
 
 export default function AdminFormatsPage() {
-  const { user, loading } = useAuth()
+  const { user, sessionVerified } = useAuth()
   const router = useRouter()
   const [formats, setFormats] = useState<FormatRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -67,20 +67,15 @@ export default function AdminFormatsPage() {
   const [filter, setFilter] = useState<string>('all')
 
   useEffect(() => {
-    if (loading) return
+    if (!sessionVerified) return
 
-    if (!user) {
-      router.push('/signin')
-      return
-    }
-
-    if (!user.is_admin) {
-      router.push('/')
+    if (!user || !user.is_admin) {
+      router.replace('/admin/signin?redirect=/admin/formats')
       return
     }
 
     fetchFormats()
-  }, [user, loading, router])
+  }, [user, sessionVerified, router])
 
   const fetchFormats = async () => {
     try {
@@ -159,7 +154,7 @@ export default function AdminFormatsPage() {
   const filteredFormats = filter === 'all' ? formats : formats.filter(f => f.category === filter)
   const categories = ['all', ...new Set(formats.map(f => f.category))]
 
-  if (loading) {
+  if (!sessionVerified) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

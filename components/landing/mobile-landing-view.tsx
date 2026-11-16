@@ -1006,6 +1006,9 @@ export function MobileLandingView({
                     ? `${freeAiCreditsRemaining ?? 0} free + ${purchasedAiCredits} paid`
                     : 'Monthly AI quota'}
                 </span>
+                <span className="text-[9.5px] text-slate-400">
+                  1 credit / chart, 2 credits / template
+                </span>
               </div>
             </div>
             <button

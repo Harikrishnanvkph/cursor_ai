@@ -6,12 +6,30 @@ import { useRouter } from "next/navigation"
 import { dataService } from "@/lib/data-service"
 import { CHART_STYLE_PRESETS } from "@/lib/chart-style-defaults"
 import { Button } from "@/components/ui/button"
-import { Palette, Globe, Edit, Trash2, ArrowLeft, Tag, Search, Filter, Package, Database, X } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Palette,
+  Globe,
+  Edit,
+  Trash2,
+  ArrowLeft,
+  Search,
+  Package,
+  Database,
+  X,
+  Plus,
+  RotateCcw,
+} from "lucide-react"
 import { toast } from "sonner"
-import { Card, CardContent } from "@/components/ui/card"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { PresetPreviewChart } from "@/components/chart-style-gallery/preset-preview-chart"
-import type { ChartStylePreset, PresetCategory } from "@/lib/chart-style-types"
+import type { ChartStylePreset } from "@/lib/chart-style-types"
 
 type PresetSource = 'built-in' | 'database'
 
@@ -20,7 +38,7 @@ interface MergedPreset extends ChartStylePreset {
 }
 
 const CATEGORY_FILTERS: { label: string; value: string }[] = [
-  { label: 'All', value: 'all' },
+  { label: 'All Categories', value: 'all' },
   { label: 'Minimal', value: 'minimal' },
   { label: 'Bold', value: 'bold' },
   { label: 'Pastel', value: 'pastel' },
@@ -32,7 +50,7 @@ const CATEGORY_FILTERS: { label: string; value: string }[] = [
 ]
 
 export default function AdminPresetsPage() {
-  const { user, loading } = useAuth()
+  const { user, sessionVerified } = useAuth()
   const router = useRouter()
   const [dbPresets, setDbPresets] = useState<ChartStylePreset[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -42,26 +60,22 @@ export default function AdminPresetsPage() {
   const [chartTypeFilter, setChartTypeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState<'all' | 'built-in' | 'database'>('all')
+  const [onlyGlobal, setOnlyGlobal] = useState(false)
 
   // For deletion
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [presetToDelete, setPresetToDelete] = useState<string | null>(null)
 
   useEffect(() => {
-    if (loading) return
+    if (!sessionVerified) return
 
-    if (!user) {
-      router.push('/signin')
-      return
-    }
-
-    if (!user.is_admin) {
-      router.push('/')
+    if (!user || !user.is_admin) {
+      router.replace('/admin/signin?redirect=/admin/presets')
       return
     }
 
     fetchPresets()
-  }, [user, loading, router])
+  }, [user, sessionVerified, router])
 
   const fetchPresets = async () => {
     try {
@@ -69,7 +83,6 @@ export default function AdminPresetsPage() {
       const res = await dataService.getChartStylePresets()
       if (res.error) throw new Error(res.error)
 
-      // Map Supabase rows to camelCase ChartStylePreset structure
       const parsedPresets = (res.data || []).map((row: any) => ({
         id: row.id,
         name: row.name,
@@ -83,7 +96,7 @@ export default function AdminPresetsPage() {
         tags: row.tags || [],
         isOfficial: row.is_official || false,
         sortOrder: row.sort_order || 100,
-        thumbnailUrl: row.thumbnail_url
+        thumbnailUrl: row.thumbnail_url,
       }))
 
       setDbPresets(parsedPresets)
@@ -99,22 +112,18 @@ export default function AdminPresetsPage() {
   const mergedPresets: MergedPreset[] = useMemo(() => {
     const dbIds = new Set(dbPresets.map(p => p.id))
 
-    // Add all hardcoded presets that are NOT overridden in DB
     const builtInPresets: MergedPreset[] = CHART_STYLE_PRESETS
       .filter(p => !dbIds.has(p.id))
       .map(p => ({ ...p, source: 'built-in' as PresetSource }))
 
-    // Add all DB presets
     const dbMerged: MergedPreset[] = dbPresets
       .map(p => ({ ...p, source: 'database' as PresetSource }))
 
     return [...dbMerged, ...builtInPresets].sort((a, b) => (a.sortOrder || 100) - (b.sortOrder || 100))
   }, [dbPresets])
 
-  // Apply filters
   const filteredPresets = useMemo(() => {
     return mergedPresets.filter(preset => {
-      // Search filter
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         const matchesSearch =
@@ -126,20 +135,15 @@ export default function AdminPresetsPage() {
         if (!matchesSearch) return false
       }
 
-      // Chart type filter
       if (chartTypeFilter !== 'all' && preset.chartType !== chartTypeFilter) return false
-
-      // Category filter
       if (categoryFilter !== 'all' && preset.category !== categoryFilter) return false
-
-      // Source filter
       if (sourceFilter !== 'all' && preset.source !== sourceFilter) return false
+      if (onlyGlobal && !preset.isOfficial) return false
 
       return true
     })
-  }, [mergedPresets, searchQuery, chartTypeFilter, categoryFilter, sourceFilter])
+  }, [mergedPresets, searchQuery, chartTypeFilter, categoryFilter, sourceFilter, onlyGlobal])
 
-  // Get unique chart types from all presets for the filter
   const availableChartTypes = useMemo(() => {
     const types = new Set(mergedPresets.map(p => p.chartType))
     return ['all', ...Array.from(types).sort()]
@@ -151,7 +155,7 @@ export default function AdminPresetsPage() {
       if (res.error) throw new Error(res.error)
 
       toast.success(isOfficial ? "Preset pushed globally!" : "Preset removed from global scope")
-      fetchPresets() // Reload list
+      fetchPresets()
     } catch (err) {
       console.error("Failed to update preset status:", err)
       toast.error("Failed to update official status")
@@ -159,8 +163,6 @@ export default function AdminPresetsPage() {
   }
 
   const handleEdit = (preset: MergedPreset) => {
-    // For both built-in and DB presets, navigate to editor with the preset ID
-    // The editor will try DB first, then fall back to hardcoded presets
     router.push(`/editor?editPresetId=${preset.id}`)
   }
 
@@ -186,25 +188,28 @@ export default function AdminPresetsPage() {
     }
   }
 
-  const activeFilterCount = [
-    searchQuery ? 1 : 0,
-    chartTypeFilter !== 'all' ? 1 : 0,
-    categoryFilter !== 'all' ? 1 : 0,
-    sourceFilter !== 'all' ? 1 : 0,
-  ].reduce((a, b) => a + b, 0)
+  const hasActiveFilters =
+    Boolean(searchQuery) ||
+    chartTypeFilter !== 'all' ||
+    categoryFilter !== 'all' ||
+    sourceFilter !== 'all' ||
+    onlyGlobal
 
   const clearAllFilters = () => {
     setSearchQuery('')
     setChartTypeFilter('all')
     setCategoryFilter('all')
     setSourceFilter('all')
+    setOnlyGlobal(false)
   }
 
-  if (loading) {
+  const builtInCount = mergedPresets.length - dbPresets.length
+
+  if (!sessionVerified) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
           <p className="text-gray-400 text-sm font-medium">Loading admin panel...</p>
         </div>
       </div>
@@ -212,274 +217,306 @@ export default function AdminPresetsPage() {
   }
 
   if (!user?.is_admin) {
-    return null // Will redirect via useEffect
+    return null
   }
 
   return (
-    <div className="min-h-screen bg-black text-gray-100 p-4 pt-6">
-      <div className="px-2 mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      {/* Top Bar matching /admin */}
+      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-gray-950/85 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => router.push('/admin')}
-              className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"
               title="Back to Admin"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
-                Global Preset Manager
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-semibold text-white tracking-tight truncate">
+                Preset Manager
               </h1>
-              <p className="text-gray-400 text-sm mt-0.5">
-                {mergedPresets.length} total presets • {dbPresets.length} in database • {mergedPresets.length - dbPresets.length} built-in
+              <p className="text-xs text-gray-400 truncate">
+                {mergedPresets.length} total · {dbPresets.length} saved · {builtInCount} built-in
               </p>
             </div>
           </div>
 
-          <div className="text-xs text-gray-500 max-w-[300px] text-right font-medium">
-            💡 Create new presets in the <button onClick={() => router.push('/editor')} className="text-violet-400 hover:underline">Chart Editor</button> using &quot;Publish as Style&quot;.
-          </div>
+          <Button
+            size="sm"
+            onClick={() => router.push('/editor')}
+            className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-3.5 h-9 text-xs font-medium shrink-0 shadow-sm shadow-violet-600/20"
+            title="Style a chart in the Editor and use Publish as Style"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            New in Editor
+          </Button>
         </div>
+      </header>
 
-        {/* Filters Bar */}
-        <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 mb-6 space-y-3">
-          {/* Search + Source filter row */}
-          <div className="flex flex-wrap gap-3 items-center">
-            {/* Search Input */}
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search presets by name, type, tags..."
-                className="w-full bg-gray-800/80 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-500 hover:text-gray-300">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Compact Single-Row Filter Toolbar */}
+        <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 mb-6">
+          {/* Search */}
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search presets by name, type, or tag..."
+              className="w-full h-9 bg-gray-900/90 border border-white/10 rounded-lg pl-9 pr-8 text-xs sm:text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/15 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-500 hover:text-gray-300"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
-            {/* Source Filter */}
-            <div className="flex items-center gap-1.5 bg-gray-800/60 border border-gray-700 rounded-lg p-1">
-              {(['all', 'built-in', 'database'] as const).map(s => (
+          {/* Controls Group */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Source Tabs */}
+            <div className="h-9 inline-flex items-center bg-gray-900/90 border border-white/10 rounded-lg p-0.5">
+              {(['all', 'database', 'built-in'] as const).map(s => (
                 <button
                   key={s}
+                  type="button"
                   onClick={() => setSourceFilter(s)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  className={`h-full px-2.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     sourceFilter === s
-                      ? 'bg-violet-600 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                      ? 'bg-white/10 text-white'
+                      : 'text-gray-400 hover:text-gray-200'
                   }`}
                 >
-                  {s === 'built-in' && <Package className="w-3 h-3" />}
-                  {s === 'database' && <Database className="w-3 h-3" />}
-                  {s === 'all' ? 'All Sources' : s === 'built-in' ? 'Built-in' : 'Database'}
+                  {s === 'database' && <Database className="w-3 h-3 text-emerald-400" />}
+                  {s === 'built-in' && <Package className="w-3 h-3 text-amber-400" />}
+                  {s === 'all' ? 'All' : s === 'database' ? 'Saved' : 'Built-in'}
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Chart type pills */}
-          <div className="flex flex-wrap gap-1.5">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold self-center mr-1">Type:</span>
-            {availableChartTypes.map(type => (
-              <button
-                key={type}
-                onClick={() => setChartTypeFilter(type)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-all ${
-                  chartTypeFilter === type
-                    ? 'bg-violet-600/20 text-violet-300 border-violet-500/40'
-                    : 'bg-gray-800/40 text-gray-500 border-gray-700/50 hover:border-gray-600 hover:text-gray-300'
-                }`}
+            {/* Chart Type Select */}
+            <Select value={chartTypeFilter} onValueChange={setChartTypeFilter}>
+              <SelectTrigger
+                aria-label="Filter by chart type"
+                className="h-9 w-[140px] bg-gray-900/90 border-white/10 text-xs font-medium text-gray-200 rounded-lg focus:ring-2 focus:ring-violet-500/20 focus:ring-offset-0"
               >
-                {type === 'all' ? 'All Types' : type}
-              </button>
-            ))}
-          </div>
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-900 border-white/10 text-gray-200">
+                {availableChartTypes.map(type => (
+                  <SelectItem
+                    key={type}
+                    value={type}
+                    className="text-xs focus:bg-white/10 focus:text-white cursor-pointer"
+                  >
+                    {type === 'all' ? 'All Types' : type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* Category pills */}
-          <div className="flex flex-wrap gap-1.5">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold self-center mr-1">Category:</span>
-            {CATEGORY_FILTERS.map(cat => (
-              <button
-                key={cat.value}
-                onClick={() => setCategoryFilter(cat.value)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-all ${
-                  categoryFilter === cat.value
-                    ? 'bg-violet-600/20 text-violet-300 border-violet-500/40'
-                    : 'bg-gray-800/40 text-gray-500 border-gray-700/50 hover:border-gray-600 hover:text-gray-300'
-                }`}
+            {/* Category Select */}
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger
+                aria-label="Filter by category"
+                className="h-9 w-[145px] bg-gray-900/90 border-white/10 text-xs font-medium text-gray-200 rounded-lg focus:ring-2 focus:ring-violet-500/20 focus:ring-offset-0"
               >
-                {cat.label}
-              </button>
-            ))}
-          </div>
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-900 border-white/10 text-gray-200">
+                {CATEGORY_FILTERS.map(cat => (
+                  <SelectItem
+                    key={cat.value}
+                    value={cat.value}
+                    className="text-xs focus:bg-white/10 focus:text-white cursor-pointer"
+                  >
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* Active filter count + Clear */}
-          {activeFilterCount > 0 && (
-            <div className="flex items-center gap-2 pt-1">
-              <span className="text-xs text-gray-400">
-                Showing {filteredPresets.length} of {mergedPresets.length} presets
-              </span>
+            {/* Global Only Toggle */}
+            <button
+              type="button"
+              onClick={() => setOnlyGlobal(prev => !prev)}
+              className={`h-9 px-3 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                onlyGlobal
+                  ? 'bg-blue-500/15 border-blue-500/40 text-blue-300'
+                  : 'bg-gray-900/90 border-white/10 text-gray-400 hover:text-gray-200'
+              }`}
+              title="Show only Global presets"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Global</span>
+            </button>
+
+            {hasActiveFilters && (
               <button
+                type="button"
                 onClick={clearAllFilters}
-                className="text-xs text-violet-400 hover:text-violet-300 underline"
+                className="h-9 px-2.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors flex items-center gap-1"
+                title="Reset filters"
               >
-                Clear all filters
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        {/* Results Count Line (only when filtering) */}
+        {hasActiveFilters && !isLoading && (
+          <p className="text-xs text-gray-400 mb-4">
+            Showing <span className="text-gray-200 font-medium">{filteredPresets.length}</span> of {mergedPresets.length} presets
+          </p>
+        )}
 
         {/* Presets Grid */}
         {isLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-white/[0.08] bg-gray-900/40 overflow-hidden animate-pulse"
+              >
+                <div className="h-44 bg-gray-900/80" />
+                <div className="p-4 space-y-2.5">
+                  <div className="h-4 w-2/3 bg-gray-800 rounded" />
+                  <div className="h-3 w-1/2 bg-gray-800/70 rounded" />
+                  <div className="h-8 w-full bg-gray-800/50 rounded mt-3" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredPresets.map(preset => (
-              <Card key={preset.id} className="bg-gray-900 border-gray-800 flex flex-col hover:border-violet-500/30 transition-all duration-300">
-                <CardContent className="p-4 flex-1 flex flex-col">
-                  {/* Preset Header */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2 text-violet-400">
-                        <Palette className="w-5 h-5 shrink-0" />
-                        <h3 className="font-semibold text-lg text-white line-clamp-1">{preset.name}</h3>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">
-                          {preset.chartType}
-                        </span>
-                        <span className="text-[10px] capitalize px-2 py-0.5 rounded bg-violet-950/40 text-violet-300 border border-violet-800/40">
-                          {preset.category}
-                        </span>
-                        {/* Source badge */}
-                        <span className={`text-[10px] px-2 py-0.5 rounded font-medium flex items-center gap-1 ${
-                          preset.source === 'built-in'
-                            ? 'bg-amber-950/40 text-amber-400 border border-amber-800/40'
-                            : 'bg-emerald-950/40 text-emerald-400 border border-emerald-800/40'
-                        }`}>
-                          {preset.source === 'built-in' ? (
-                            <><Package className="w-2.5 h-2.5" /> Built-in</>
-                          ) : (
-                            <><Database className="w-2.5 h-2.5" /> Database</>
-                          )}
+              <div
+                key={preset.id}
+                className="group rounded-xl border border-white/[0.08] bg-gray-900/50 hover:bg-gray-900/80 hover:border-white/15 transition-all duration-200 flex flex-col overflow-hidden"
+              >
+                {/* Preview Canvas */}
+                <div className="relative w-full h-44 bg-gray-950/90 border-b border-white/[0.06] overflow-hidden shrink-0 flex items-center justify-center p-3 select-none">
+                  <PresetPreviewChart preset={preset} />
+
+                  {preset.isOfficial && (
+                    <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-gray-950/85 text-blue-300 border border-blue-400/35 backdrop-blur-md shadow-sm font-semibold">
+                      <Globe className="w-2.5 h-2.5" />
+                      Global
+                    </span>
+                  )}
+                </div>
+
+                {/* Info & Actions */}
+                <div className="p-4 flex-1 flex flex-col">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-[15px] text-white truncate">
+                        {preset.name}
+                      </h3>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
+                        <span className="truncate">{preset.chartType}</span>
+                        <span className="text-gray-600">·</span>
+                        <span className="capitalize">{preset.category}</span>
+                        <span className="text-gray-600">·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              preset.source === 'built-in' ? 'bg-amber-400' : 'bg-emerald-400'
+                            }`}
+                          />
+                          {preset.source === 'built-in' ? 'Built-in' : 'Saved'}
                         </span>
                       </div>
                     </div>
-                    {preset.isOfficial && (
-                      <span className="flex items-center text-[10px] px-2.5 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold uppercase tracking-wider shrink-0">
-                        <Globe className="w-3 h-3 mr-1" /> Global
-                      </span>
-                    )}
                   </div>
 
-                  {/* Preset Dummy Data Preview */}
-                  <div className="relative w-full h-44 mb-4 bg-gray-950 rounded-lg border border-gray-800 overflow-hidden shrink-0 flex items-center justify-center p-3 select-none">
-                    <PresetPreviewChart preset={preset} />
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-sm text-gray-400 flex-1 mb-4 line-clamp-2">
+                  <p className="text-xs text-gray-400/90 line-clamp-2 mt-2.5 mb-3.5 leading-relaxed">
                     {preset.description || "No description provided."}
                   </p>
 
-                  {/* Tags */}
-                  {preset.tags.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap mb-4">
-                      <Tag className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                      {preset.tags.map(tag => (
-                        <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-gray-800 text-gray-400 rounded">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {/* Action Row */}
+                  <div className="flex items-center gap-2 mt-auto pt-3.5 border-t border-white/[0.06]">
+                    {preset.source === 'built-in' ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-8 text-xs bg-white/[0.03] hover:bg-violet-500/15 border-white/10 hover:border-violet-500/30 text-gray-200 hover:text-violet-200 font-medium transition-colors"
+                        onClick={() => handleEdit(preset)}
+                        title="Clone this built-in template in the Chart Editor to save as a database preset"
+                      >
+                        <Edit className="w-3.5 h-3.5 mr-1.5 text-violet-400" />
+                        Clone &amp; Customize
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 h-8 text-xs bg-white/[0.03] hover:bg-white/[0.08] border-white/10 text-gray-200 font-medium"
+                          onClick={() => handleEdit(preset)}
+                        >
+                          <Edit className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
+                          Edit
+                        </Button>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-gray-800/80">
-                    {preset.source === 'built-in' && (
-                      <div className="text-[11px] text-amber-500/85 bg-amber-950/20 border border-amber-900/30 rounded px-2.5 py-1.5 mb-1.5 font-medium flex items-center gap-2">
-                        <Package className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                        <span>Built-in template. Customizing will create a manageable database preset.</span>
-                      </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={`h-8 px-2.5 text-xs font-medium transition-colors ${
+                            preset.isOfficial
+                              ? 'bg-blue-500/15 hover:bg-blue-500/25 border-blue-500/30 text-blue-300'
+                              : 'bg-violet-600 hover:bg-violet-500 border-transparent text-white'
+                          }`}
+                          onClick={() => handlePushOfficial(preset.id, !preset.isOfficial)}
+                          title={preset.isOfficial ? "Remove from Global presets" : "Make this preset Global"}
+                        >
+                          <Globe className="w-3.5 h-3.5 mr-1.5" />
+                          {preset.isOfficial ? 'Unpush' : 'Push'}
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-8 h-8 p-0 shrink-0 text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+                          onClick={() => handleDeleteClick(preset.id)}
+                          title="Delete Preset"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </>
                     )}
-                    <div className="flex flex-wrap gap-2">
-                      {preset.source === 'built-in' ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 bg-violet-950/30 hover:bg-violet-900/50 border-violet-800/40 text-violet-300 font-medium transition-colors"
-                          onClick={() => handleEdit(preset)}
-                          title="Customize this built-in preset in the editor and save it as a database preset"
-                        >
-                          <Edit className="w-4 h-4 mr-2 text-violet-400" />
-                          Clone & Customize
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 bg-gray-800 hover:bg-gray-700 border-gray-700 text-white font-medium"
-                          onClick={() => handleEdit(preset)}
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit in Editor
-                        </Button>
-                      )}
-
-                      {preset.source === 'database' && (
-                        <>
-                          <Button
-                            variant={preset.isOfficial ? "outline" : "default"}
-                            size="sm"
-                            className={`flex-grow-0 px-3 ${preset.isOfficial ? "bg-gray-800 hover:bg-gray-700 border-gray-700 text-white" : "bg-violet-600 hover:bg-violet-700 text-white"}`}
-                            onClick={() => handlePushOfficial(preset.id, !preset.isOfficial)}
-                            title={preset.isOfficial ? "Remove from Global presets" : "Make this preset Global"}
-                          >
-                            <Globe className="w-4 h-4 mr-2" />
-                            <span>{preset.isOfficial ? "Unpush" : "Push"}</span>
-                          </Button>
-
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="w-10 p-0 flex-shrink-0"
-                            onClick={() => handleDeleteClick(preset.id)}
-                            title="Delete Preset"
-                          >
-                            <Trash2 className="w-4 h-4 text-white" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
 
             {filteredPresets.length === 0 && (
-              <div className="col-span-full py-16 text-center text-gray-400 bg-gray-900/30 rounded-2xl border border-dashed border-gray-800">
-                <Palette className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-                {activeFilterCount > 0 ? (
+              <div className="col-span-full py-16 text-center text-gray-400 bg-gray-900/30 rounded-xl border border-dashed border-white/10">
+                <Palette className="w-10 h-10 mx-auto mb-3 text-gray-600" />
+                {hasActiveFilters ? (
                   <>
-                    <p className="font-semibold text-lg text-white mb-1">No presets match your filters</p>
-                    <p className="text-sm text-gray-500">Try adjusting your search or filter criteria.</p>
-                    <button onClick={clearAllFilters} className="mt-3 text-sm text-violet-400 hover:text-violet-300 underline">
+                    <p className="font-medium text-base text-white mb-1">No presets match your filters</p>
+                    <p className="text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
+                    <button
+                      onClick={clearAllFilters}
+                      className="mt-3 text-xs text-violet-400 hover:text-violet-300 underline"
+                    >
                       Clear all filters
                     </button>
                   </>
                 ) : (
                   <>
-                    <p className="font-semibold text-lg text-white mb-1">No presets found</p>
-                    <p className="text-sm text-gray-500">Go to the Chart Editor to style and publish your first preset style.</p>
+                    <p className="font-medium text-base text-white mb-1">No presets found</p>
+                    <p className="text-xs text-gray-500">Go to the Chart Editor to style and publish your first preset.</p>
                   </>
                 )}
               </div>
@@ -497,7 +534,7 @@ export default function AdminPresetsPage() {
           cancelText="Cancel"
           variant="destructive"
         />
-      </div>
+      </main>
     </div>
   )
 }

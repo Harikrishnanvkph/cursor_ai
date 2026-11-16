@@ -44,19 +44,125 @@ import type {
  * @param publishData - Admin-provided metadata from the publish dialog
  * @returns A complete ChartStylePreset ready for storage
  */
+/**
+ * Strip positional geometry coordinates from customLabelsConfig while preserving
+ * all typography, shape, arrow, color, and number-formatting settings.
+ */
+function sanitizeCustomLabelsConfig(rawConfig: any): Record<string, any> | undefined {
+  if (!rawConfig || typeof rawConfig !== 'object' || Array.isArray(rawConfig)) {
+    return undefined
+  }
+  const clean: Record<string, any> = JSON.parse(JSON.stringify(rawConfig))
+  delete clean.x
+  delete clean.y
+  // Drop undefined keys that don't carry configuration
+  for (const key of Object.keys(clean)) {
+    if (clean[key] === undefined) delete clean[key]
+  }
+  return Object.keys(clean).length > 0 ? clean : undefined
+}
+
+function sanitizeSliceLabelOverrides(
+  overrides: any
+): Record<number, Record<string, any>> | undefined {
+  if (!overrides || typeof overrides !== 'object') return undefined
+  const result: Record<number, Record<string, any>> = {}
+  for (const key of Object.keys(overrides)) {
+    const idx = Number(key)
+    if (Number.isNaN(idx) || idx < 0) continue
+    const cleanSlice = sanitizeCustomLabelsConfig(overrides[key])
+    if (cleanSlice) result[idx] = cleanSlice
+  }
+  return Object.keys(result).length > 0 ? result : undefined
+}
+
+function extractPointImageStyleTemplate(dataset: ExtendedChartDataset | undefined): Record<string, any> | undefined {
+  const firstCfg = Array.isArray(dataset?.pointImageConfig) ? dataset.pointImageConfig[0] : undefined
+  if (!firstCfg || typeof firstCfg !== 'object') return undefined
+  const clean: Record<string, any> = JSON.parse(JSON.stringify(firstCfg))
+  delete clean.calloutX
+  delete clean.calloutY
+  return Object.keys(clean).length > 0 ? clean : undefined
+}
+
+function scaleArrayValue<T>(val: T | T[], targetLength: number): T | T[] {
+  if (!Array.isArray(val)) return val
+  if (val.length === 0 || targetLength <= 0) return [...val]
+  const result: T[] = []
+  for (let i = 0; i < targetLength; i++) {
+    result.push(JSON.parse(JSON.stringify(val[i % val.length])))
+  }
+  return result
+}
+
+function hasCustomAlpha(color: unknown): boolean {
+  if (typeof color !== 'string') return false
+  const match = color.match(/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/i)
+  if (!match) return false
+  const alpha = parseFloat(match[1])
+  return !isNaN(alpha) && alpha < 1
+}
+
+function createPercentageDatalabelsFormatter() {
+  return (value: any, context: any) => {
+    const dataArr = context?.chart?.data?.datasets?.[0]?.data || []
+    const total = dataArr.reduce((acc: number, val: number) => acc + (typeof val === 'number' ? val : 0), 0)
+    if (!total) return '0%'
+    return ((value / total) * 100).toFixed(1) + '%'
+  }
+}
+
+/**
+ * Resolve the primary dataset and scoped dataset list for publishing a preset.
+ */
+export function resolvePublishDatasets(
+  chartData: ExtendedChartData,
+  options?: Pick<PresetPublishData, 'activeDatasetIndex' | 'activeGroupId' | 'chartMode'>
+): { primaryDataset: ExtendedChartDataset | undefined; targetDatasets: ExtendedChartDataset[] } {
+  const allDatasets = chartData?.datasets || []
+  if (allDatasets.length === 0) {
+    return { primaryDataset: undefined, targetDatasets: [] }
+  }
+
+  if (options?.chartMode === 'grouped' && options?.activeGroupId) {
+    const groupDatasets = allDatasets.filter(
+      (ds: any) => ds.groupId === options.activeGroupId || (!ds.groupId && options.activeGroupId === 'default')
+    )
+    if (groupDatasets.length > 0) {
+      return { primaryDataset: groupDatasets[0], targetDatasets: groupDatasets }
+    }
+  }
+
+  const idx = typeof options?.activeDatasetIndex === 'number' &&
+    options.activeDatasetIndex >= 0 &&
+    options.activeDatasetIndex < allDatasets.length
+    ? options.activeDatasetIndex
+    : 0
+  const primary = allDatasets[idx] || allDatasets[0]
+
+  return {
+    primaryDataset: primary,
+    targetDatasets: options?.chartMode === 'grouped' ? allDatasets : (primary ? [primary] : []),
+  }
+}
+
+export function resolveTargetColorMode(dataset: ExtendedChartDataset | undefined): 'single' | 'slice' {
+  return (dataset as any)?.datasetColorMode === 'single' ? 'single' : 'slice'
+}
+
 export function extractPresetFromCurrentChart(
   chartType: SupportedChartType,
   chartData: ExtendedChartData,
   chartConfig: ExtendedChartOptions,
   publishData: PresetPublishData
 ): ChartStylePreset {
-  const dataset = chartData.datasets[0] // Use first dataset as the style template
+  const { primaryDataset: dataset, targetDatasets } = resolvePublishDatasets(chartData, publishData)
 
-  // Extract base colors from ALL datasets (grouped mode may have different colors per dataset)
-  // Collect unique colors across all datasets, up to 8
+  // Extract base colors from the active chart's datasets (grouped mode may have different colors per dataset)
+  // Collect unique colors across target datasets, up to 8
   let baseColors: string[] = []
   let baseBorderColors: string[] = []
-  for (const ds of chartData.datasets) {
+  for (const ds of targetDatasets) {
     const dsColors = extractBaseColors(ds)
     const dsBorderColors = extractBaseBorderColors(ds)
     for (const c of dsColors) {
@@ -66,7 +172,7 @@ export function extractPresetFromCurrentChart(
       if (!baseBorderColors.includes(c) && baseBorderColors.length < 8) baseBorderColors.push(c)
     }
   }
-  // Fallback to first dataset if nothing was collected
+  // Fallback to primary dataset if nothing was collected
   if (baseColors.length === 0) baseColors = extractBaseColors(dataset)
   if (baseBorderColors.length === 0) baseBorderColors = extractBaseBorderColors(dataset)
 
@@ -81,18 +187,42 @@ export function extractPresetFromCurrentChart(
   }
 
   // Build dataset style template
+  const dsAny = dataset as any
   const datasetStyle: DatasetStyleTemplate = {
-    borderWidth: (dataset?.borderWidth as number) ?? 2,
+    borderWidth: Array.isArray(dataset?.borderWidth)
+      ? [...(dataset!.borderWidth as number[])]
+      : ((dataset?.borderWidth as number) ?? 2),
     tension: dataset?.tension ?? 0,
-    fill: dataset?.fill === true,
-    pointRadius: dataset?.pointRadius ?? 3,
-    pointHoverRadius: (dataset as any)?.pointHoverRadius,
-    pointBorderWidth: (dataset as any)?.pointBorderWidth,
-    pointHoverBorderWidth: (dataset as any)?.pointHoverBorderWidth,
-    pointStyle: (dataset as any)?.pointStyle,
-    borderRadius: (dataset as any)?.borderRadius ?? 0,
-    hoverOffset: (dataset as any)?.hoverOffset ?? undefined,
-    datasetPattern: dataset?.datasetPattern ?? null,
+    fill: dataset?.fill !== undefined ? (dataset.fill as boolean | string) : (chartType === 'area' ? 'origin' : false),
+    pointRadius: Array.isArray(dataset?.pointRadius)
+      ? [...(dataset!.pointRadius as number[])]
+      : (dataset?.pointRadius ?? 3),
+    pointHoverRadius: Array.isArray(dsAny?.pointHoverRadius) ? [...dsAny.pointHoverRadius] : dsAny?.pointHoverRadius,
+    pointBorderWidth: Array.isArray(dsAny?.pointBorderWidth) ? [...dsAny.pointBorderWidth] : dsAny?.pointBorderWidth,
+    pointHoverBorderWidth: Array.isArray(dsAny?.pointHoverBorderWidth) ? [...dsAny.pointHoverBorderWidth] : dsAny?.pointHoverBorderWidth,
+    pointStyle: Array.isArray(dsAny?.pointStyle) ? [...dsAny.pointStyle] : dsAny?.pointStyle,
+    borderRadius: Array.isArray(dsAny?.borderRadius)
+      ? JSON.parse(JSON.stringify(dsAny.borderRadius))
+      : (typeof dsAny?.borderRadius === 'object' && dsAny?.borderRadius !== null
+          ? JSON.parse(JSON.stringify(dsAny.borderRadius))
+          : (dsAny?.borderRadius ?? 0)),
+    borderDash: Array.isArray(dsAny?.borderDash) ? [...dsAny.borderDash] : undefined,
+    borderSkipped: Array.isArray(dsAny?.borderSkipped) ? [...dsAny.borderSkipped] : dsAny?.borderSkipped,
+    hoverOffset: Array.isArray(dsAny?.hoverOffset) ? [...dsAny.hoverOffset] : (dsAny?.hoverOffset ?? undefined),
+    datasetPattern: dataset?.datasetPattern ? JSON.parse(JSON.stringify(dataset.datasetPattern)) : null,
+    slicePatterns: Array.isArray(dsAny?.slicePatterns) && dsAny.slicePatterns.some(Boolean)
+      ? JSON.parse(JSON.stringify(dsAny.slicePatterns))
+      : undefined,
+    gradientFill: dsAny?.gradientFill === true ? true : undefined,
+    gradientPreset: dsAny?.gradientPreset,
+    gradientTopOpacity: dsAny?.gradientTopOpacity,
+    gradientBottomOpacity: dsAny?.gradientBottomOpacity,
+    gradientPeakOpacity: dsAny?.gradientPeakOpacity,
+    gradientBaseOpacity: dsAny?.gradientBaseOpacity,
+    categoryPercentage: dsAny?.categoryPercentage,
+    barPercentage: dsAny?.barPercentage,
+    sliceLabelOverrides: sanitizeSliceLabelOverrides(dsAny?.sliceLabelOverrides),
+    pointImageStyle: extractPointImageStyleTemplate(dataset),
   }
 
   // Build dimensions (only if admin opted in)
@@ -103,8 +233,22 @@ export function extractPresetFromCurrentChart(
       }
     : null
 
-  // Sanitize the config
+  // Sanitize the config and merge any dataset-level customLabelsConfig so label styling cascades globally
   const configSnapshot = sanitizeConfig(chartConfig)
+  const dsLabelCfg = sanitizeCustomLabelsConfig(dsAny?.customLabelsConfig)
+  if (dsLabelCfg) {
+    if (!configSnapshot.plugins) configSnapshot.plugins = {}
+    configSnapshot.plugins.customLabelsConfig = {
+      ...(configSnapshot.plugins.customLabelsConfig || {}),
+      ...dsLabelCfg,
+    }
+  }
+  if (configSnapshot.plugins?.customLabelsConfig?.display !== undefined) {
+    configSnapshot.visualSettings = {
+      ...(configSnapshot.visualSettings || {}),
+      showLabels: configSnapshot.plugins.customLabelsConfig.display === true,
+    }
+  }
 
   // Generate a stable ID from the name
   const id = `preset-${publishData.name
@@ -264,40 +408,120 @@ export function applyPresetToChart(
       }
     }
 
-    // Apply dataset style template
-    styled.borderWidth = preset.datasetStyle.borderWidth as any
-    styled.tension = preset.datasetStyle.tension
-    styled.fill = preset.datasetStyle.fill
-    styled.pointRadius = preset.datasetStyle.pointRadius
-    if (preset.datasetStyle.pointHoverRadius !== undefined) {
-      ;(styled as any).pointHoverRadius = preset.datasetStyle.pointHoverRadius
-    }
-    if (preset.datasetStyle.pointBorderWidth !== undefined) {
-      ;(styled as any).pointBorderWidth = preset.datasetStyle.pointBorderWidth
-    }
-    if (preset.datasetStyle.pointHoverBorderWidth !== undefined) {
-      ;(styled as any).pointHoverBorderWidth = preset.datasetStyle.pointHoverBorderWidth
-    }
-    if (preset.datasetStyle.pointStyle !== undefined) {
-      ;(styled as any).pointStyle = preset.datasetStyle.pointStyle
-    }
-    if (preset.datasetStyle.borderRadius != null) {
-      ;(styled as any).borderRadius = preset.datasetStyle.borderRadius
-    }
-    if (preset.datasetStyle.hoverOffset != null) {
-      ;(styled as any).hoverOffset = preset.datasetStyle.hoverOffset
-    }
-    if (preset.datasetStyle.datasetPattern !== undefined) {
-      styled.datasetPattern = preset.datasetStyle.datasetPattern
+    // Reset stale dataset/slice label overrides so the preset's label style cascades cleanly,
+    // then apply preset sliceLabelOverrides (within effectiveLength) if the preset defines them.
+    const styledAny = styled as any
+    delete styledAny.customLabelsConfig
+    if (preset.datasetStyle.sliceLabelOverrides && typeof preset.datasetStyle.sliceLabelOverrides === 'object') {
+      const scopedOverrides: Record<number, Record<string, any>> = {}
+      for (const [rawIdx, overrideCfg] of Object.entries(preset.datasetStyle.sliceLabelOverrides)) {
+        const idx = Number(rawIdx)
+        if (!Number.isNaN(idx) && idx >= 0 && idx < effectiveLength) {
+          const cleanSlice = sanitizeCustomLabelsConfig(overrideCfg)
+          if (cleanSlice) scopedOverrides[idx] = cleanSlice
+        }
+      }
+      if (Object.keys(scopedOverrides).length > 0) {
+        styledAny.sliceLabelOverrides = scopedOverrides
+      } else {
+        delete styledAny.sliceLabelOverrides
+      }
+    } else {
+      delete styledAny.sliceLabelOverrides
     }
 
-    // Area chart in grouped mode: apply 50% opacity to prevent opaque background blocking datasets
-    if ((dsChartType === 'area' || styled.fill) && isGrouped) {
+    // Apply dataset style template
+    const dsStyle = preset.datasetStyle
+    styled.borderWidth = scaleArrayValue(dsStyle.borderWidth as any, effectiveLength) as any
+    styled.tension = dsStyle.tension
+    styled.fill = dsStyle.fill
+    styled.pointRadius = scaleArrayValue(dsStyle.pointRadius as any, effectiveLength) as any
+    if (dsStyle.pointHoverRadius !== undefined) {
+      styledAny.pointHoverRadius = scaleArrayValue(dsStyle.pointHoverRadius as any, effectiveLength)
+    }
+    if (dsStyle.pointBorderWidth !== undefined) {
+      styledAny.pointBorderWidth = scaleArrayValue(dsStyle.pointBorderWidth as any, effectiveLength)
+    }
+    if (dsStyle.pointHoverBorderWidth !== undefined) {
+      styledAny.pointHoverBorderWidth = scaleArrayValue(dsStyle.pointHoverBorderWidth as any, effectiveLength)
+    }
+    if (dsStyle.pointStyle !== undefined) {
+      styledAny.pointStyle = scaleArrayValue(dsStyle.pointStyle as any, effectiveLength)
+    }
+    if (dsStyle.borderRadius != null) {
+      styledAny.borderRadius = scaleArrayValue(dsStyle.borderRadius as any, effectiveLength)
+    }
+    if (Array.isArray(dsStyle.borderDash)) {
+      styledAny.borderDash = [...dsStyle.borderDash]
+    } else {
+      delete styledAny.borderDash
+    }
+    if (dsStyle.borderSkipped !== undefined) {
+      styledAny.borderSkipped = scaleArrayValue(dsStyle.borderSkipped as any, effectiveLength)
+    } else {
+      delete styledAny.borderSkipped
+    }
+    if (dsStyle.hoverOffset != null) {
+      styledAny.hoverOffset = scaleArrayValue(dsStyle.hoverOffset as any, effectiveLength)
+    }
+    if (dsStyle.datasetPattern !== undefined) {
+      styled.datasetPattern = dsStyle.datasetPattern ? JSON.parse(JSON.stringify(dsStyle.datasetPattern)) : null
+    }
+    if (Array.isArray(dsStyle.slicePatterns) && dsStyle.slicePatterns.length > 0) {
+      styledAny.slicePatterns = scaleArrayValue(dsStyle.slicePatterns, effectiveLength)
+    } else {
+      delete styledAny.slicePatterns
+    }
+
+    // Area gradient fill settings
+    if (dsStyle.gradientFill) {
+      styledAny.gradientFill = true
+      if (dsStyle.gradientPreset !== undefined) styledAny.gradientPreset = dsStyle.gradientPreset
+      if (dsStyle.gradientTopOpacity !== undefined) styledAny.gradientTopOpacity = dsStyle.gradientTopOpacity
+      if (dsStyle.gradientBottomOpacity !== undefined) styledAny.gradientBottomOpacity = dsStyle.gradientBottomOpacity
+      if (dsStyle.gradientPeakOpacity !== undefined) styledAny.gradientPeakOpacity = dsStyle.gradientPeakOpacity
+      if (dsStyle.gradientBaseOpacity !== undefined) styledAny.gradientBaseOpacity = dsStyle.gradientBaseOpacity
+    } else {
+      delete styledAny.gradientFill
+      delete styledAny.gradientPreset
+      delete styledAny.gradientTopOpacity
+      delete styledAny.gradientBottomOpacity
+      delete styledAny.gradientPeakOpacity
+      delete styledAny.gradientBaseOpacity
+    }
+
+    // Bar thickness settings
+    if (dsStyle.categoryPercentage !== undefined) styledAny.categoryPercentage = dsStyle.categoryPercentage
+    if (dsStyle.barPercentage !== undefined) styledAny.barPercentage = dsStyle.barPercentage
+
+    // Apply point/slice image frame style (preserves user's actual pointImages & dragged callout coords)
+    if (dsStyle.pointImageStyle && typeof dsStyle.pointImageStyle === 'object') {
+      const len = Math.max(
+        Array.isArray(styled.pointImages) ? styled.pointImages.length : 0,
+        Array.isArray(styled.pointImageConfig) ? styled.pointImageConfig.length : 0
+      )
+      if (len > 0) {
+        const existingCfgs = Array.isArray(styled.pointImageConfig) ? styled.pointImageConfig : []
+        styled.pointImageConfig = Array.from({ length: len }, (_, i) => {
+          const prev: any = existingCfgs[i] || {}
+          const mergedImgCfg: any = {
+            ...prev,
+            ...JSON.parse(JSON.stringify(dsStyle.pointImageStyle)),
+          }
+          if (prev.calloutX !== undefined) mergedImgCfg.calloutX = prev.calloutX
+          if (prev.calloutY !== undefined) mergedImgCfg.calloutY = prev.calloutY
+          return mergedImgCfg
+        })
+      }
+    }
+
+    // Area chart in grouped mode: apply 50% opacity only when preset didn't already set gradient or custom alpha
+    if ((dsChartType === 'area' || styled.fill) && isGrouped && !styledAny.gradientFill) {
       if (Array.isArray(styled.backgroundColor)) {
         styled.backgroundColor = styled.backgroundColor.map(c =>
-          typeof c === 'string' ? applyOpacityToColor(c, 50) : c
+          typeof c === 'string' && !hasCustomAlpha(c) ? applyOpacityToColor(c, 50) : c
         ) as any
-      } else if (typeof styled.backgroundColor === 'string') {
+      } else if (typeof styled.backgroundColor === 'string' && !hasCustomAlpha(styled.backgroundColor)) {
         styled.backgroundColor = applyOpacityToColor(styled.backgroundColor, 50) as any
       }
     }
@@ -309,6 +533,21 @@ export function applyPresetToChart(
   // Start from the type-appropriate defaults, then layer the preset's snapshot
   const baseConfig = getDefaultConfigForType(newChartType)
   const mergedConfig = deepMergeConfigs(baseConfig, preset.configSnapshot)
+
+  // Reconstruct Pie/Doughnut percentage formatter if saved via displayMode
+  if ((mergedConfig.plugins as any)?.datalabels?.displayMode === 'percentage' &&
+      typeof (mergedConfig.plugins as any).datalabels.formatter !== 'function') {
+    ;(mergedConfig.plugins as any).datalabels.formatter = createPercentageDatalabelsFormatter()
+  }
+
+  // Keep visualSettings.showLabels and plugins.customLabelsConfig.display synchronized
+  const presetLabelDisplay = preset.configSnapshot?.plugins?.customLabelsConfig?.display
+  if (presetLabelDisplay !== undefined) {
+    mergedConfig.visualSettings = {
+      ...(mergedConfig.visualSettings || {}),
+      showLabels: presetLabelDisplay === true,
+    }
+  }
 
   // ── 3. Preserve user's content text ─────────────────────
   if (currentConfig.plugins) {
@@ -381,8 +620,8 @@ export function applyPresetToChart(
         }
       }
 
-      // Preserve tick numberFormat on value axis
-      if (oldValueAxis?.ticks?.numberFormat) {
+      // Preserve user's tick numberFormat only if the preset did not define one
+      if (!targetValAxis.ticks?.numberFormat && oldValueAxis?.ticks?.numberFormat) {
         targetValAxis.ticks = {
           ...(targetValAxis.ticks || {}),
           numberFormat: oldValueAxis.ticks.numberFormat,
@@ -412,10 +651,10 @@ export function applyPresetToChart(
     }
   }
 
-  // Radial scale transfer
+  // Radial scale transfer (only fall back to user's numberFormat if preset didn't specify one)
   if ((newChartType === 'radar' || newChartType === 'polarArea') && mergedCfg.scales?.r) {
     const oldValueAxis = isOldHorizontal ? oldScales?.x : oldScales?.y
-    if (oldValueAxis?.ticks?.numberFormat) {
+    if (!mergedCfg.scales.r.ticks?.numberFormat && oldValueAxis?.ticks?.numberFormat) {
       mergedCfg.scales.r.ticks = {
         ...(mergedCfg.scales.r.ticks || {}),
         numberFormat: oldValueAxis.ticks.numberFormat,
@@ -423,7 +662,7 @@ export function applyPresetToChart(
     }
   } else if ((oldChartType === 'radar' || oldChartType === 'polarArea') && oldScales?.r?.ticks?.numberFormat) {
     const targetValueKey = isNewHorizontal ? 'x' : 'y'
-    if (mergedCfg.scales?.[targetValueKey]) {
+    if (mergedCfg.scales?.[targetValueKey] && !mergedCfg.scales[targetValueKey].ticks?.numberFormat) {
       mergedCfg.scales[targetValueKey].ticks = {
         ...(mergedCfg.scales[targetValueKey].ticks || {}),
         numberFormat: oldScales.r.ticks.numberFormat,
@@ -431,8 +670,8 @@ export function applyPresetToChart(
     }
   }
 
-  // Preserve root-level number format
-  if (currentCfg.numberFormat) {
+  // Preserve root-level number format only if the preset didn't define one
+  if (!mergedCfg.numberFormat && currentCfg.numberFormat) {
     mergedCfg.numberFormat = currentCfg.numberFormat
   }
 
@@ -527,12 +766,9 @@ export function sanitizeConfig(config: ExtendedChartOptions): Record<string, any
       if (axis.ticks) {
         delete axis.ticks.stepSize
         delete axis.ticks.callback
-        delete axis.ticks.numberFormat // Strip data-specific number formatting
       }
     }
   }
-
-  delete clean.numberFormat // Root numberFormat if present
 
   // ── Strip content text ──────────────────────────────────
   if (clean.plugins?.title) {
@@ -542,15 +778,27 @@ export function sanitizeConfig(config: ExtendedChartOptions): Record<string, any
     delete clean.plugins.subtitle.text
   }
 
-  // ── Strip non-serializable functions ────────────────────
-  if (clean.plugins?.datalabels?.formatter) {
+  // ── Strip non-serializable functions (preserve displayMode if percentage) ──
+  if (clean.plugins?.datalabels) {
+    if (typeof (config as any)?.plugins?.datalabels?.formatter === 'function') {
+      const fnStr = (config as any).plugins.datalabels.formatter.toString()
+      if (fnStr.includes('percentage') && !clean.plugins.datalabels.displayMode) {
+        clean.plugins.datalabels.displayMode = 'percentage'
+      }
+    }
     delete clean.plugins.datalabels.formatter
   }
 
-  // ── Strip custom label plugin data ──────────────────────
-  // These contain absolute positions tied to specific data geometries
+  // ── Strip runtime customLabels array, but preserve customLabelsConfig styling (minus x/y coords) ──
   delete clean.plugins?.customLabels
-  delete clean.plugins?.customLabelsConfig
+  if (clean.plugins?.customLabelsConfig) {
+    const sanitizedLabelCfg = sanitizeCustomLabelsConfig(clean.plugins.customLabelsConfig)
+    if (sanitizedLabelCfg) {
+      clean.plugins.customLabelsConfig = sanitizedLabelCfg
+    } else {
+      delete clean.plugins.customLabelsConfig
+    }
+  }
 
   // ── Strip dimension-mode flags ──────────────────────────
   // Dimensions are stored separately in preset.dimensions

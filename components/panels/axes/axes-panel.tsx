@@ -101,7 +101,7 @@ export function AxesPanel() {
         >
           <span>Goal Lines</span>
           {hasGoalLineInUse ? (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" title="Goal line active" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" title="Goal line active" />
           ) : (
             <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />
           )}

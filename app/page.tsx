@@ -1703,26 +1703,15 @@ function AutoScrollingChartTypes({
     const el = containerRef.current
     if (!el) return
 
-    // Pause when the chart ticker is scrolled out of viewport
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        isInViewRef.current = entry.isIntersecting
-      },
-      { threshold: 0 }
-    )
-    observer.observe(el)
-
-    // Track tab visibility to pause when inactive
-    const handleVisibility = () => {
-      isPageVisibleRef.current = !document.hidden
-    }
-    document.addEventListener("visibilitychange", handleVisibility)
-
     const pixelsPerSecond = 45 // Constant speed across 60Hz, 120Hz & 144Hz displays
     let lastTime = performance.now()
-    let animId: number
+    let animId: number | null = null
 
     const step = (currentTime: number) => {
+      if (!isPageVisibleRef.current || !isInViewRef.current) {
+        animId = null
+        return
+      }
       const delta = (currentTime - lastTime) / 1000
       lastTime = currentTime
 
@@ -1730,7 +1719,7 @@ function AutoScrollingChartTypes({
       if (delta > 0 && delta < 0.2) {
         const setWidth = el.scrollWidth / 3
         if (setWidth > 0) {
-          if (!isHoveredRef.current && !isDraggingRef.current && isPageVisibleRef.current && isInViewRef.current) {
+          if (!isHoveredRef.current && !isDraggingRef.current) {
             el.scrollLeft += pixelsPerSecond * delta
           }
           // Seamless infinite wrap in both directions
@@ -1745,10 +1734,39 @@ function AutoScrollingChartTypes({
       animId = requestAnimationFrame(step)
     }
 
-    animId = requestAnimationFrame(step)
+    const startOrStopLoop = () => {
+      if (isPageVisibleRef.current && isInViewRef.current) {
+        if (animId === null) {
+          lastTime = performance.now()
+          animId = requestAnimationFrame(step)
+        }
+      } else if (animId !== null) {
+        cancelAnimationFrame(animId)
+        animId = null
+      }
+    }
+
+    // Pause when the chart ticker is scrolled out of viewport
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isInViewRef.current = entry.isIntersecting
+        startOrStopLoop()
+      },
+      { threshold: 0 }
+    )
+    observer.observe(el)
+
+    // Track tab visibility to pause when inactive
+    const handleVisibility = () => {
+      isPageVisibleRef.current = !document.hidden
+      startOrStopLoop()
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    startOrStopLoop()
 
     return () => {
-      cancelAnimationFrame(animId)
+      if (animId !== null) cancelAnimationFrame(animId)
       observer.disconnect()
       document.removeEventListener("visibilitychange", handleVisibility)
     }

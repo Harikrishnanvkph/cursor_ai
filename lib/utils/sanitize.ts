@@ -7,12 +7,23 @@
  */
 import DOMPurify from 'dompurify';
 
+function fallbackServerSanitize(markup: string): string {
+  if (!markup || typeof markup !== 'string') return '';
+  return markup
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<foreignObject[\s\S]*?>[\s\S]*?<\/foreignObject>/gi, '')
+    .replace(/<\/?(iframe|object|embed|use|meta|link|base)[^>]*>/gi, '')
+    .replace(/\bon\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/(?:javascript|vbscript|data\s*:\s*text\/html)\s*:/gi, '');
+}
+
 /**
  * Sanitizes an HTML string, stripping dangerous tags/attributes while
  * preserving safe formatting elements used by templates, formats, and decorations.
  */
 export function sanitizeHTML(html: string): string {
-  if (typeof window === 'undefined') return html;
+  if (!html || typeof html !== 'string') return '';
+  if (typeof window === 'undefined') return fallbackServerSanitize(html);
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       'b', 'i', 'em', 'strong', 'u', 's', 'strike', 'p', 'br', 'span', 'div',
@@ -35,10 +46,11 @@ export function sanitizeHTML(html: string): string {
  * More permissive than sanitizeHTML since SVG elements are needed.
  */
 export function sanitizeSVG(svg: string): string {
-  if (typeof window === 'undefined') return svg;
+  if (!svg || typeof svg !== 'string') return '';
+  if (typeof window === 'undefined') return fallbackServerSanitize(svg);
   return DOMPurify.sanitize(svg, {
     USE_PROFILES: { svg: true, svgFilters: true },
-    ADD_TAGS: ['use'],
+    FORBID_TAGS: ['script', 'foreignObject', 'use', 'iframe', 'object', 'embed'],
     ALLOW_DATA_ATTR: false,
   });
 }

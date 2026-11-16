@@ -1,5 +1,49 @@
 export function generateGaugePluginCode(): string {
     return `
+function formatGaugeNumber(val, formatConfig) {
+    if (!formatConfig || typeof formatConfig !== 'object') return String(val);
+    var preset = formatConfig.preset || 'none';
+    var currencySymbol = formatConfig.currencySymbol || '$';
+    var currencyPosition = formatConfig.currencyPosition || 'prefix';
+    var decimals = formatConfig.decimals;
+    var compact = Boolean(formatConfig.compact) || preset === 'compact';
+    var useGrouping = formatConfig.useGrouping !== false;
+
+    if (preset === 'none' && !compact && (decimals === undefined || decimals === 'auto')) {
+        return String(val);
+    }
+
+    var formatted = '';
+    var fracDigits = (decimals !== undefined && decimals !== 'auto') ? Number(decimals) : (val % 1 === 0 ? 0 : 2);
+
+    try {
+        var opts = {
+            useGrouping: useGrouping,
+            maximumFractionDigits: fracDigits,
+            minimumFractionDigits: (decimals !== undefined && decimals !== 'auto') ? fracDigits : 0,
+        };
+        if (compact) {
+            opts.notation = 'compact';
+            opts.compactDisplay = 'short';
+        }
+        formatted = new Intl.NumberFormat('en-US', opts).format(val);
+    } catch (e) {
+        formatted = String(val);
+    }
+
+    if (preset === 'currency') {
+        if (currencyPosition === 'prefix') {
+            formatted = currencySymbol + formatted;
+        } else {
+            formatted = formatted + ' ' + currencySymbol;
+        }
+    } else if (preset === 'percent') {
+        formatted = formatted + '%';
+    }
+
+    return formatted;
+}
+
 function drawCurvedText(ctx, text, cx, cy, radius, midAngle, fontSize) {
     var charWidths = [];
     var totalWidth = 0;
@@ -165,19 +209,24 @@ const gaugePlugin = {
 
                 var labelText = '';
                 var chartLabel = chart.data.labels && chart.data.labels[i];
+                var gaugeNumFormat = pluginOptions.numberFormat || (chart.options && chart.options.numberFormat);
+                var formatSliceVal = function(val) {
+                    var num = Number(val);
+                    return (gaugeNumFormat && !isNaN(num)) ? formatGaugeNumber(num, gaugeNumFormat) : String(val);
+                };
                 switch (sliceLabelContent) {
                     case 'label':
-                        labelText = chartLabel ? String(chartLabel) : String(rawSliceValue);
+                        labelText = chartLabel ? String(chartLabel) : formatSliceVal(rawSliceValue);
                         break;
                     case 'percentage':
                         labelText = Math.round(sliceRatio * 100) + '%';
                         break;
                     case 'label+value':
-                        labelText = chartLabel ? (chartLabel + ': ' + rawSliceValue) : String(rawSliceValue);
+                        labelText = chartLabel ? (chartLabel + ': ' + formatSliceVal(rawSliceValue)) : formatSliceVal(rawSliceValue);
                         break;
                     case 'value':
                     default:
-                        labelText = String(rawSliceValue);
+                        labelText = formatSliceVal(rawSliceValue);
                         break;
                 }
 
@@ -270,6 +319,7 @@ const gaugePlugin = {
         // ── 3. Draw value text
         if (showValue) {
             var valuePosition = pluginOptions.valuePosition || 'bottom';
+            var gaugeNumFormat = pluginOptions.numberFormat || (chart.options && chart.options.numberFormat);
             var gaugeValueText;
             if (valueDisplayContent === 'label') {
                 var needleSliceIndex = 0;
@@ -289,7 +339,11 @@ const gaugePlugin = {
                 var displayNum = (manualNeedleValue !== undefined && manualNeedleValue !== null && manualNeedleValue !== '')
                     ? needleDisplayValue
                     : rawCurrentValue;
-                gaugeValueText = valuePrefix + displayNum + valueSuffix;
+                var numToFormat = Number(displayNum);
+                var formattedDisplay = (gaugeNumFormat && !isNaN(numToFormat))
+                    ? formatGaugeNumber(numToFormat, gaugeNumFormat)
+                    : String(displayNum);
+                gaugeValueText = valuePrefix + formattedDisplay + valueSuffix;
             }
 
             ctx.font = valueFontWeight + ' ' + valueFontSize + 'px ' + valueFontFamily;

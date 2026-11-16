@@ -1134,7 +1134,7 @@ export function TemplateChartPreview({
       >
         <div style={{ pointerEvents: readOnly ? 'none' : ((panMode || drawingMode === 'marquee-select') ? 'none' : 'auto'), width: '100%', height: '100%' }}>
           <ChartGenerator
-            key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}`}
+            key={`template-${template.id}`}
             devicePixelRatioMultiplier={Math.max(1, scale)}
             responsiveWidth={template.chartArea.width}
             responsiveHeight={template.chartArea.height}

@@ -8,6 +8,7 @@ import { getPatternCSS } from "@/lib/utils"
 import { useChartStore } from "@/lib/chart-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { fetchImageAsBase64, embedImagesInHtmlString, generateGoogleFontLinks, extractFontFamiliesFromHtml } from "@/lib/utils/html-export-utils"
+import { sanitizeSVG } from "@/lib/utils/sanitize"
 
 // ═══════════════════════════════════════════════════════
 // Format → HTML Export
@@ -546,7 +547,7 @@ function renderDecorationZoneHTML(rz: RenderedZone): string {
             `opacity:${zone.style.svgOpacity || 0.6}`,
             `color:${zone.style.svgColor || '#6b7280'}`
         )
-        return `<div class="format-zone" style="${baseStyle.join(';')}">${rz.resolvedSvg}</div>`
+        return `<div class="format-zone" style="${baseStyle.join(';')}">${sanitizeSVG(rz.resolvedSvg)}</div>`
     }
 
     // Border decoration

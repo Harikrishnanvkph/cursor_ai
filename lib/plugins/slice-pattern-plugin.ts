@@ -150,6 +150,8 @@ function getOrCreatePattern(
   lineWidth: number,
   spacing: number
 ): CanvasPattern | null {
+  if (!spacing || spacing <= 0) return null;
+
   const key = `${type}_${color}_${lineWidth}_${spacing}`;
   if (patternCache.has(key)) return patternCache.get(key)!;
 

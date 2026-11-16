@@ -106,6 +106,45 @@ export function generateCompletePluginSystem(chartConfig: any): string {
         pluginCode += generateWatermarkPluginCode();
     }
 
+    // Add Zero Line Highlight plugin if enabled
+    if ((chartConfig.plugins as any)?.zeroLineHighlight?.enabled) {
+        pluginCode += `
+        // Zero Line Highlight Plugin
+        const zeroLineHighlightPlugin = {
+            id: 'zeroLineHighlight',
+            beforeDatasetsDraw(chart) {
+                const opts = chart.config?.options?.plugins?.zeroLineHighlight;
+                if (!opts || opts.enabled !== true) return;
+                const axisKey = opts.axis || 'y';
+                const scale = chart.scales?.[axisKey];
+                if (!scale || scale.type === 'category' || scale.min > 0 || scale.max < 0) return;
+                const { ctx, chartArea } = chart;
+                if (!chartArea) return;
+                const zeroPixel = scale.getPixelForValue(0);
+                if (axisKey === 'y') {
+                    if (zeroPixel < chartArea.top - 1 || zeroPixel > chartArea.bottom + 1) return;
+                } else {
+                    if (zeroPixel < chartArea.left - 1 || zeroPixel > chartArea.right + 1) return;
+                }
+                ctx.save();
+                ctx.beginPath();
+                if (axisKey === 'y') {
+                    ctx.moveTo(chartArea.left, zeroPixel);
+                    ctx.lineTo(chartArea.right, zeroPixel);
+                } else {
+                    ctx.moveTo(zeroPixel, chartArea.top);
+                    ctx.lineTo(zeroPixel, chartArea.bottom);
+                }
+                ctx.lineWidth = opts.lineWidth ?? 2.5;
+                ctx.strokeStyle = opts.color || '#1e293b';
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+        Chart.register(zeroLineHighlightPlugin);
+        `;
+    }
+
     // Always include Chart.js 4-way padding, title alignment, and asymmetric tick padding runtime patches
     pluginCode += generatePaddingAndFontPatchesCode();
 

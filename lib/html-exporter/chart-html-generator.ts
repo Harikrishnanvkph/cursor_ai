@@ -20,6 +20,11 @@ import { generateDecorationsSVG, generateDecorationsCSS } from "../template-expo
 import { darkenColor } from "../utils/color-utils";
 import { buildExportConfig } from "../utils/font-scale-utils";
 import { collectAllChartFonts, generateGoogleFontHeadTags, sanitizeScalesCustomPadding } from "./html-export-font-utils";
+import {
+    generateNumberFormatHelpersJS,
+    generateScaleTicksFormattingJS,
+    generateTooltipFormattingJS,
+} from "./number-format-runtime";
 
 /**
  * Generate a complete standalone HTML file with the chart
@@ -790,13 +795,13 @@ ${googleFontsHTML ? googleFontsHTML + '\n' : ''}
 
     <script>
         // Chart.js Configuration
-        const chartConfig = ${JSON.stringify(enhancedChartConfig, null, 8)};
-        const chartData = ${JSON.stringify(processedChartData, null, 8)};
-        const chartType = "${mappedChartType}";
+        const chartConfig = ${JSON.stringify(enhancedChartConfig, null, 8).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
+        const chartData = ${JSON.stringify(processedChartData, null, 8).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
+        const chartType = ${JSON.stringify(mappedChartType).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
         
         // Extract legendType for generateLabels function
-        const legendType = ${JSON.stringify(legendForExport.legendType || 'dataset')};
-        const legendLabelsConfig = ${JSON.stringify(legendForExport.labels || {})};
+        const legendType = ${JSON.stringify(legendForExport.legendType || 'dataset').replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
+        const legendLabelsConfig = ${JSON.stringify(legendForExport.labels || {}).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
         
         // Enhanced configuration for standalone HTML
         const enhancedConfig = {
@@ -823,7 +828,7 @@ ${googleFontsHTML ? googleFontsHTML + '\n' : ''}
                     padding: 12
                 } : { enabled: false },
                 legend: {
-                    ...${JSON.stringify(legendForExport, null, 8)},
+                    ...${JSON.stringify(legendForExport, null, 8).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')},
                     onClick: function(e, legendItem, legend) {
                         const currentLegendType = legend.options?.plugins?.legendType || (chartConfig.plugins && chartConfig.plugins.legendType);
                         if (currentLegendType === 'waterfall') {
@@ -1056,116 +1061,9 @@ ${googleFontsHTML ? googleFontsHTML + '\n' : ''}
             }
         }
         
-        // Utility to format numbers based on numberFormat configuration
-        function formatNumberWithConfig(val, formatConfig) {
-            if (!formatConfig || typeof formatConfig !== 'object') return String(val);
-            const preset = formatConfig.preset || 'none';
-            const currencySymbol = formatConfig.currencySymbol || '$';
-            const currencyPosition = formatConfig.currencyPosition || 'prefix';
-            const decimals = formatConfig.decimals;
-            const compact = Boolean(formatConfig.compact) || preset === 'compact';
-            const useGrouping = formatConfig.useGrouping !== false;
-
-            if (preset === 'none' && !compact && (decimals === undefined || decimals === 'auto')) {
-                return String(val);
-            }
-
-            let formatted = '';
-            const fracDigits = (decimals !== undefined && decimals !== 'auto') ? Number(decimals) : (val % 1 === 0 ? 0 : 2);
-
-            try {
-                const opts = {
-                    useGrouping: useGrouping,
-                    maximumFractionDigits: fracDigits,
-                    minimumFractionDigits: (decimals !== undefined && decimals !== 'auto') ? fracDigits : 0,
-                };
-                if (compact) {
-                    opts.notation = 'compact';
-                    opts.compactDisplay = 'short';
-                }
-                formatted = new Intl.NumberFormat('en-US', opts).format(val);
-            } catch(e) {
-                formatted = String(val);
-            }
-
-            if (preset === 'currency') {
-                if (currencyPosition === 'prefix') {
-                    formatted = currencySymbol + formatted;
-                } else {
-                    formatted = formatted + ' ' + currencySymbol;
-                }
-            } else if (preset === 'percent') {
-                formatted = formatted + '%';
-            }
-
-            return formatted;
-        }
-
-        // Dynamic Axis Tick Prefix & Suffix & Number Formatting
-        if (enhancedConfig.scales) {
-            Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
-                const scale = enhancedConfig.scales[axisKey];
-                if (scale && scale.ticks) {
-                    const prefix = typeof scale.ticks.prefix === 'string' ? scale.ticks.prefix : '';
-                    const suffix = typeof scale.ticks.suffix === 'string' ? scale.ticks.suffix : '';
-                    const numFormat = scale.ticks.numberFormat;
-                    const hasNumFormat = numFormat && ((numFormat.preset && numFormat.preset !== 'none') || numFormat.compact);
-                    if (prefix || suffix || hasNumFormat) {
-                        const origCallback = scale.ticks.callback;
-                        scale.ticks.callback = function(value, index, ticks) {
-                            let label;
-                            if (typeof origCallback === 'function') {
-                                label = origCallback.call(this, value, index, ticks);
-                            } else if (this && typeof this.getLabelForValue === 'function') {
-                                label = this.getLabelForValue(value);
-                            } else if (typeof value === 'number' && hasNumFormat) {
-                                label = formatNumberWithConfig(value, numFormat);
-                            } else {
-                                label = value;
-                            }
-                            if (Array.isArray(label)) {
-                                return label.map(function(l, i) {
-                                    return (i === 0 ? prefix : '') + l + (i === label.length - 1 ? suffix : '');
-                                });
-                            }
-                            return prefix + label + suffix;
-                        };
-                    }
-                }
-            });
-        }
-
-        // Dynamic Tooltip Number Formatting
-        if (enhancedConfig.plugins && enhancedConfig.plugins.tooltip && enhancedConfig.plugins.tooltip.enabled !== false) {
-            const origTooltipLabel = enhancedConfig.plugins.tooltip.callbacks && enhancedConfig.plugins.tooltip.callbacks.label;
-            enhancedConfig.plugins.tooltip.callbacks = enhancedConfig.plugins.tooltip.callbacks || {};
-            enhancedConfig.plugins.tooltip.callbacks.label = function(context) {
-                if (typeof origTooltipLabel === 'function') {
-                    return origTooltipLabel.call(this, context);
-                }
-                const dataset = context.dataset || {};
-                const label = context.label || '';
-                let rawVal = context.raw !== undefined ? context.raw : (context.parsed && context.parsed.y !== undefined ? context.parsed.y : context.parsed);
-                let numVal = typeof rawVal === 'number' ? rawVal : (typeof rawVal === 'object' && rawVal !== null && rawVal.y !== undefined ? Number(rawVal.y) : (context.parsed && context.parsed.y !== undefined ? Number(context.parsed.y) : Number(rawVal)));
-                let formattedVal = isNaN(numVal) ? String(rawVal ?? '') : numVal;
-                if (typeof numVal === 'number' && !isNaN(numVal)) {
-                    if (chartType === 'timeline') {
-                        const yTick = enhancedConfig.scales && enhancedConfig.scales.y && enhancedConfig.scales.y.ticks;
-                        const prefix = typeof yTick?.prefix === 'string' ? yTick.prefix : '';
-                        const suffix = typeof yTick?.suffix === 'string' ? yTick.suffix : '';
-                        const formatted = numVal.toLocaleString(undefined, {
-                            minimumFractionDigits: numVal % 1 === 0 ? 0 : 2,
-                            maximumFractionDigits: 2
-                        });
-                        formattedVal = prefix + formatted + suffix;
-                    } else if (scaleFormat && scaleFormat.syncTooltip !== false && ((scaleFormat.preset && scaleFormat.preset !== 'none') || scaleFormat.compact)) {
-                        formattedVal = formatNumberWithConfig(numVal, scaleFormat);
-                    }
-                }
-                const dsLabel = dataset.label ? dataset.label + ': ' : (chartType === 'timeline' ? '' : (label ? label + ': ' : ''));
-                return dsLabel + formattedVal;
-            };
-        }
+        ${generateNumberFormatHelpersJS()}
+        ${generateScaleTicksFormattingJS('enhancedConfig')}
+        ${generateTooltipFormattingJS('enhancedConfig', chartType, mappedChartType)}
 
         // Dynamic Scale Ticks Asymmetric Padding Sanitization
         if (enhancedConfig.scales) {

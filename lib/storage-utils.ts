@@ -121,6 +121,7 @@ export function clearUserSpecificStorage(userId: string): void {
     'decoration-store',
     'chartography-style-presets',
     'format-gallery-store',
+    'snap-state-store',
   ];
 
   const keysToRemove = storeNames.map(name => `${name}-${userId}`);
@@ -128,6 +129,13 @@ export function clearUserSpecificStorage(userId: string): void {
   let removedCount = 0;
   keysToRemove.forEach(key => {
     try {
+      const pendingTimer = pendingStorageTimers.get(key);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        pendingStorageTimers.delete(key);
+      }
+      pendingStorageWrites.delete(key);
+
       if (localStorage.getItem(key) !== null) {
         localStorage.removeItem(key);
         removedCount++;
@@ -163,6 +171,7 @@ export async function clearAllUserSessionData(userId: string): Promise<void> {
     'decoration-store',
     'chartography-style-presets',
     'format-gallery-store',
+    'snap-state-store',
   ];
 
   const keysToRemove = storeNames.map(name => `${name}-${userId}`);
@@ -172,6 +181,12 @@ export async function clearAllUserSessionData(userId: string): Promise<void> {
   // make logout noticeably slow for users with large offline stores).
   for (const key of keysToRemove) {
     try {
+      const pendingTimer = pendingStorageTimers.get(key);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        pendingStorageTimers.delete(key);
+      }
+      pendingStorageWrites.delete(key);
       localStorage.removeItem(key);
       removeStorageTimestamp(key);
     } catch (error) {
@@ -893,6 +908,42 @@ export const idbStorage = {
   }
 };
 
+const pendingStorageWrites = new Map<string, string>();
+const pendingStorageTimers = new Map<string, ReturnType<typeof setTimeout>>();
+let storageFlushListenersAttached = false;
+
+function flushPendingStorageWrite(key: string): void {
+  const timer = pendingStorageTimers.get(key);
+  if (timer) {
+    clearTimeout(timer);
+    pendingStorageTimers.delete(key);
+  }
+  const value = pendingStorageWrites.get(key);
+  if (value === undefined) return;
+  pendingStorageWrites.delete(key);
+
+  idbStorage.setItem(key, value).then(() => {
+    updateStorageTimestamp(key);
+  }).catch((error) => {
+    console.error(`QuotaExceededError: Failed to save to IndexedDB:`, error);
+    toast.error('Storage limit reached! Please remove large images to continue saving.');
+  });
+}
+
+function ensureStorageFlushListeners(): void {
+  if (storageFlushListenersAttached || typeof window === 'undefined') return;
+  storageFlushListenersAttached = true;
+  const flushAll = () => {
+    for (const key of Array.from(pendingStorageWrites.keys())) {
+      flushPendingStorageWrite(key);
+    }
+  };
+  window.addEventListener('pagehide', flushAll);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushAll();
+  });
+}
+
 export function createExpiringStorage(baseName: string) {
   if (typeof window === 'undefined') {
     // Return a dummy storage for SSR that doesn't do anything
@@ -902,6 +953,8 @@ export function createExpiringStorage(baseName: string) {
       removeItem: () => { },
     }));
   }
+
+  ensureStorageFlushListeners();
 
   const storage: StateStorage = {
     getItem: async (name: string): Promise<string | null> => {
@@ -914,6 +967,10 @@ export function createExpiringStorage(baseName: string) {
         return draft ? draft : null; // return null to force Zustand to initialize empty instead of loading editor shapes!
       }
       
+      if (pendingStorageWrites.has(key)) {
+        return pendingStorageWrites.get(key)!;
+      }
+
       return await idbStorage.getItem(key);
     },
     setItem: async (name: string, value: string): Promise<void> => {
@@ -931,16 +988,16 @@ export function createExpiringStorage(baseName: string) {
         return;
       }
       
-      try {
-        await idbStorage.setItem(key, value);
-        // Update timestamp when data is saved (also updates activity)
-        updateStorageTimestamp(key);
-
-        // No bootstrap cache needed anymore, we use an App Shell loading state
-      } catch (error) {
-        console.error(`QuotaExceededError: Failed to save to IndexedDB:`, error);
-        toast.error('Storage limit reached! Please remove large images to continue saving.');
+      // Coalesce high-frequency (60fps slider/drag) writes in memory and flush after 600ms
+      pendingStorageWrites.set(key, value);
+      const existingTimer = pendingStorageTimers.get(key);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
       }
+      const timer = setTimeout(() => {
+        flushPendingStorageWrite(key);
+      }, 600);
+      pendingStorageTimers.set(key, timer);
     },
     removeItem: async (name: string): Promise<void> => {
       const key = getUserStorageKey(baseName);
@@ -951,6 +1008,13 @@ export function createExpiringStorage(baseName: string) {
         return;
       }
       
+      const existingTimer = pendingStorageTimers.get(key);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        pendingStorageTimers.delete(key);
+      }
+      pendingStorageWrites.delete(key);
+
       await idbStorage.removeItem(key);
       removeStorageTimestamp(key);
     },

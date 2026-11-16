@@ -343,13 +343,26 @@ function buildSyntheticPreview(preset: ChartStylePreset) {
     data: SAMPLE_VALUES,
     backgroundColor: colors,
     borderColor: borderColors,
-    borderWidth: Math.min(preset.datasetStyle?.borderWidth ?? 1, 2),
+    borderWidth: Math.min(
+      Array.isArray(preset.datasetStyle?.borderWidth)
+        ? (preset.datasetStyle.borderWidth[0] ?? 1)
+        : (preset.datasetStyle?.borderWidth ?? 1),
+      2
+    ),
   }
 
   if (LINE_TYPES.has(preset.chartType) || resolvedType === 'line') {
     dataset.tension = preset.datasetStyle?.tension ?? 0
-    dataset.fill = preset.datasetStyle?.fill ?? (preset.chartType === 'area')
-    dataset.pointRadius = Math.min(preset.datasetStyle?.pointRadius ?? 2, 3)
+    dataset.fill = preset.datasetStyle?.fill ?? (preset.chartType === 'area' ? 'origin' : false)
+    dataset.pointRadius = Math.min(
+      Array.isArray(preset.datasetStyle?.pointRadius)
+        ? (preset.datasetStyle.pointRadius[0] ?? 2)
+        : (preset.datasetStyle?.pointRadius ?? 2),
+      3
+    )
+    if (Array.isArray(preset.datasetStyle?.borderDash)) {
+      dataset.borderDash = preset.datasetStyle.borderDash
+    }
     if (preset.datasetStyle?.pointStyle !== undefined) dataset.pointStyle = preset.datasetStyle.pointStyle
     if (preset.datasetStyle?.pointBorderWidth !== undefined) dataset.pointBorderWidth = preset.datasetStyle.pointBorderWidth
     
@@ -364,7 +377,8 @@ function buildSyntheticPreview(preset: ChartStylePreset) {
   }
 
   if (resolvedType === 'bar') {
-    const radius = preset.datasetStyle?.borderRadius ?? 0
+    const rawRadius = preset.datasetStyle?.borderRadius ?? 0
+    const radius = Array.isArray(rawRadius) ? (rawRadius[0] ?? 0) : rawRadius
     dataset.borderRadius = typeof radius === 'number' ? Math.min(radius, 4) : radius
   }
 

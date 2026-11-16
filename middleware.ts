@@ -9,7 +9,12 @@ export function middleware(request: NextRequest) {
   const authCookie = request.cookies.get('is_authenticated')
 
   // Skip middleware entirely for auth pages to prevent any interference
-  if (pathname === '/signin' || pathname === '/signup') {
+  if (
+    pathname === '/signin' ||
+    pathname === '/signup' ||
+    pathname === '/admin/signin' ||
+    pathname.startsWith('/admin/signin/')
+  ) {
     return NextResponse.next()
   }
 
@@ -23,7 +28,8 @@ export function middleware(request: NextRequest) {
     // and the backend API strictly enforcing access tokens on data requests.
     // We cannot read backend cookies (access_token) directly when deployed on different domains.
     if (!authCookie) {
-      const signInUrl = new URL('/signin', request.url)
+      const isAdminRoute = pathname.startsWith('/admin')
+      const signInUrl = new URL(isAdminRoute ? '/admin/signin' : '/signin', request.url)
       // Save target path to redirect them back after successful sign-in
       signInUrl.searchParams.set('redirect', pathname + (request.nextUrl.search || ''))
       return NextResponse.redirect(signInUrl)

@@ -48,7 +48,7 @@ export const FREE_BASELINE_CONFIG = {
   monthlyFreeAiCredits: 10,
   permanentCloudCredits: 5,
   firstAiPurchaseCloudBonus: 5,
-  summaryText: 'Every account includes 10 Free AI Credits / month (1 credit / chart, 2 credits / template) + 5 Permanent Cloud Save Credits (Never Expire).',
+  summaryText: 'Every account includes 10 Free AI Credits / month + 5 Permanent Cloud Save Credits (Never Expire).',
 };
 
 export const FREE_CARD_BY_CATEGORY: Record<CreditCategory, FreeCardDefinition> = {
@@ -60,7 +60,6 @@ export const FREE_CARD_BY_CATEGORY: Record<CreditCategory, FreeCardDefinition> =
     badge: 'Free Forever',
     features: [
       { text: 'Resets every month' },
-      { text: '1 credit / chart, 2 credits / template' },
       { text: 'Free Advanced Editor' },
       { text: '5 cloud save credits (Never Expire)' },
       { text: 'Free Share, Export' },
@@ -100,7 +99,6 @@ export const AI_CREDIT_PACKS: CreditPackDefinition[] = [
     features: [
       { text: 'Everything in Free', highlight: true, highlightWord: 'Free' },
       { text: 'Credits Never Expire', highlight: true, highlightWord: 'Never Expire' },
-      { text: '1 credit / chart, 2 credits / template' },
       {
         text: '+5 cloud save credits (on first payment only - Never Expire)',
         firstPurchaseOnly: true,
@@ -127,7 +125,6 @@ export const AI_CREDIT_PACKS: CreditPackDefinition[] = [
     features: [
       { text: 'Everything in Free', highlight: true, highlightWord: 'Free' },
       { text: 'Credits Never Expire', highlight: true, highlightWord: 'Never Expire' },
-      { text: '1 credit / chart, 2 credits / template' },
       {
         text: '+5 cloud save credits (on first payment only - Never Expire)',
         firstPurchaseOnly: true,
@@ -217,11 +214,10 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierDefinition> = {
     priceYearly: 0,
     aiCreditsLimit: 10,
     cloudChartsLimit: 5,
-    description: '10 Free AI Credits every month (1 credit / chart, 2 credits / template) and 5 Permanent Cloud Save Credits.',
+    description: '10 Free AI Credits every month and 5 Permanent Cloud Save Credits.',
     badge: 'Free Baseline',
     features: [
       '10 Free AI credits per month',
-      '1 credit / chart, 2 credits / template',
       '5 Permanent cloud save credits (Never Expire)',
       'Free Advanced Editor',
       'Free Share, Export',
@@ -238,7 +234,6 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierDefinition> = {
     badge: 'Lite',
     features: [
       '+30 AI credits (Never Expire)',
-      '1 credit / chart, 2 credits / template',
       '+5 Cloud save credits (on first payment only - Never Expire)',
       'Free Advanced Editor',
       'Free Share, Export',
@@ -256,7 +251,6 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierDefinition> = {
     badge: 'Pro',
     features: [
       '+100 AI credits (Never Expire)',
-      '1 credit / chart, 2 credits / template',
       '+5 Cloud save credits (on first payment only - Never Expire)',
       'Free Advanced Editor',
       'Free Share, Export',

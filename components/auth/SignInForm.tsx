@@ -2,23 +2,40 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
+import {
+  AuthCardFrame,
+  AuthLoadingCard,
+  AuthGoogleSection,
+  authInputClassName,
+  authPrimaryButtonClassName,
+} from '@/components/auth/AuthPageShell'
 import { toast } from 'sonner'
 
 export function SignInForm() {
-  const { user, loading, signIn, signInWithGoogle, signInAsGuest } = useAuth()
+  const { user, loading, sendOtp, verifyOtp, signInWithGoogle, signInWithGitHub } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpError, setOtpError] = useState<string | null>(null)
+  const [step, setStep] = useState<'email' | 'otp'>('email')
+  const [resendCooldown, setResendCooldown] = useState(0)
   const [isPending, setIsPending] = useState(false)
 
   useEffect(() => {
-    const redirect = searchParams.get('redirect')
-    if (redirect && redirect !== '/signin' && redirect !== '/signup') {
+    const redirect = searchParams.get('redirect') || searchParams.get('returnUrl')
+    if (
+      redirect &&
+      redirect.startsWith('/') &&
+      !redirect.startsWith('//') &&
+      redirect !== '/signin' &&
+      redirect !== '/signup' &&
+      !redirect.startsWith('/admin/signin')
+    ) {
       sessionStorage.setItem('redirectAfterSignIn', redirect)
     }
   }, [searchParams])
@@ -27,7 +44,6 @@ export function SignInForm() {
     const errorParam = searchParams.get('error')
     if (errorParam) {
       toast.error(errorParam)
-      // Clean up the URL parameter
       const url = new URL(window.location.href)
       url.searchParams.delete('error')
       window.history.replaceState({}, '', url.toString())
@@ -36,8 +52,7 @@ export function SignInForm() {
 
   useEffect(() => {
     if (!loading && user) {
-      const defaultRedirect = user.is_admin ? '/admin' : '/board'
-      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || defaultRedirect
+      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/board'
       sessionStorage.removeItem('redirectAfterSignIn')
       sessionStorage.removeItem('logged_out_from_oauth')
       router.replace(redirectPath)
@@ -49,13 +64,11 @@ export function SignInForm() {
 
     const loggedOut = sessionStorage.getItem('logged_out_from_oauth')
     if (loggedOut === 'true') {
-      // Push a dummy state to history to capture the back button action
       window.history.pushState({ type: 'signin-back-interceptor' }, '')
 
-      const handlePopState = (event: PopStateEvent) => {
+      const handlePopState = () => {
         sessionStorage.removeItem('logged_out_from_oauth')
         sessionStorage.setItem('exiting_app', 'true')
-        // Redirect to Home page
         window.location.replace('/')
       }
 
@@ -66,22 +79,58 @@ export function SignInForm() {
     }
   }, [])
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((prev) => prev - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
+
   if (loading || user) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 bg-card border border-border/60 rounded-xl shadow-lg w-full max-w-md min-h-[300px]">
-        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
-        <p className="text-sm text-muted-foreground font-medium">Verifying session...</p>
-      </div>
-    )
+    return <AuthLoadingCard message={user ? 'Redirecting to your workspace…' : 'Verifying session…'} />
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
+    const trimmed = email.trim()
+    if (!trimmed) return
     setIsPending(true)
     try {
-      await signIn(email, password)
-    } catch (error) {
-      console.error('Unexpected error in sign in form:', error)
+      const ok = await sendOtp(trimmed, 'signin')
+      if (ok) {
+        setOtp('')
+        setOtpError(null)
+        setStep('otp')
+        setResendCooldown(30)
+      }
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault()
+    if (otp.length !== 6) return
+    setOtpError(null)
+    setIsPending(true)
+    try {
+      const res = await verifyOtp(email.trim(), otp)
+      if (!res.ok) {
+        setOtpError(res.error || 'Invalid or expired verification code. Please try again.')
+      }
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0 || isPending) return
+    setOtpError(null)
+    setIsPending(true)
+    try {
+      const ok = await sendOtp(email.trim(), 'signin')
+      if (ok) {
+        setResendCooldown(30)
+      }
     } finally {
       setIsPending(false)
     }
@@ -97,101 +146,107 @@ export function SignInForm() {
     }
   }
 
-  async function handleGuestSignIn() {
+  async function handleGitHubSignIn() {
     setIsPending(true)
     try {
-      await signInAsGuest()
+      await signInWithGitHub()
     } catch (error) {
-      console.error('Unexpected error in Guest sign in:', error)
+      console.error('Unexpected error in GitHub sign in:', error)
       setIsPending(false)
     }
   }
 
   return (
-    <Card className="w-full max-w-md shadow-lg border border-border/60">
-      <CardHeader className="pb-4 space-y-1">
-        <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
-          Continue to your account
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="h-11"
-          />
-          <Input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="h-11"
-          />
-          <Button type="submit" className="w-full h-11 font-semibold" disabled={isPending}>
-            {isPending ? 'Signing in…' : 'Sign in'}
+    <AuthCardFrame
+      title={step === 'email' ? 'Welcome back' : 'Check your email'}
+      description={
+        step === 'email'
+          ? 'Sign in to continue to your AIChartor workspace'
+          : `We sent a 6-digit verification code to ${email.trim()}`
+      }
+    >
+      {step === 'email' ? (
+        <>
+          <form onSubmit={handleSendCode} className="space-y-3.5">
+            <Input
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className={authInputClassName}
+            />
+
+            <Button type="submit" className={authPrimaryButtonClassName} disabled={isPending || !email.trim()}>
+              {isPending ? 'Sending code…' : 'Continue with email'}
+            </Button>
+          </form>
+
+          <AuthGoogleSection disabled={isPending} onClick={handleGoogleSignIn} onGitHubClick={handleGitHubSignIn} />
+        </>
+      ) : (
+        <form onSubmit={handleVerifyCode} className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-center py-1">
+              <InputOTP
+                maxLength={6}
+                value={otp}
+                onChange={(val) => {
+                  setOtp(val.replace(/\D/g, ''))
+                  if (otpError) setOtpError(null)
+                }}
+                disabled={isPending}
+              >
+                <InputOTPGroup className="gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <InputOTPSlot
+                      key={index}
+                      index={index}
+                      className={`h-12 w-11 rounded-xl border bg-slate-50/80 dark:bg-slate-950/60 text-base font-semibold text-slate-900 dark:text-slate-100 first:rounded-xl last:rounded-xl ${
+                        otpError
+                          ? 'border-red-400 dark:border-red-500'
+                          : 'border-slate-200 dark:border-slate-700'
+                      }`}
+                    />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            {otpError && (
+              <p role="alert" className="text-xs text-red-600 dark:text-red-400 text-center">
+                {otpError}
+              </p>
+            )}
+          </div>
+
+          <Button type="submit" className={authPrimaryButtonClassName} disabled={isPending || otp.length !== 6}>
+            {isPending ? 'Verifying…' : 'Verify & sign in'}
           </Button>
+
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setStep('email')
+                setOtp('')
+              }}
+              className="inline-flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Use different email
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendCooldown > 0 || isPending}
+              className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline disabled:opacity-50 disabled:no-underline"
+            >
+              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+            </button>
+          </div>
         </form>
-
-        <div className="text-right">
-          <Link href="/auth/forgot" className="text-sm text-primary hover:underline">
-            Forgot password?
-          </Link>
-        </div>
-
-        <div className="relative my-2">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs text-muted-foreground">
-            <span className="bg-card px-2">or</span>
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          className="w-full h-11 font-medium"
-          onClick={handleGoogleSignIn}
-          disabled={isPending}
-          type="button"
-        >
-          <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-          </svg>
-          Continue with Google
-        </Button>
-
-        <div className="relative my-2">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs text-muted-foreground">
-            <span className="bg-card px-2">or</span>
-          </div>
-        </div>
-
-        <Button
-          variant="ghost"
-          className="w-full h-11 font-medium text-muted-foreground"
-          onClick={handleGuestSignIn}
-          disabled={isPending}
-          type="button"
-        >
-          <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          Sign in as Guest
-        </Button>
-      </CardContent>
-    </Card>
+      )}
+    </AuthCardFrame>
   )
 }

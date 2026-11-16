@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
-import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useFormatGalleryStore, ensureDefaultFormatSelected } from "@/lib/stores/format-gallery-store"
 import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import {
@@ -220,9 +220,8 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
                   onClick={() => {
                     if (tab.id === 'templates') {
                       const templateStore = useTemplateStore.getState()
-                      if (!templateStore.currentTemplate) {
-                        templateStore.applyTemplate('template-1')
-                      }
+                      ensureDefaultFormatSelected(useChartStore.getState().chartType || 'bar')
+                      templateStore.setGenerateMode('format')
                       templateStore.setEditorMode('template')
                       onTabChange('tpl_templates')
                     } else {

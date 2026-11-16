@@ -65,7 +65,7 @@ const PRODUCTS: ProductItem[] = [
   {
     title: "Templates & Infographics",
     description: "Pre-crafted editorial infographic styles & presentation charts.",
-    href: "#showcase-templates",
+    href: "/#showcase-templates",
     icon: Palette,
   },
 ]
@@ -144,6 +144,8 @@ export function HomeNewNavbar() {
       const element = document.querySelector(href)
       if (element) {
         element.scrollIntoView({ behavior: "smooth" })
+      } else {
+        router.push(`/${href}`)
       }
     } else {
       router.push(href)

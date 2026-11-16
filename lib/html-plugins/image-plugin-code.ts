@@ -857,6 +857,7 @@ function renderSliceImage(ctx, element, img, config) {
   const outerRadius = element.outerRadius || Math.min(chartArea.width, chartArea.height) / 2;
 
   // Detect 3D pie for label positioning
+  const chartType = (chart.config && chart.config.type) || '';
   const pie3dOpts = (chart.options.plugins && chart.options.plugins.pie3d) || chart.options.pie3d || {};
   const isPie3dActive = !!(pie3dOpts.enabled !== false && (chartType === 'pie3d' || chartType === 'doughnut3d' || pie3dOpts.enabled));
   const tilt = isPie3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;

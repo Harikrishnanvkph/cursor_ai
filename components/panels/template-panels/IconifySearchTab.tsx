@@ -1,27 +1,64 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search, X as XIcon, Loader2, Globe, Smile, Sparkles } from "lucide-react"
+import { Search, X as XIcon, Loader2, Globe, Smile, Sparkles, ExternalLink } from "lucide-react"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import {
   DESIGN_ELEMENTS_LIBRARY,
   ELEMENT_CATEGORIES,
   type CanvasDesignElement,
-  isMulticolorSvg
+  isMulticolorSvg,
+  replaceSvgColor
 } from "@/lib/elements/elements-registry"
 import { toast } from "sonner"
+import { sanitizeSVG } from "@/lib/utils/sanitize"
 
 // Quick trending tags for vector icons
 const ICON_TAGS = ["arrow", "brush", "crown", "star", "heart", "fire", "sparkle", "check", "badge", "circle", "smile", "hand"]
 
-// Standard emoji styles available on Cloudflare Edge CDN (100% Free, zero server load)
+const IconifyLogo = ({ className = "w-3.5 h-3.5 rounded shrink-0" }: { className?: string }) => (
+  <svg viewBox="0 0 32 32" className={className} fill="none">
+    <rect width="32" height="32" rx="6" fill="#1769AA" />
+    <circle cx="16" cy="10" r="2.5" fill="#ffffff" />
+    <rect x="14" y="14.5" width="4" height="9.5" rx="2" fill="#ffffff" />
+  </svg>
+)
+
+// Permissive SPDX licenses that require zero end-user attribution on exported charts
+const ZERO_ATTRIBUTION_SPDX = new Set([
+  "MIT",
+  "Apache-2.0",
+  "ISC",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "0BSD",
+  "CC0-1.0",
+  "Unlicense",
+  "WTFPL",
+  "Zlib",
+])
+
+// Zero-attribution emoji styles (MIT & Apache 2.0) available on Cloudflare Edge CDN
 const EMOJI_STYLES = [
-  { id: "fluent-emoji-flat", label: "Fluent" },
-  { id: "twemoji", label: "Twemoji" },
-  { id: "noto", label: "Noto" },
-  { id: "openmoji", label: "OpenMoji" },
+  {
+    id: "fluent-emoji-flat",
+    label: "Fluent",
+    attributionLabel: "Fluent Emoji",
+    url: "https://github.com/microsoft/fluentui-emoji",
+    badgeBg: "#0078D4",
+    letter: "F",
+  },
+  {
+    id: "noto",
+    label: "Noto",
+    attributionLabel: "Noto Emoji",
+    url: "https://github.com/googlefonts/noto-emoji",
+    badgeBg: "#4285F4",
+    letter: "N",
+  },
 ]
 
 // Instant-load emoji categories (Single batch fetch from Cloudflare CDN)
@@ -50,13 +87,44 @@ interface VectorSearchTabProps {
     listType?: "section" | "shapes"
   ) => React.ReactNode
   elementsListRef?: React.RefObject<HTMLDivElement | null>
+  allowedModes?: ("elements" | "icons" | "emojis")[]
+  initialMode?: "elements" | "icons" | "emojis"
 }
 
-export function IconifySearchTab({ renderElementList, elementsListRef }: VectorSearchTabProps) {
+export function IconifySearchTab({
+  renderElementList,
+  elementsListRef,
+  allowedModes = ["elements", "emojis"],
+  initialMode
+}: VectorSearchTabProps) {
   const { shapes, addShape, setSelectedShapeId, setDrawingMode, globalShapeSettings } = useDecorationStore()
 
-  // Mode: "elements" (Canva Design Elements) vs "icons" (200k+ Iconify) vs "emojis" (15k+ Vector Emojis)
-  const [mode, setMode] = useState<"elements" | "icons" | "emojis">("elements")
+  // Mode: "elements" (Canva Design Elements) vs "icons" (200k+ Iconify) vs "emojis" (50k+ Vector Emojis)
+  const defaultMode = initialMode && allowedModes.includes(initialMode)
+    ? initialMode
+    : allowedModes[0] || "elements"
+  const [mode, setMode] = useState<"elements" | "icons" | "emojis">(defaultMode)
+
+  const allowedModesKey = allowedModes.join(",")
+  const prevInitialModeRef = useRef(initialMode)
+
+  useEffect(() => {
+    const initialModeChanged = prevInitialModeRef.current !== initialMode
+    prevInitialModeRef.current = initialMode
+
+    setMode((prev) => {
+      if (initialModeChanged && initialMode && allowedModes.includes(initialMode)) {
+        return initialMode
+      }
+      if (allowedModes.includes(prev)) {
+        return prev
+      }
+      return initialMode && allowedModes.includes(initialMode)
+        ? initialMode
+        : allowedModes[0] || "elements"
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMode, allowedModesKey])
 
   // ── Elements State (Canva Design Elements) ──
   const [cdnElements, setCdnElements] = useState<CanvasDesignElement[]>([])
@@ -122,6 +190,16 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
 
   const handleAddDesignElement = (element: CanvasDesignElement) => {
     const isMulti = isMulticolorSvg(element.svg)
+    const elementColor = element.defaultColor || "#3b82f6"
+
+    // If single-colored and uses currentColor, bake defaultColor directly into the SVG
+    // so the canvas element matches the preview color exactly
+    const initialSvg = isMulti
+      ? element.svg
+      : replaceSvgColor(element.svg, "currentColor", elementColor)
+
+    const initialColor = isMulti ? "original" : elementColor
+
     const newId = addShape({
       type: "deco-svg",
       x: 60,
@@ -129,16 +207,16 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
       width: Math.min(element.width || 120, 200),
       height: Math.min(element.height || 60, 150),
       rotation: 0,
-      fillColor: isMulti ? "original" : (globalShapeSettings?.fillColor || element.defaultColor),
+      fillColor: initialColor,
       fillOpacity: 100,
-      strokeColor: isMulti ? "original" : (globalShapeSettings?.fillColor || element.defaultColor),
+      strokeColor: initialColor,
       strokeWidth: 0,
       strokeStyle: "solid",
       visible: true,
       locked: false,
       zIndex: shapes.length + 1,
-      svgContent: element.svg,
-      originalSvg: element.svg,
+      svgContent: initialSvg,
+      originalSvg: initialSvg,
     })
     setSelectedShapeId(newId)
     setDrawingMode(null)
@@ -228,12 +306,25 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
     try {
       const searchUrl = currentMode === "emojis"
         ? `https://api.iconify.design/search?query=${encodeURIComponent(trimmed)}&prefix=${encodeURIComponent(stylePrefix)}&limit=48`
-        : `https://api.iconify.design/search?query=${encodeURIComponent(trimmed)}&limit=48`
+        : `https://api.iconify.design/search?query=${encodeURIComponent(trimmed)}&limit=96`
 
       const res = await fetch(searchUrl)
       if (!res.ok) throw new Error("Search failed")
       const data = await res.json()
-      const iconList: string[] = data.icons || []
+      const rawIcons: string[] = data.icons || []
+      const collections = data.collections || {}
+
+      // Filter global icon results to permissive zero-attribution licenses only (MIT, Apache-2.0, ISC, BSD, CC0, Unlicense)
+      const iconList = currentMode === "icons"
+        ? rawIcons
+            .filter((full) => {
+              const prefix = full.split(":")[0]
+              const spdx = collections?.[prefix]?.license?.spdx
+              return Boolean(spdx && ZERO_ATTRIBUTION_SPDX.has(spdx))
+            })
+            .slice(0, 48)
+        : rawIcons
+
       setIcons(iconList)
 
       // Group icons by prefix for single parallel batch request
@@ -338,60 +429,74 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
 
   return (
     <div className="space-y-3.5">
-      {/* ── 1. Mode Switcher: Elements vs Icons vs Emojis ── */}
-      <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100/90 rounded-xl">
-        <button
-          type="button"
-          onClick={() => handleModeChange("elements")}
-          title="Design Elements"
-          className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
-            mode === "elements"
-              ? "bg-white text-slate-900 shadow-2xs font-semibold"
-              : "text-slate-500 hover:text-slate-800 font-medium"
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          <span>Elements</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => handleModeChange("icons")}
-          title="Vector Icons"
-          className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
-            mode === "icons"
-              ? "bg-white text-slate-900 shadow-2xs font-semibold"
-              : "text-slate-500 hover:text-slate-800 font-medium"
-          }`}
-        >
-          <Globe className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-          <span>Icons</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => handleModeChange("emojis")}
-          title="Vector Emojis"
-          className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
-            mode === "emojis"
-              ? "bg-white text-slate-900 shadow-2xs font-semibold"
-              : "text-slate-500 hover:text-slate-800 font-medium"
-          }`}
-        >
-          <Smile className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-          <span>Emojis</span>
-        </button>
-      </div>
+      {/* ── 1. Mode Switcher (only shown if multiple allowed modes) ── */}
+      {allowedModes.length > 1 && (
+        <div className={`grid gap-1 p-1 bg-slate-100/90 rounded-xl ${allowedModes.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          {allowedModes.includes("elements") && (
+            <button
+              type="button"
+              onClick={() => handleModeChange("elements")}
+              title="Design Elements"
+              className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                mode === "elements"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-500 hover:text-slate-800 font-medium"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>Elements</span>
+            </button>
+          )}
+          {allowedModes.includes("icons") && (
+            <button
+              type="button"
+              onClick={() => handleModeChange("icons")}
+              title="All Icons & Shapes"
+              className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                mode === "icons"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-500 hover:text-slate-800 font-medium"
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span>All Icons & Shapes</span>
+            </button>
+          )}
+          {allowedModes.includes("emojis") && (
+            <button
+              type="button"
+              onClick={() => handleModeChange("emojis")}
+              title="Vector Emojis (50k+)"
+              className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                mode === "emojis"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-500 hover:text-slate-800 font-medium"
+              }`}
+            >
+              <Smile className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+              <span>Emojis (50k+)</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── 2. SUB-VIEW: ELEMENTS (Canva Style Designs) ── */}
       {mode === "elements" ? (
-        <div className="space-y-3">
+        <div key="elements-view" className="space-y-3">
           {/* Search bar */}
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             <Input
+              key="elements-search-input"
               type="text"
               placeholder="Search elements, brushes, doodles..."
               value={elementSearch}
               onChange={(e) => setElementSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                }
+              }}
               className="h-8.5 pl-8 pr-7 text-xs bg-slate-50/70 border-slate-200/80 rounded-lg placeholder:text-slate-400 focus:bg-white focus:border-blue-400 transition-colors"
             />
             {elementSearch && (
@@ -466,7 +571,7 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
                     <div
                       className="w-full h-full flex items-center justify-center transition-transform group-hover:scale-108 duration-200"
                       style={{ color: elem.defaultColor }}
-                      dangerouslySetInnerHTML={{ __html: elem.svg }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeSVG(elem.svg) }}
                     />
                   </div>
                   <div className="w-full mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1.5">
@@ -485,15 +590,23 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
         </div>
       ) : (
         /* ── 3. SUB-VIEW: ICONS & EMOJIS ── */
-        <div className="space-y-3">
+        <div key="vector-view" className="space-y-3">
           {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             <Input
+              key="vector-search-input"
               type="text"
-              placeholder={mode === "icons" ? "Search 200k+ vector icons..." : "Search 15k+ vector emojis..."}
+              placeholder={mode === "icons" ? "Search 200k+ vector icons..." : "Search 50k+ vector emojis..."}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+                  executeSearch(query, mode, emojiStyle)
+                }
+              }}
               className="h-8.5 pl-8 pr-7 text-xs bg-slate-50/70 border-slate-200/80 rounded-lg placeholder:text-slate-400 focus:bg-white focus:border-blue-400 transition-colors"
             />
             {query && (
@@ -573,7 +686,7 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
             </div>
           )}
 
-          {/* Results Header */}
+          {/* Results Header & Provider Attribution Badge */}
           <div className="flex justify-between items-center px-0.5 pt-0.5">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
@@ -590,7 +703,35 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
                 {icons.length}
               </span>
             </div>
-            <span className="text-[11px] text-slate-400">Click to add</span>
+
+            {(() => {
+              const activeEmojiProvider = EMOJI_STYLES.find((s) => s.id === emojiStyle) || EMOJI_STYLES[0]
+              const href = mode === "emojis" ? activeEmojiProvider.url : "https://icon-sets.iconify.design/"
+              const label = mode === "emojis" ? activeEmojiProvider.attributionLabel : "Iconify"
+
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50/90 hover:bg-sky-100 text-sky-900 border border-sky-200/70 transition-all text-[11px] font-medium group cursor-pointer shadow-2xs shrink-0"
+                  title={`Provided by ${label}`}
+                >
+                  {mode === "emojis" ? (
+                    <span
+                      className="w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] font-bold text-white shrink-0 leading-none"
+                      style={{ backgroundColor: activeEmojiProvider.badgeBg }}
+                    >
+                      {activeEmojiProvider.letter}
+                    </span>
+                  ) : (
+                    <IconifyLogo className="w-3.5 h-3.5 rounded shrink-0" />
+                  )}
+                  <span className="font-semibold tracking-tight">{label}</span>
+                  <ExternalLink className="h-2.5 w-2.5 text-sky-600 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                </a>
+              )
+            })()}
           </div>
 
           {/* Results Grid */}
@@ -629,7 +770,7 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
                           <svg
                             viewBox={vector.viewBox}
                             className="w-full h-full text-slate-700 transition-transform group-hover:scale-110 pointer-events-none"
-                            dangerouslySetInnerHTML={{ __html: vector.body }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeSVG(vector.body) }}
                           />
                         ) : (
                           <div className="w-4 h-4 rounded bg-slate-200/60 animate-pulse" />
@@ -647,17 +788,34 @@ export function IconifySearchTab({ renderElementList, elementsListRef }: VectorS
         </div>
       )}
 
-      {/* ── 4. Active Graphics On Canvas (shared for elements, icons, and emojis) ── */}
+      {/* Terms & Fair Use Notice */}
+      <div className="flex items-center justify-between text-[11px] text-slate-400 px-0.5">
+        <span>No chart attribution required</span>
+        <Link
+          href="/terms#assets-and-fair-use"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors"
+        >
+          Terms &amp; Fair Use
+        </Link>
+      </div>
+
+      {/* ── 4. Active Graphics/Shapes On Canvas ── */}
       <div ref={elementsListRef} className="pt-3 border-t border-slate-200/80">
         <div className="flex justify-between items-center mb-2 px-0.5">
           <span className="text-xs font-semibold text-slate-700">
-            Active Graphics On Canvas
+            {allowedModes.length === 1 && allowedModes[0] === "icons"
+              ? "Active Shapes On Canvas"
+              : "Active Graphics On Canvas"}
           </span>
         </div>
         {renderElementList(
           shapes.filter((s) => s.type === "deco-svg"),
-          Sparkles,
-          "No graphics on canvas yet. Click any element, icon, or emoji above to add!",
+          allowedModes.length === 1 && allowedModes[0] === "icons" ? Globe : Sparkles,
+          allowedModes.length === 1 && allowedModes[0] === "icons"
+            ? "No shapes added yet. Search 200k+ vector icons above to add to canvas."
+            : "No graphics on canvas yet. Click any element or emoji above to add!",
           "section"
         )}
       </div>

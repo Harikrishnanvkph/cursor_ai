@@ -232,6 +232,34 @@ class DataService {
     return this.request(`/api/data/conversations/${conversationId}/current-snapshot`);
   }
 
+  async getBatchCurrentSnapshots(
+    conversationIds: string[]
+  ): Promise<ApiResponse<{ snapshots: Record<string, any> }>> {
+    const res = await this.request<{ snapshots: Record<string, any> }>(
+      '/api/data/conversations/batch-snapshots',
+      {
+        method: 'POST',
+        body: JSON.stringify({ conversationIds }),
+      },
+      false
+    );
+
+    // Seed individual current-snapshot cache entries so single-card fallbacks or modals reuse them
+    if (res.data?.snapshots) {
+      const now = Date.now();
+      Object.entries(res.data.snapshots).forEach(([convId, snap]) => {
+        const cacheKey = `GET:${this.baseUrl}/api/data/conversations/${convId}/current-snapshot`;
+        this.cache.set(cacheKey, {
+          data: snap,
+          timestamp: now,
+          ttl: this.CACHE_TTL,
+        });
+      });
+    }
+
+    return res;
+  }
+
   async getChartHistory(conversationId: string, limit = 10): Promise<ApiResponse<any[]>> {
     return this.request(`/api/data/conversations/${conversationId}/chart-history?limit=${limit}`);
   }

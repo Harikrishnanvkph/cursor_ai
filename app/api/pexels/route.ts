@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { checkContentSafety } from '@/lib/safety/content-filter';
 
-const PEXELS_API_KEY = process.env.PEXELS_API_KEY || 'hm8gafKanpnbyLhHr4lNfscg8EZNkIG5fnl5W0u9S7mqgSqhlCGQfzeS';
+const PEXELS_API_KEY = process.env.PEXELS_API_KEY || '';
 
 export async function GET(request: Request) {
   try {
@@ -9,6 +10,20 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const perPage = Math.min(parseInt(searchParams.get('per_page') || '20', 10), 80);
     const orientation = searchParams.get('orientation'); // landscape, portrait, square
+
+    // SafeSearch / Content moderation check
+    if (query) {
+      const safety = checkContentSafety(query);
+      if (safety.isDisallowed) {
+        return NextResponse.json({
+          total_results: 0,
+          page: 1,
+          per_page: perPage,
+          photos: [],
+          warning: safety.reason || 'Search blocked by content moderation policy.',
+        });
+      }
+    }
 
     if (!PEXELS_API_KEY) {
       console.error('PEXELS_API_KEY is not configured');

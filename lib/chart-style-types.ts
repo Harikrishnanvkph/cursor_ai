@@ -59,17 +59,32 @@ export interface ColorStrategy {
  * These get applied to every dataset when the preset is used.
  */
 export interface DatasetStyleTemplate {
-  borderWidth: number
+  borderWidth: number | number[]
   tension: number           // Line curve smoothness (0 = sharp, 1 = very smooth)
-  fill: boolean             // Area fill under lines
-  pointRadius: number       // Point size on line/scatter charts
-  pointHoverRadius?: number
-  pointBorderWidth?: number
-  pointHoverBorderWidth?: number
-  pointStyle?: string
-  borderRadius: number | Record<string, number> // Rounded corners on bars (can be object for specific corners)
-  hoverOffset?: number      // Expansion on hover (pie/doughnut)
+  fill: boolean | string    // Area fill under lines (boolean | 'origin' | '-1' | 'end')
+  pointRadius: number | number[] // Point size on line/scatter charts
+  pointHoverRadius?: number | number[]
+  pointBorderWidth?: number | number[]
+  pointHoverBorderWidth?: number | number[]
+  pointStyle?: string | string[]
+  borderRadius: number | number[] | Record<string, number> // Rounded corners on bars
+  borderDash?: number[]
+  borderSkipped?: string | boolean | (string | boolean)[]
+  hoverOffset?: number | number[] // Expansion on hover (pie/doughnut)
   datasetPattern?: PatternConfig | null  // Pattern overlay
+  slicePatterns?: (PatternConfig | null)[] // Per-slice pattern overlays
+  gradientFill?: boolean
+  gradientPreset?: 'subtle' | 'vibrant' | 'soft' | 'custom'
+  gradientTopOpacity?: number
+  gradientBottomOpacity?: number
+  gradientPeakOpacity?: number
+  gradientBaseOpacity?: number
+  categoryPercentage?: number
+  barPercentage?: number
+  /** Sanitized per-slice label style overrides (no positional x/y or raw data) */
+  sliceLabelOverrides?: Record<number, Record<string, any>>
+  /** Template styling for point/slice image frames (no image URLs or callout coordinates) */
+  pointImageStyle?: Record<string, any>
 }
 
 // ========================================
@@ -219,4 +234,7 @@ export interface PresetPublishData {
   colorMode: ColorMode
   isOfficial: boolean
   applyDimensions: boolean
+  activeDatasetIndex?: number
+  activeGroupId?: string
+  chartMode?: 'single' | 'grouped'
 }

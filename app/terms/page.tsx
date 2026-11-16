@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   Ban,
   Copyright,
-  Globe,
+  Image as ImageIcon,
   CreditCard,
   XCircle,
   Mail,
@@ -30,6 +30,7 @@ const sections = [
   { id: "ai-features", label: "AI-Powered Features" },
   { id: "user-content", label: "User Content & Ownership" },
   { id: "sharing-and-export", label: "Sharing & Export" },
+  { id: "assets-and-fair-use", label: "Images, Icons, Logos & Fair Use" },
   { id: "intellectual-property", label: "Intellectual Property" },
   { id: "pricing-and-billing", label: "Pricing & Billing" },
   { id: "termination", label: "Termination" },
@@ -212,18 +213,47 @@ export default function TermsOfServicePage() {
 
             <Divider />
 
-            {/* ── 9. Intellectual Property ───────────────── */}
+            {/* ── 9. Images, Icons, Logos & Fair Use ──────── */}
+            <section id="assets-and-fair-use">
+              <SectionHeading number="09" icon={ImageIcon} color="indigo" title="Images, Icons, Logos & Fair Use" />
+              <P>Chartography provides access to stock photos, illustrations, vector icons, brand marks, emojis, and design elements from integrated third-party libraries (including Pexels, Unsplash, Pixabay, Wikimedia Commons, and Iconify) alongside your own uploads. By incorporating these assets into your charts, you agree to the following rules:</P>
+
+              <H3>No Attribution Required on Exported Charts</H3>
+              <P>Assets surfaced in Chartography&apos;s built-in search panels are curated from permissive, Public Domain, CC0, or open-source licenses that do <strong>not</strong> require end users to include copyright attribution or credit lines on exported PNG, SVG, or HTML charts.</P>
+
+              <H3>Stock Photos &amp; Media Libraries</H3>
+              <Ul>
+                <Li><strong>Permitted use:</strong> You may use built-in stock images and illustrations from Pexels, Unsplash, Pixabay, and Wikimedia Commons (Public Domain / CC0) in personal, educational, editorial, and commercial charts or presentations.</Li>
+                <Li><strong>Prohibited stock redistribution:</strong> You may not sell, license, compile, or redistribute standalone, unedited stock photos as stock media, wallpapers, or competing image libraries, or use automated tools to scrape provider catalogs.</Li>
+                <Li><strong>Identifiable people &amp; property:</strong> Stock photos depicting recognizable individuals, private property, or products do not automatically grant model or property releases. You must not use such images in a way that suggests personal endorsement, defamation, or unlawful commercial promotion.</Li>
+              </Ul>
+
+              <H3>Brand Logos, Trademarks &amp; Fair Use Policy</H3>
+              <P>Our icon library includes third-party company logos, product icons, and flags that are useful for data comparisons, market maps, and infographics. While the underlying vector files carry open-source licenses without copyright attribution requirements, <strong>the brand marks and logos themselves remain the trademarks and intellectual property of their respective owners</strong>.</P>
+              <Ul>
+                <Li><strong>Fair &amp; nominative use:</strong> Using a company logo or mark strictly to identify that company, product, or service in factual charts, comparisons, commentary, or reporting is generally permitted as nominative or editorial fair use.</Li>
+                <Li><strong>No implied endorsement:</strong> You must never alter or use third-party logos in a manner that implies partnership, sponsorship, or official endorsement by the trademark owner.</Li>
+                <Li><strong>User responsibility:</strong> You are solely responsible for ensuring that your specific publication, commercial campaign, or distribution of charts containing third-party logos, emblems, or media complies with applicable trademark, fair use, and publicity laws.</Li>
+              </Ul>
+
+              <H3>Custom Uploads &amp; External URLs</H3>
+              <P>If you upload your own images or embed assets via external URLs, you represent that you own the necessary rights or hold a valid license for how you publish or export them.</P>
+            </section>
+
+            <Divider />
+
+            {/* ── 10. Intellectual Property ───────────────── */}
             <section id="intellectual-property">
-              <SectionHeading number="09" icon={Copyright} color="amber" title="Intellectual Property" />
+              <SectionHeading number="10" icon={Copyright} color="amber" title="Intellectual Property" />
               <P>The Service, including its design, logos, trademarks, visual identity, user interface, underlying code, and documentation, is the <strong>intellectual property of Chartography</strong> and is protected by applicable copyright, trademark, and other intellectual property laws.</P>
               <P>You may not copy, modify, distribute, sell, or lease any part of the Service or its branding, nor may you reverse-engineer or attempt to extract the source code, except as permitted by law.</P>
             </section>
 
             <Divider />
 
-            {/* ── 10. Pricing & Billing ─────────────────── */}
+            {/* ── 11. Pricing & Billing ─────────────────── */}
             <section id="pricing-and-billing">
-              <SectionHeading number="10" icon={CreditCard} color="green" title="Pricing & Billing" />
+              <SectionHeading number="11" icon={CreditCard} color="green" title="Pricing & Billing" />
               <P>Chartography currently offers features during a <strong>public beta period</strong>. Pricing details for current and future plans are available on our <Link href="/pricing" className="text-indigo-600 dark:text-indigo-400 hover:underline">Pricing page</Link>.</P>
               <Ul>
                 <Li><strong>Free tier</strong> — access to core features with defined usage limits as described on the Pricing page.</Li>
@@ -235,9 +265,9 @@ export default function TermsOfServicePage() {
 
             <Divider />
 
-            {/* ── 11. Termination ───────────────────────── */}
+            {/* ── 12. Termination ───────────────────────── */}
             <section id="termination">
-              <SectionHeading number="11" icon={XCircle} color="rose" title="Termination" />
+              <SectionHeading number="12" icon={XCircle} color="rose" title="Termination" />
               <P>You may stop using the Service and delete your account at any time by contacting us.</P>
               <P>We reserve the right to <strong>suspend or terminate</strong> your access to the Service, without prior notice, if:</P>
               <Ul>
@@ -251,9 +281,9 @@ export default function TermsOfServicePage() {
 
             <Divider />
 
-            {/* ── 12. Disclaimers ──────────────────────── */}
+            {/* ── 13. Disclaimers ──────────────────────── */}
             <section id="disclaimers">
-              <SectionHeading number="12" icon={AlertTriangle} color="amber" title="Disclaimers" />
+              <SectionHeading number="13" icon={AlertTriangle} color="amber" title="Disclaimers" />
               <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 mb-4">
                 <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-2">Important Notice</p>
                 <p className="text-[14px] leading-relaxed text-amber-700 dark:text-amber-400">
@@ -271,9 +301,9 @@ export default function TermsOfServicePage() {
 
             <Divider />
 
-            {/* ── 13. Limitation of Liability ─────────── */}
+            {/* ── 14. Limitation of Liability ─────────── */}
             <section id="limitation-of-liability">
-              <SectionHeading number="13" icon={AlertTriangle} color="red" title="Limitation of Liability" />
+              <SectionHeading number="14" icon={AlertTriangle} color="red" title="Limitation of Liability" />
               <P>Chartography and its team members shall <strong>not be liable</strong> for any indirect, incidental, special, consequential, or punitive damages, including but not limited to:</P>
               <Ul>
                 <Li>Loss of data, profits, revenue, or business opportunities.</Li>
@@ -286,18 +316,18 @@ export default function TermsOfServicePage() {
 
             <Divider />
 
-            {/* ── 14. Changes to These Terms ──────────── */}
+            {/* ── 15. Changes to These Terms ──────────── */}
             <section id="changes-to-terms">
-              <SectionHeading number="14" icon={FileText} color="slate" title="Changes to These Terms" />
+              <SectionHeading number="15" icon={FileText} color="slate" title="Changes to These Terms" />
               <P>We may revise these Terms from time to time. When we make material changes, we will update the &quot;Last Updated&quot; date at the top of this page and, where appropriate, provide additional notice (such as a banner on the Service).</P>
               <P>Your continued use of the Service after the revised Terms take effect constitutes your acceptance of the changes. If you do not agree to the revised Terms, you should stop using the Service.</P>
             </section>
 
             <Divider />
 
-            {/* ── 15. Contact Us ─────────────────────── */}
+            {/* ── 16. Contact Us ─────────────────────── */}
             <section id="contact">
-              <SectionHeading number="15" icon={Mail} color="indigo" title="Contact Us" />
+              <SectionHeading number="16" icon={Mail} color="indigo" title="Contact Us" />
               <P>If you have any questions or concerns about these Terms, please contact us:</P>
               <div className="mt-5 p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
                 <p className="font-semibold text-slate-900 dark:text-white text-sm mb-2">Chartography</p>

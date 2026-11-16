@@ -25,7 +25,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Slider } from "@/components/ui/slider"
 import { FileCode, FileImage, FileText, ImageIcon, Settings } from "lucide-react"
 import { useTemplateStore } from "@/lib/template-store"
-import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useFormatGalleryStore, ensureDefaultFormatSelected } from "@/lib/stores/format-gallery-store"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
@@ -76,10 +76,11 @@ const ModeAndTypeSection = memo(({
                     onClick={() => {
                         const templateStore = useTemplateStore.getState()
                         const formatStore = useFormatGalleryStore.getState()
-                        if (!templateStore.currentTemplate && !formatStore.selectedFormatId) {
-                            templateStore.applyTemplate('template-1')
+                        if (!formatStore.selectedFormatId) {
+                            ensureDefaultFormatSelected(chartType || 'bar')
                             useUIStore.getState().setActiveSidebarTab('templates')
                         }
+                        templateStore.setGenerateMode('format')
                         setEditorMode('template')
                     }}
                     className={`${btnClassName} font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}

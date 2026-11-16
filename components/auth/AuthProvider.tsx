@@ -4,18 +4,26 @@ import { authApi, type AuthUser } from '@/lib/auth-client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
+type SignInOptions = {
+  redirectTo?: string
+  adminOnly?: boolean
+}
+
 type AuthContextValue = {
   user: AuthUser | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<boolean>
+  sessionVerified: boolean
+  signIn: (email: string, password: string, options?: SignInOptions) => Promise<boolean>
   signUp: (
     email: string,
     password: string,
     fullName?: string
   ) => Promise<{ wasNewUser: boolean; requiresEmailConfirmation?: boolean }>
-  signOut: () => Promise<void>
+  sendOtp: (email: string, mode: 'signin' | 'signup', fullName?: string) => Promise<boolean>
+  verifyOtp: (email: string, token: string, options?: SignInOptions) => Promise<{ ok: boolean; error?: string }>
+  signOut: (redirectTo?: string) => Promise<void>
   signInWithGoogle: () => void
-  signInAsGuest: () => void
+  signInWithGitHub: () => void
   refresh: () => Promise<void>
   upgradeToPro: () => Promise<boolean>
   downgradeToFree: () => Promise<boolean>
@@ -84,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // The cached session is applied in a layout effect below, i.e. after hydration but BEFORE first paint.
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionVerified, setSessionVerified] = useState(false)
 
   // Bumped by every explicit auth action (sign-in / sign-out / guest). A /auth/me request that was
   // started before the bump is stale and must not overwrite the newer state.
@@ -119,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // User verified successfully
       if (res.user) {
         setUser(res.user)
+        setSessionVerified(true)
         persistSession(res.user)
         return
       }
@@ -126,12 +136,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Explicit authentication failure (HTTP 401 confirmed)
       if (res.isAuthError) {
         setUser(null)
+        setSessionVerified(true)
         clearPersistedSession()
       }
     } catch (error: any) {
       console.warn('Unexpected error during refresh (preserving active session):', error)
     } finally {
-      if (!isStale()) setLoading(false)
+      if (!isStale()) {
+        setLoading(false)
+      }
     }
   }, [])
 
@@ -225,8 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string): Promise<boolean> => {
-    setLoading(true)
+  const signIn = useCallback(async (email: string, password: string, options?: SignInOptions): Promise<boolean> => {
     try {
       const res = await authApi.signIn({ email, password })
 
@@ -241,29 +253,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false
       }
 
+      if (options?.adminOnly && !res.user?.is_admin) {
+        toast.error('This account does not have admin privileges.')
+        return false
+      }
+
       // A sign-in supersedes any /auth/me request still in flight from before it (e.g. the mount-time
       // check that returned 401 because the user had not signed in yet) - otherwise that late 401
       // would wipe the brand-new session.
       authEpochRef.current++
       setUser(res.user)
+      setSessionVerified(true)
 
       // Persist user id + cached profile + auth cookie hint (so the next page load renders signed-in at once)
       persistSession(res.user)
 
       // Handle redirect after successful sign-in
       if (typeof window !== 'undefined') {
-        // Find if we need to redirect admin vs normal user
-        const redirectPath = sessionStorage.getItem('redirectAfterSignIn')
+        if (options?.adminOnly) {
+          sessionStorage.removeItem('redirectAfterSignIn')
+          const adminTarget = options.redirectTo && options.redirectTo.startsWith('/') && !options.redirectTo.startsWith('//')
+            ? options.redirectTo
+            : '/admin'
+          router.replace(adminTarget)
+          return true
+        }
 
-        if (res.user?.is_admin) {
-           router.replace('/admin')
-        } else if (redirectPath) {
-           console.log(`🔄 SignIn successful, redirecting to: ${redirectPath}`)
-           sessionStorage.removeItem('redirectAfterSignIn')
-           router.replace(redirectPath)
+        const rawRedirect = options?.redirectTo || sessionStorage.getItem('redirectAfterSignIn')
+        const redirectPath =
+          rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+            ? rawRedirect
+            : null
+
+        if (redirectPath) {
+          console.log(`🔄 SignIn successful, redirecting to: ${redirectPath}`)
+          sessionStorage.removeItem('redirectAfterSignIn')
+          router.replace(redirectPath)
         } else {
-           // Default redirect if no stored path exists for normal users
-           router.replace('/board')
+          // Default redirect for normal /signin
+          router.replace('/board')
         }
       }
 
@@ -275,6 +303,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Handle other errors (not network failures)
       if (m.includes('request timed out')) {
         toast.error('Request timed out. Please try again.')
+      } else if (m.includes('email not confirmed')) {
+        toast.error('Please verify your email address before signing in. Check your inbox or spam folder.')
       } else if (m.includes('invalid email or password') || m.includes('invalid login')) {
         toast.error('Incorrect email or password. Please try again.')
       } else if (m.includes('invalid email format')) {
@@ -295,17 +325,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Sign in error:', e)
 
       return false // Failure
-    } finally {
-      setLoading(false)
     }
-  }, [])
+  }, [router])
 
   const signUp = useCallback(async (
     email: string,
     password: string,
     fullName?: string
   ): Promise<{ wasNewUser: boolean; requiresEmailConfirmation?: boolean }> => {
-    setLoading(true)
     try {
       const res = await authApi.signUp({ email, password, fullName })
 
@@ -324,9 +351,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         toast.info('Verification email sent. Please confirm to sign in.')
       } else if (!res.wasNewUser) {
         toast.error('Email is already registered. Try signing in instead.')
+      } else if (res.wasNewUser && !res.requiresEmailConfirmation) {
+        authEpochRef.current++
+        await refresh()
       }
-      authEpochRef.current++
-      await refresh()
 
       // User ID will be stored in refresh() method
       return { wasNewUser: Boolean(res.wasNewUser), requiresEmailConfirmation: res.requiresEmailConfirmation }
@@ -354,12 +382,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Return a default value when there's an error
       return { wasNewUser: false, requiresEmailConfirmation: false }
-    } finally {
-      setLoading(false)
     }
   }, [refresh])
 
-  const signOut = useCallback(async () => {
+  const sendOtp = useCallback(async (email: string, mode: 'signin' | 'signup', fullName?: string): Promise<boolean> => {
+    try {
+      const res = await authApi.sendOtp({ email, mode, fullName })
+      if (!res) {
+        if (typeof window !== 'undefined' && !navigator.onLine) {
+          toast.error('No internet connection. Please check your network and try again.')
+        } else {
+          toast.error('Server is currently unavailable. Please try again later.')
+        }
+        return false
+      }
+      toast.success('Verification code sent to your email.')
+      return true
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to send verification code')
+      return false
+    }
+  }, [])
+
+  const verifyOtp = useCallback(async (email: string, token: string, options?: SignInOptions): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await authApi.verifyOtp({ email, token })
+      if (!res) {
+        const msg =
+          typeof window !== 'undefined' && !navigator.onLine
+            ? 'No internet connection. Please check your network and try again.'
+            : 'Server is currently unavailable. Please try again later.'
+        return { ok: false, error: msg }
+      }
+
+      authEpochRef.current++
+      setUser(res.user)
+      setSessionVerified(true)
+      persistSession(res.user)
+
+      if (typeof window !== 'undefined') {
+        const redirectPath = options?.redirectTo || sessionStorage.getItem('redirectAfterSignIn') || '/board'
+        sessionStorage.removeItem('redirectAfterSignIn')
+        router.replace(redirectPath)
+      }
+      return { ok: true }
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Invalid or expired verification code' }
+    }
+  }, [router])
+
+  const signOut = useCallback(async (redirectTo?: string) => {
     setLoading(true)
 
     // 1) Invalidate everything local FIRST and synchronously. From this instant the UI, the
@@ -368,11 +440,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userId = typeof window !== 'undefined' ? (localStorage.getItem('user-id') || user?.id || null) : null
     authEpochRef.current++ // a /auth/me started before now must not resurrect the session
     setUser(null)
+    setSessionVerified(true)
+    const isOAuthUser = user?.provider === 'google' || user?.provider === 'github'
     clearPersistedSession()
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('auth_user')
       sessionStorage.removeItem('redirectAfterSignIn')
-      sessionStorage.setItem('logged_out_from_oauth', 'true')
+      if (isOAuthUser) {
+        sessionStorage.setItem('logged_out_from_oauth', 'true')
+      }
     }
 
     // 2) Revoke the server session (httpOnly cookies can only be cleared by the server) and evict the
@@ -394,6 +470,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const evictLocalData = async () => {
+      try {
+        const { dataService } = await import('@/lib/data-service')
+        dataService.clearCache()
+      } catch {}
       if (!userId) return
       try {
         const { clearAllUserSessionData } = await import('@/lib/storage-utils')
@@ -412,7 +492,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Full navigation (not router) to reset the in-memory heap and every store
     if (typeof window !== 'undefined') {
-      window.location.replace('/signin')
+      const target =
+        redirectTo || (window.location.pathname.startsWith('/admin') ? '/admin/signin' : '/signin')
+      window.location.replace(target)
       return
     }
     setLoading(false)
@@ -444,33 +526,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Guest sign-in — temporary, calls real server endpoint for full functionality
-  const signInAsGuest = useCallback(async () => {
-    setLoading(true)
+  const signInWithGitHub = useCallback(async () => {
     try {
-      const res = await authApi.guestSignIn()
+      setLoading(true)
+      const url = await authApi.githubUrl()
 
-      if (!res) {
+      if (!url) {
         if (typeof window !== 'undefined' && !navigator.onLine) {
           toast.error('No internet connection. Please check your network and try again.')
         } else {
           toast.error('Server is currently unavailable. Please try again later.')
         }
+        setLoading(false)
         return
       }
 
-      authEpochRef.current++
-      setUser(res.user)
-      persistSession(res.user)
-
-      router.replace('/')
-    } catch (e: any) {
-      console.error('Guest sign-in error:', e)
-      toast.error('Failed to sign in as guest. Please try again.')
-    } finally {
+      if (typeof window !== 'undefined') {
+        window.location.href = url
+      }
+    } catch (error: any) {
+      console.error('Failed to get GitHub OAuth URL:', error)
       setLoading(false)
+      toast.error('Failed to start GitHub sign-in.')
     }
-  }, [router])
+  }, [])
 
   const upgradeToPro = useCallback(async () => {
     setLoading(true)
@@ -518,7 +597,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh])
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, signInWithGoogle, signInAsGuest, refresh, upgradeToPro, downgradeToFree }}>
+    <AuthContext.Provider value={{ user, loading, sessionVerified, signIn, signUp, sendOtp, verifyOtp, signOut, signInWithGoogle, signInWithGitHub, refresh, upgradeToPro, downgradeToFree }}>
       {children}
     </AuthContext.Provider>
   )

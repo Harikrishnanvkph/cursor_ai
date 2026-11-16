@@ -622,6 +622,11 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
     editorStyleParts.push('white-space: normal')
     const editorStyleString = editorStyleParts.join('; ')
 
+    const onChangeRef = useRef(onChange)
+    onChangeRef.current = onChange
+    const onChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const txRafRef = useRef<number | null>(null)
+
     const editor = useEditor({
         extensions: [
             StarterKit.configure({
@@ -663,11 +668,24 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
         content: initialHtml,
         immediatelyRender: false,
         onUpdate: ({ editor }) => {
-            onChange(editor.getHTML())
+            if (onChangeDebounceRef.current) {
+                clearTimeout(onChangeDebounceRef.current)
+            }
+            onChangeDebounceRef.current = setTimeout(() => {
+                onChangeDebounceRef.current = null
+                onChangeRef.current(editor.getHTML())
+            }, 150)
         },
-        onTransaction: () => {
-            // Force re-render on every transaction (cursor move, selection change, formatting change)
-            setEditorUpdateKey(k => k + 1)
+        onTransaction: ({ transaction }) => {
+            // Only re-render toolbar when selection, document, or stored marks change, coalesced per animation frame
+            if (transaction.selectionSet || transaction.docChanged || Boolean(transaction.storedMarks)) {
+                if (txRafRef.current === null) {
+                    txRafRef.current = requestAnimationFrame(() => {
+                        txRafRef.current = null
+                        setEditorUpdateKey(k => k + 1)
+                    })
+                }
+            }
         },
         onSelectionUpdate: ({ editor }) => {
             // Check if an image is selected

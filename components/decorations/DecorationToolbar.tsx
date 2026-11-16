@@ -4,6 +4,7 @@ import React from "react"
 import { Button } from "@/components/ui/button"
 import { Lock, Unlock, Copy, Trash2, MoreHorizontal, ArrowUpToLine, ArrowDownToLine } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { isMulticolorSvg, extractSvgColors, replaceSvgColor } from "@/lib/elements/elements-registry"
 import { RichTextToolbar, type RichTextToolbarStyleState, type RichTextToolbarCallbacks } from "@/components/format/RichTextToolbar"
@@ -18,9 +19,69 @@ interface DecorationToolbarProps {
   /** Callback to enter editing mode */
   onStartEditing?: (id: string) => void
   zoom?: number
+  containerWidth?: number
+  placement?: 'above' | 'below'
 }
 
-export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditing, zoom = 1.0 }: DecorationToolbarProps) {
+// Horizontal overlapping circles icon displaying all graphic colors in a single compact button (matching avatar-stack / Venn style)
+function OverlappingColorsIcon({ colors }: { colors: string[] }) {
+  if (!colors || colors.length === 0) {
+    return <div className="w-4 h-4 rounded-full border border-slate-300 shadow-xs" style={{ backgroundColor: "#0F172A" }} />
+  }
+  if (colors.length === 1) {
+    const c = colors[0].startsWith("#") ? colors[0] : "#0F172A"
+    return <div className="w-4 h-4 rounded-full border border-slate-300 shadow-xs" style={{ backgroundColor: c }} />
+  }
+
+  const count = colors.length
+  const r = count <= 3 ? 6.5 : count <= 4 ? 5.8 : 5.0
+  const overlap = count <= 3 ? 7 : count <= 4 ? 5.5 : 4.2
+  const padding = r + 1.5
+  const svgWidth = Math.round(padding * 2 + (count - 1) * overlap)
+  const svgHeight = Math.round((r + 1.5) * 2)
+  const cy = svgHeight / 2
+
+  // Render from right to left (index count - 1 down to 0) so the leftmost circle sits on top, matching user's image
+  const circleIndices = Array.from({ length: count }, (_, i) => i).reverse()
+
+  return (
+    <svg
+      width={svgWidth}
+      height={svgHeight}
+      viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+      className="shrink-0 drop-shadow-2xs"
+    >
+      {circleIndices.map((i) => {
+        const rawColor = colors[i]
+        const c = rawColor.startsWith("#") ? rawColor : "#0F172A"
+        const cx = padding + i * overlap
+        return (
+          <g key={i}>
+            <circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill={c}
+              stroke="#ffffff"
+              strokeWidth="1.2"
+            />
+            {/* Subtle outer stroke for light colors */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke="rgba(0,0,0,0.15)"
+              strokeWidth="0.8"
+            />
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditing, zoom = 1.0, containerWidth, placement }: DecorationToolbarProps) {
   const { shapes, duplicateShape, toggleLock, removeShape, bringToFront, sendToBack, updateShape } = useDecorationStore()
   const shape = shapes.find(s => s.id === shapeId)
   if (!shape) return null
@@ -30,6 +91,12 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
 
   // Position toolbar at the given coordinates (caller handles offset)
   const toolbarY = y
+
+  // Intelligent menu / popover placement:
+  // If the toolbar is ABOVE the shape, the shape is beneath it, so popovers/dropdowns open UPWARDS ('top').
+  // If the toolbar is BELOW the shape, the shape is above it, so popovers/dropdowns open DOWNWARDS ('bottom').
+  const isToolbarBelow = placement ? placement === 'below' : (toolbarY > (shape.y + (shape.height || 0) / 2))
+  const popoverSide: 'top' | 'bottom' = isToolbarBelow ? 'bottom' : 'top'
 
   // ── Rich text toolbar for textbox shapes ──────
   if (isTextbox) {
@@ -148,7 +215,7 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
                   <MoreHorizontal className="w-3.5 h-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="bottom" className="rounded-xl">
+              <DropdownMenuContent align="start" side={popoverSide} className="rounded-xl">
                 <DropdownMenuItem onClick={() => bringToFront(shapeId)}>
                   <ArrowUpToLine className="h-4 w-4 mr-2" /> Bring to Front
                 </DropdownMenuItem>
@@ -163,18 +230,30 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
     )
   }
 
-  // Calculate colors for deco-svg or standard shapes
+  // Calculate colors for deco-svg or standard shapes (images don't have vector fill colors)
+  const isImage = shape.type === 'deco-image'
   const svgColors = shape.type === 'deco-svg' ? extractSvgColors(shape.svgContent) : []
-  const swatchCount = shape.type === 'deco-svg' ? Math.max(1, svgColors.length) : 1
-  const toolbarWidth = 140 + swatchCount * 30
+  const resolvedSvgColors = svgColors.map(color => {
+    return color.startsWith('#')
+      ? color
+      : (shape.fillColor && shape.fillColor.startsWith('#') ? shape.fillColor : '#0F172A')
+  })
+
+  // Has color button: 180px (single overlapping or single swatch button). Images: 140px.
+  const hasColorButton = !isImage
+  const toolbarWidth = hasColorButton ? 180 : 140
+
+  // Constrain X position inside container if containerWidth is provided to prevent clipping/overflow
+  const maxAllowedX = containerWidth ? (containerWidth * zoom - toolbarWidth - 10) / zoom : x
+  const finalX = containerWidth ? Math.max(10 / zoom, Math.min(x, maxAllowedX)) : Math.max(0, x)
 
   // ── Standard toolbar for non-textbox shapes ──
   return (
     <foreignObject
       data-export-ignore="true"
-      x={Math.max(0, x)}
-      y={Math.max(0, toolbarY)}
-      width={toolbarWidth / zoom}
+      x={finalX}
+      y={Math.max(10 / zoom, toolbarY)}
+      width={(toolbarWidth + 24) / zoom}
       height={48 / zoom}
       style={{ overflow: 'visible' }}
     >
@@ -189,21 +268,69 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
           width: toolbarWidth,
         }}
       >
-        {/* Quick Color Swatches (Canva Style) */}
-        {shape.type === 'deco-svg' ? (
-          <div className="flex items-center gap-0.5">
-            {svgColors.map((color, idx) => (
+        {/* Color button: Horizontal overlapping circles button for multi-color SVGs, or single swatch for 1-color shapes */}
+        {!isImage && (
+          shape.type === 'deco-svg' ? (
+            svgColors.length > 1 ? (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="relative flex items-center justify-center h-8 px-1.5 rounded-lg hover:bg-slate-100 shrink-0 transition-colors cursor-pointer"
+                    title={`Graphic Colors (${svgColors.length}) - Click to edit individually`}
+                  >
+                    <OverlappingColorsIcon colors={resolvedSvgColors} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  side={popoverSide}
+                  sideOffset={6}
+                  className="w-auto p-1 bg-white rounded-lg shadow-lg border border-slate-200 z-[9999]"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
+                    {svgColors.map((color, idx) => {
+                      const displayColor = resolvedSvgColors[idx] || '#0F172A'
+                      return (
+                        <div
+                          key={idx}
+                          className="relative flex items-center justify-center h-5 w-5 rounded-md border border-slate-300 shadow-2xs overflow-hidden shrink-0 cursor-pointer hover:scale-110 hover:border-blue-500 transition-transform"
+                          style={{ backgroundColor: displayColor }}
+                          title={`Color #${idx + 1}`}
+                        >
+                          <input
+                            type="color"
+                            value={displayColor}
+                            onChange={(e) => {
+                              const newColor = e.target.value
+                              const newSvg = replaceSvgColor(shape.svgContent || '', color, newColor)
+                              updateShape(shapeId, {
+                                svgContent: newSvg,
+                                fillColor: newColor,
+                                strokeColor: newColor,
+                              })
+                            }}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
               <div
-                key={idx}
-                className="relative flex items-center justify-center h-8 w-8 rounded-lg hover:bg-slate-100 p-1 shrink-0"
-                title={`Change color ${idx + 1} (${color})`}
+                className="relative flex items-center justify-center h-8 w-8 rounded-lg hover:bg-slate-100 p-1 shrink-0 cursor-pointer"
+                title={`Change color (${resolvedSvgColors[0] || '#0F172A'})`}
               >
                 <input
                   type="color"
-                  value={color.startsWith('#') ? color : '#0F172A'}
+                  value={resolvedSvgColors[0] || '#0F172A'}
                   onChange={(e) => {
                     const newColor = e.target.value
-                    const newSvg = replaceSvgColor(shape.svgContent || '', color, newColor)
+                    const newSvg = replaceSvgColor(shape.svgContent || '', svgColors[0] || 'currentColor', newColor)
                     updateShape(shapeId, {
                       svgContent: newSvg,
                       fillColor: newColor,
@@ -214,24 +341,24 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
                 />
                 <div
                   className="w-4 h-4 rounded-full border border-slate-300 shadow-xs"
-                  style={{ backgroundColor: color.startsWith('#') ? color : '#0F172A' }}
+                  style={{ backgroundColor: resolvedSvgColors[0] || '#0F172A' }}
                 />
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="relative flex items-center justify-center h-8 w-8 rounded-lg hover:bg-slate-100 p-1 shrink-0" title="Change Color">
-            <input
-              type="color"
-              value={shape.fillColor?.startsWith('#') ? shape.fillColor : (shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#EAB308')}
-              onChange={(e) => updateShape(shapeId, { fillColor: e.target.value, strokeColor: e.target.value })}
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-            />
-            <div
-              className="w-4 h-4 rounded-full border border-slate-300 shadow-xs"
-              style={{ backgroundColor: shape.fillColor?.startsWith('#') ? shape.fillColor : (shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#EAB308') }}
-            />
-          </div>
+            )
+          ) : (
+            <div className="relative flex items-center justify-center h-8 w-8 rounded-lg hover:bg-slate-100 p-1 shrink-0 cursor-pointer" title="Change Color">
+              <input
+                type="color"
+                value={shape.fillColor?.startsWith('#') ? shape.fillColor : (shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#EAB308')}
+                onChange={(e) => updateShape(shapeId, { fillColor: e.target.value, strokeColor: e.target.value })}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+              />
+              <div
+                className="w-4 h-4 rounded-full border border-slate-300 shadow-xs"
+                style={{ backgroundColor: shape.fillColor?.startsWith('#') ? shape.fillColor : (shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#EAB308') }}
+              />
+            </div>
+          )
         )}
         <Button
           variant="ghost"
@@ -266,7 +393,7 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
               <MoreHorizontal className="w-3.5 h-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="bottom" className="rounded-xl">
+          <DropdownMenuContent align="start" side={popoverSide} className="rounded-xl">
             <DropdownMenuItem onClick={() => bringToFront(shapeId)}>
               <ArrowUpToLine className="h-4 w-4 mr-2" /> Bring to Front
             </DropdownMenuItem>

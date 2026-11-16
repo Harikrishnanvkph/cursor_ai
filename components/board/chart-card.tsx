@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useMemo } from "react"
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react"
 import { GeistSans } from "geist/font/sans"
 import { Chart as ChartJS } from "chart.js"
 import "@/lib/chart-registration"
@@ -61,13 +61,23 @@ import { ChartGenerator } from "@/lib/chart_generator"
 interface ChartCardProps {
   conversation: Conversation
   viewMode: "grid" | "list"
+  deferSnapshotFetch?: boolean
   onPreview: (conv: Conversation) => void
   onEdit: (conv: Conversation) => void
   onEditInAdvanced: (conv: Conversation) => void
 }
 
-export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInAdvanced }: ChartCardProps) {
-  const { deleteConversation, updateConversation } = useHistoryStore()
+export function ChartCard({
+  conversation,
+  viewMode,
+  deferSnapshotFetch = false,
+  onPreview,
+  onEdit,
+  onEditInAdvanced,
+}: ChartCardProps) {
+  const deleteConversation = useHistoryStore((s) => s.deleteConversation)
+  const updateConversation = useHistoryStore((s) => s.updateConversation)
+  const cachedSnapshot = useHistoryStore((s) => s.snapshotCache[conversation.id])
   const [isDeleting, setIsDeleting] = useState(false)
   const [showRenameDialog, setShowRenameDialog] = useState(false)
   const [newName, setNewName] = useState(conversation.title)
@@ -111,48 +121,55 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
     return () => observer.disconnect()
   }, [viewMode])
 
-  // Dynamic snapshot data fetching — only fetches once, cached in state permanently
-  useEffect(() => {
-    if (!isVisible || viewMode !== "grid") return
+  const sourceSnapshot = cachedSnapshot || (conversation.snapshot?.chartData ? conversation.snapshot : null)
 
-    // Already have cached data from a previous mount — skip entirely (no server call)
+  // Hydrate card preview from batch-cached snapshot (or fallback to single-card fetch if not batch-deferred)
+  useEffect(() => {
+    if (viewMode !== "grid") return
+
+    // Already have hydrated data — skip
     if (snapshotData) return
 
-    // If conversation already contains full details, utilize immediately (fetching format skeleton if needed)
-    const snapshot = conversation.snapshot
-    if (snapshot && snapshot.chartData) {
+    if (sourceSnapshot && sourceSnapshot.chartData) {
+      let cancelled = false
       const runImmediateLoad = async () => {
-        let templateStructure = snapshot.template_structure
-        const immediateFormatData = (snapshot.chartConfig as any)?.formatData
-        // If this is a format, check if custom formatSnapshot exists first, otherwise fetch skeleton
+        let templateStructure = sourceSnapshot.template_structure
+        const immediateFormatData = (sourceSnapshot.chartConfig as any)?.formatData
+        // Use embedded skeleton or server-resolved template_structure; only fetch if missing
         if (immediateFormatData?.formatSnapshot?.skeleton) {
           templateStructure = immediateFormatData.formatSnapshot.skeleton
         } else if (immediateFormatData?.formatId && (!templateStructure || templateStructure.isFormatReference || !templateStructure.zones)) {
           setIsLoading(true)
           try {
             const formatRes = await dataService.getFormat(immediateFormatData.formatId)
-            if (formatRes.data && formatRes.data.skeleton) {
+            if (!cancelled && formatRes.data && formatRes.data.skeleton) {
               templateStructure = formatRes.data.skeleton
             }
           } catch (e) {
             console.error("Failed to fetch format skeleton on immediate load", e)
           } finally {
-            setIsLoading(false)
+            if (!cancelled) setIsLoading(false)
           }
         }
-        setSnapshotData({
-          chartType: snapshot.chartType,
-          chartData: snapshot.chartData,
-          chartConfig: snapshot.chartConfig,
-          is_template_mode: snapshot.is_template_mode || false,
-          template_structure: templateStructure,
-          template_content: snapshot.template_content
-        })
+        if (!cancelled) {
+          setSnapshotData({
+            chartType: sourceSnapshot.chartType,
+            chartData: sourceSnapshot.chartData,
+            chartConfig: sourceSnapshot.chartConfig,
+            is_template_mode: sourceSnapshot.is_template_mode || false,
+            template_structure: templateStructure,
+            template_content: sourceSnapshot.template_content
+          })
+        }
       }
       runImmediateLoad()
-      return
+      return () => { cancelled = true }
     }
 
+    // While batch hydration is handling this card, wait instead of firing an individual API call
+    if (deferSnapshotFetch || !isVisible) return
+
+    let cancelled = false
     const loadSnapshot = async () => {
       setIsLoading(true)
       setFetchError(null)
@@ -161,10 +178,9 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
         if (response.error) {
           throw new Error(response.error)
         }
-        if (response.data) {
+        if (!cancelled && response.data) {
           let templateStructure = response.data.template_structure
           const loadedFormatData = response.data.chart_config?.formatData
-          // If this is a format, check formatSnapshot first, otherwise fetch skeleton
           if (loadedFormatData?.formatSnapshot?.skeleton) {
             templateStructure = loadedFormatData.formatSnapshot.skeleton
           } else if (loadedFormatData?.formatId && (!templateStructure || templateStructure.isFormatReference || !templateStructure.zones)) {
@@ -178,78 +194,85 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
             }
           }
 
-          setSnapshotData({
-            chartType: response.data.chart_type,
-            chartData: response.data.chart_data,
-            chartConfig: response.data.chart_config,
-            is_template_mode: response.data.is_template_mode || false,
-            template_structure: templateStructure,
-            template_content: response.data.template_content
-          })
+          if (!cancelled) {
+            setSnapshotData({
+              chartType: response.data.chart_type,
+              chartData: response.data.chart_data,
+              chartConfig: response.data.chart_config,
+              is_template_mode: response.data.is_template_mode || false,
+              template_structure: templateStructure,
+              template_content: response.data.template_content
+            })
+          }
         }
       } catch (err: any) {
-        console.warn(`Failed to lazy-load preview snapshot for card ${conversation.id}:`, err)
-        setFetchError("Preview unavailable")
+        if (!cancelled) {
+          console.warn(`Failed to lazy-load preview snapshot for card ${conversation.id}:`, err)
+          setFetchError("Preview unavailable")
+        }
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
     loadSnapshot()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isVisible, conversation.id, conversation.snapshot, viewMode])
+    return () => { cancelled = true }
+  }, [isVisible, conversation.id, sourceSnapshot, deferSnapshotFetch, snapshotData, viewMode])
 
-  const [templateScale, setTemplateScale] = useState(1)
+  const [templateScale, setTemplateScale] = useState<number | null>(null)
+  const [isChartReady, setIsChartReady] = useState(false)
 
-  useEffect(() => {
-    if (!containerRef.current || !snapshotData || viewMode !== "grid" || !isVisible) return
-    
+  useLayoutEffect(() => {
+    if (!containerRef.current || !snapshotData || viewMode !== "grid" || !isVisible) {
+      setTemplateScale(null)
+      setIsChartReady(false)
+      return
+    }
+
     const updateScale = () => {
       if (!containerRef.current || !snapshotData) return
       const containerWidth = containerRef.current.clientWidth
       const containerHeight = containerRef.current.clientHeight
-      
+      if (containerWidth <= 0 || containerHeight <= 0) return
+
       let contentW: number, contentH: number
 
       if (snapshotData.template_structure) {
         // Template or format mode
         const isFormat = !!snapshotData.template_structure.zones
-        contentW = isFormat 
+        contentW = isFormat
           ? snapshotData.template_structure.dimensions?.width || 800
           : snapshotData.template_structure.width || 800
-        contentH = isFormat 
+        contentH = isFormat
           ? snapshotData.template_structure.dimensions?.height || 600
           : snapshotData.template_structure.height || 600
       } else {
         // Plain chart mode
-        const isResponsive = false;
-        if (isResponsive) {
-          contentW = 800
-          contentH = 600
-        } else {
-          const parseDim = (val: any, fallback: number): number => {
-            if (typeof val === 'number') return val;
-            if (typeof val === 'string') {
-              const parsed = parseInt(val, 10);
-              return isNaN(parsed) ? fallback : parsed;
-            }
-            return fallback;
-          };
-          contentW = parseDim(snapshotData.chartConfig?.width, 800)
-          contentH = parseDim(snapshotData.chartConfig?.height, 600)
-        }
+        const parseDim = (val: any, fallback: number): number => {
+          if (typeof val === 'number') return val;
+          if (typeof val === 'string') {
+            const parsed = parseInt(val, 10);
+            return isNaN(parsed) ? fallback : parsed;
+          }
+          return fallback;
+        };
+        contentW = parseDim(snapshotData.chartConfig?.width, 800)
+        contentH = parseDim(snapshotData.chartConfig?.height, 600)
       }
-      
+
       const scaleX = containerWidth / contentW
       const scaleY = containerHeight / contentH
-      setTemplateScale(Math.min(scaleX, scaleY))
+      const nextScale = Math.min(scaleX, scaleY)
+      if (nextScale > 0 && Number.isFinite(nextScale)) {
+        setTemplateScale(nextScale)
+      }
     }
 
     updateScale()
-    
+
     const resizeObserver = new ResizeObserver(() => {
       updateScale()
     })
-    
+
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current)
     }
@@ -258,6 +281,27 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
       resizeObserver.disconnect()
     }
   }, [snapshotData, viewMode, isVisible])
+
+  // Reveal the chart only after the fitted container & canvas have settled for a frame
+  useEffect(() => {
+    if (!isVisible || !snapshotData || templateScale === null || isLoading || fetchError || viewMode !== "grid") {
+      setIsChartReady(false)
+      return
+    }
+
+    let raf1 = 0
+    let raf2 = 0
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setIsChartReady(true)
+      })
+    })
+
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+  }, [isVisible, snapshotData, templateScale, isLoading, fetchError, viewMode])
 
   // Focus input when rename dialog opens
   useEffect(() => {
@@ -727,17 +771,22 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           </div>
 
           {/* Dynamic Render Conditions */}
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-50/50 backdrop-blur-[1px] animate-pulse">
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="w-5 h-5 text-violet-600 animate-spin" />
-                <span className="text-[10px] font-bold text-violet-700 tracking-wider uppercase">Loading chart...</span>
+          {(isLoading || (deferSnapshotFetch && !snapshotData) || (isVisible && !!snapshotData && !fetchError && !isChartReady)) && (
+            <div className="absolute inset-0 z-10 flex flex-col justify-end p-5 gap-2.5 bg-slate-50/95 dark:bg-slate-900/95 animate-pulse">
+              <div className="flex items-end gap-2.5 h-3/5 w-full px-3">
+                <div className="flex-1 h-[45%] rounded-t-md bg-slate-200/80 dark:bg-slate-700/60" />
+                <div className="flex-1 h-[80%] rounded-t-md bg-slate-200/90 dark:bg-slate-700/70" />
+                <div className="flex-1 h-[60%] rounded-t-md bg-slate-200/80 dark:bg-slate-700/60" />
+                <div className="flex-1 h-[92%] rounded-t-md bg-slate-200/90 dark:bg-slate-700/70" />
+                <div className="flex-1 h-[55%] rounded-t-md bg-slate-200/80 dark:bg-slate-700/60" />
               </div>
+              <div className="h-2 w-2/3 mx-auto rounded-full bg-slate-200/70 dark:bg-slate-700/50" />
             </div>
           )}
 
-          {isVisible && snapshotData && !isLoading && !fetchError ? (
-            isTemplateMode && snapshotData.template_structure ? (
+          {isVisible && snapshotData && templateScale !== null && !isLoading && !fetchError ? (
+            <div className={`absolute inset-0 transition-opacity duration-150 ${isChartReady ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+            {isTemplateMode && snapshotData.template_structure ? (
               isFormat && renderedFormat ? (
                 <div
                   className="absolute inset-0 overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-slate-800/40 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] dark:[background-image:radial-gradient(#334155_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
@@ -748,13 +797,13 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                     style={{
                       width: snapshotData.template_structure.dimensions?.width || 800,
                       height: snapshotData.template_structure.dimensions?.height || 600,
-                      transform: `scale(${templateScale})`,
+                      transform: `scale(${templateScale ?? 0.3})`,
                       transformOrigin: 'top left',
                       position: 'absolute',
                       top: '50%',
                       left: '50%',
-                      marginTop: -((snapshotData.template_structure.dimensions?.height || 600) * templateScale) / 2,
-                      marginLeft: -((snapshotData.template_structure.dimensions?.width || 800) * templateScale) / 2,
+                      marginTop: -((snapshotData.template_structure.dimensions?.height || 600) * (templateScale ?? 0.3)) / 2,
+                      marginLeft: -((snapshotData.template_structure.dimensions?.width || 800) * (templateScale ?? 0.3)) / 2,
                     }}
                   >
                     <FormatRenderer
@@ -775,13 +824,13 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                     style={{
                       width: snapshotData.template_structure.width || 800,
                       height: snapshotData.template_structure.height || 600,
-                      transform: `scale(${templateScale})`,
+                      transform: `scale(${templateScale ?? 0.3})`,
                       transformOrigin: 'top left',
                       position: 'absolute',
                       top: '50%',
                       left: '50%',
-                      marginTop: -((snapshotData.template_structure.height || 600) * templateScale) / 2,
-                      marginLeft: -((snapshotData.template_structure.width || 800) * templateScale) / 2,
+                      marginTop: -((snapshotData.template_structure.height || 600) * (templateScale ?? 0.3)) / 2,
+                      marginLeft: -((snapshotData.template_structure.width || 800) * (templateScale ?? 0.3)) / 2,
                     }}
                   >
                     {/* Real Background Layer */}
@@ -801,7 +850,11 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                       }
                       if (bg.type === 'image' && bg.imageUrl) {
                         const size = bg.imageFit === 'fill' ? '100% 100%' : bg.imageFit === 'contain' ? 'contain' : 'cover';
-                        return <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100 }} />;
+                        return (
+                          <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: bg.imageWhiteBase !== false ? '#ffffff' : 'transparent' }}>
+                            <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100, filter: bg.blur ? `blur(${bg.blur}px)` : 'none' }} />
+                          </div>
+                        );
                       }
                       return null;
                     })()}
@@ -938,7 +991,11 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                         }
                         if (bg.type === 'image' && bg.imageUrl) {
                           const size = bg.imageFit === 'fill' ? '100% 100%' : bg.imageFit === 'contain' ? 'contain' : 'cover';
-                          return <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100 }} />;
+                          return (
+                            <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: bg.imageWhiteBase !== false ? '#ffffff' : 'transparent' }}>
+                              <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100, filter: bg.blur ? `blur(${bg.blur}px)` : 'none' }} />
+                            </div>
+                          );
                         }
                         return null;
                       })()}
@@ -966,9 +1023,10 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                   )
                 })()}
               </div>
-            )
+            )}
+            </div>
           ) : (
-            !isLoading && (
+            !(isLoading || (deferSnapshotFetch && !snapshotData) || (isVisible && !!snapshotData && !fetchError && !isChartReady)) && (
               <div className="relative z-10 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
                 {getChartIcon()}
               </div>

@@ -116,6 +116,11 @@ export const CHART_TYPE_REGISTRY: Record<string, { name: string; dot: string; ba
     dot: "bg-orange-600",
     badge: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/60",
   },
+  timeline: {
+    name: "Timeline",
+    dot: "bg-teal-500",
+    badge: "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/60",
+  },
 }
 
 function normalizeKey(type: string): string {

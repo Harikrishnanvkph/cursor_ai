@@ -3,6 +3,11 @@ import { generateCompletePluginSystem } from "./html-plugins";
 import { useDecorationStore } from "@/lib/stores/decoration-store";
 import { generateDecorationsSVG, generateDecorationsCSS } from "@/lib/template-export/decoration-html-export";
 import { collectAllChartFonts, generateGoogleFontHeadTags, sanitizeScalesCustomPadding } from "./html-exporter/html-export-font-utils";
+import {
+  generateNumberFormatHelpersJS,
+  generateScaleTicksFormattingJS,
+  generateTooltipFormattingJS,
+} from "./html-exporter/number-format-runtime";
 
 /**
  * Generate legend config with generateLabels function for HTML export
@@ -295,113 +300,9 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
             }
         }
         
-        // Utility to format numbers based on numberFormat configuration
-        function formatNumberWithConfig(val, formatConfig) {
-            if (!formatConfig || typeof formatConfig !== 'object') return String(val);
-            const preset = formatConfig.preset || 'none';
-            const currencySymbol = formatConfig.currencySymbol || '$';
-            const currencyPosition = formatConfig.currencyPosition || 'prefix';
-            const decimals = formatConfig.decimals;
-            const compact = Boolean(formatConfig.compact) || preset === 'compact';
-            const useGrouping = formatConfig.useGrouping !== false;
-
-            if (preset === 'none' && !compact && (decimals === undefined || decimals === 'auto')) {
-                return String(val);
-            }
-
-            let formatted = '';
-            const fracDigits = (decimals !== undefined && decimals !== 'auto') ? Number(decimals) : (val % 1 === 0 ? 0 : 2);
-
-            try {
-                const opts = {
-                    useGrouping: useGrouping,
-                    maximumFractionDigits: fracDigits,
-                    minimumFractionDigits: (decimals !== undefined && decimals !== 'auto') ? fracDigits : 0,
-                };
-                if (compact) {
-                    opts.notation = 'compact';
-                    opts.compactDisplay = 'short';
-                }
-                formatted = new Intl.NumberFormat('en-US', opts).format(val);
-            } catch(e) {
-                formatted = String(val);
-            }
-
-            if (preset === 'currency') {
-                if (currencyPosition === 'prefix') {
-                    formatted = currencySymbol + formatted;
-                } else {
-                    formatted = formatted + ' ' + currencySymbol;
-                }
-            } else if (preset === 'percent') {
-                formatted = formatted + '%';
-            }
-
-            return formatted;
-        }
-
-        // Dynamic Axis Tick Prefix & Suffix
-        if (enhancedConfig.scales) {
-            Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
-                const scale = enhancedConfig.scales[axisKey];
-                if (scale && scale.ticks) {
-                    const prefix = typeof scale.ticks.prefix === 'string' ? scale.ticks.prefix : '';
-                    const suffix = typeof scale.ticks.suffix === 'string' ? scale.ticks.suffix : '';
-                    if (prefix || suffix) {
-                        const origCallback = scale.ticks.callback;
-                        scale.ticks.callback = function(value, index, ticks) {
-                            let label;
-                            if (typeof origCallback === 'function') {
-                                label = origCallback.call(this, value, index, ticks);
-                            } else if (this && typeof this.getLabelForValue === 'function') {
-                                label = this.getLabelForValue(value);
-                            } else {
-                                label = value;
-                            }
-                            if (label !== undefined && label !== null) {
-                                if (Array.isArray(label)) {
-                                    return label.map(function(l, i) {
-                                        return (i === 0 ? prefix : '') + l + (i === label.length - 1 ? suffix : '');
-                                    });
-                                }
-                                return prefix + label + suffix;
-                            }
-                            return label;
-                        };
-                    }
-                }
-            });
-        }
-        
-        // Dynamic Tooltip Number & Timeline Value Formatting
-        if (enhancedConfig.plugins && enhancedConfig.plugins.tooltip && enhancedConfig.plugins.tooltip.enabled !== false) {
-            const origTooltipLabel = enhancedConfig.plugins.tooltip.callbacks && enhancedConfig.plugins.tooltip.callbacks.label;
-            enhancedConfig.plugins.tooltip.callbacks = enhancedConfig.plugins.tooltip.callbacks || {};
-            enhancedConfig.plugins.tooltip.callbacks.label = function(context) {
-                if (typeof origTooltipLabel === 'function') {
-                    return origTooltipLabel.call(this, context);
-                }
-                const dataset = context.dataset || {};
-                const label = context.label || '';
-                let rawVal = context.raw !== undefined ? context.raw : (context.parsed && context.parsed.y !== undefined ? context.parsed.y : context.parsed);
-                let numVal = typeof rawVal === 'number' ? rawVal : (typeof rawVal === 'object' && rawVal !== null && rawVal.y !== undefined ? Number(rawVal.y) : (context.parsed && context.parsed.y !== undefined ? Number(context.parsed.y) : Number(rawVal)));
-                let formattedVal = isNaN(numVal) ? String(rawVal ?? '') : numVal;
-                if (typeof numVal === 'number' && !isNaN(numVal)) {
-                    if (chartType === 'timeline' || "${options.originalChartType || ''}" === 'timeline') {
-                        const yTick = enhancedConfig.scales && enhancedConfig.scales.y && enhancedConfig.scales.y.ticks;
-                        const prefix = typeof yTick?.prefix === 'string' ? yTick.prefix : '';
-                        const suffix = typeof yTick?.suffix === 'string' ? yTick.suffix : '';
-                        const formatted = numVal.toLocaleString(undefined, {
-                            minimumFractionDigits: numVal % 1 === 0 ? 0 : 2,
-                            maximumFractionDigits: 2
-                        });
-                        formattedVal = prefix + formatted + suffix;
-                    }
-                }
-                const dsLabel = dataset.label ? dataset.label + ': ' : ((chartType === 'timeline' || "${options.originalChartType || ''}" === 'timeline') ? '' : (label ? label + ': ' : ''));
-                return dsLabel + formattedVal;
-            };
-        }
+        ${generateNumberFormatHelpersJS()}
+        ${generateScaleTicksFormattingJS('enhancedConfig')}
+        ${generateTooltipFormattingJS('enhancedConfig', options.originalChartType || chartType, chartType)}
 
         // Dynamic Scale Ticks Asymmetric Padding Sanitization
         if (enhancedConfig.scales) {
@@ -502,7 +403,7 @@ export const plainTemplate: HTMLTemplate = {
     let chartContainerStyle = '';
 
     if (background.type === "image" && background.imageUrl) {
-      const opacity = background.opacity || 100;
+      const opacity = typeof background.opacity === 'number' ? background.opacity : 100;
       const imageFit = background.imageFit || 'cover';
       const backgroundSize = imageFit === 'fill' ? '100% 100%' :
         imageFit === 'contain' ? 'contain' : 'cover';
@@ -511,6 +412,8 @@ export const plainTemplate: HTMLTemplate = {
         ? background.imageUrl
         : JSON.stringify(background.imageUrl);
       const blur = background.blur ? `; filter: blur(${background.blur}px)` : '';
+      const whiteBase = background.imageWhiteBase !== false ? '#ffffff' : 'transparent';
+      chartContainerStyle = `background-color: ${whiteBase}; overflow: hidden;`;
       backgroundLayerHTML = `<div class="chart-background" style="position: absolute; inset: 0; z-index: 0; background-image: url(${imageUrl}); background-size: ${backgroundSize}; background-position: center; background-repeat: no-repeat; opacity: ${opacity / 100}; pointer-events: none${blur};"></div>`;
     } else if (background.type === "gradient") {
       const color1 = background.gradientColor1 || '#ffffff';

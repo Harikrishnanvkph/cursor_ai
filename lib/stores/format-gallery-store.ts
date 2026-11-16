@@ -564,3 +564,24 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
   }
   )
 )
+
+/**
+ * Ensures a default Format Blueprint is selected when entering template mode
+ * without an active selection, loading formats from the catalog if needed.
+ */
+export function ensureDefaultFormatSelected(chartType = 'bar') {
+  const formatStore = useFormatGalleryStore.getState()
+  if (formatStore.selectedFormatId) return
+
+  if (formatStore.formats.length > 0) {
+    formatStore.setSelectedFormat(formatStore.formats[0].id, chartType)
+    return
+  }
+
+  formatStore.loadFormats().then(() => {
+    const updated = useFormatGalleryStore.getState()
+    if (!updated.selectedFormatId && updated.formats.length > 0) {
+      updated.setSelectedFormat(updated.formats[0].id, chartType)
+    }
+  })
+}

@@ -16,6 +16,11 @@ import {
     calculateTimelineBounds
 } from "./export-utils";
 import { sanitizeScalesCustomPadding } from "./html-export-font-utils";
+import {
+    generateNumberFormatHelpersJS,
+    generateScaleTicksFormattingJS,
+    generateTooltipFormattingJS,
+} from "./number-format-runtime";
 
 /**
  * Generate chart HTML content specifically for embedding in templates
@@ -703,38 +708,9 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
         }
     }
     
-    // Dynamic Axis Tick Prefix & Suffix
-    if (enhancedConfig.scales) {
-        Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
-            const scale = enhancedConfig.scales[axisKey];
-            if (scale && scale.ticks) {
-                const prefix = typeof scale.ticks.prefix === 'string' ? scale.ticks.prefix : '';
-                const suffix = typeof scale.ticks.suffix === 'string' ? scale.ticks.suffix : '';
-                if (prefix || suffix) {
-                    const origCallback = scale.ticks.callback;
-                    scale.ticks.callback = function(value, index, ticks) {
-                        let label;
-                        if (typeof origCallback === 'function') {
-                            label = origCallback.call(this, value, index, ticks);
-                        } else if (this && typeof this.getLabelForValue === 'function') {
-                            label = this.getLabelForValue(value);
-                        } else {
-                            label = value;
-                        }
-                        if (label !== undefined && label !== null) {
-                            if (Array.isArray(label)) {
-                                return label.map(function(l, i) {
-                                    return (i === 0 ? prefix : '') + l + (i === label.length - 1 ? suffix : '');
-                                });
-                            }
-                            return prefix + label + suffix;
-                        }
-                        return label;
-                    };
-                }
-            }
-        });
-    }
+    ${generateNumberFormatHelpersJS()}
+    ${generateScaleTicksFormattingJS('enhancedConfig')}
+    ${generateTooltipFormattingJS('enhancedConfig', chartType, mappedChartType)}
 
         // Dynamic Scale Ticks Asymmetric Padding Sanitization
         if (enhancedConfig.scales) {
@@ -823,10 +799,11 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     // Generate background HTML
     let backgroundHTML = '';
     const bg = enhancedChartConfig.background || { type: 'color', color: '#ffffff' };
-    const bgOpacity = bg.opacity || 100;
+    const bgOpacity = typeof bg.opacity === 'number' ? bg.opacity : 100;
 
     if (bg.type === 'image' && bg.imageUrl) {
-        backgroundHTML = `<div style="position: absolute; inset: 0; z-index: 0; background-image: url('${bg.imageUrl}'); background-size: ${bg.imageFit === 'fill' ? '100% 100%' : (bg.imageFit === 'contain' ? 'contain' : 'cover')}; background-position: center; background-repeat: no-repeat; opacity: ${bgOpacity / 100}; pointer-events: none; ${bg.blur ? `filter: blur(${bg.blur}px);` : ''}"></div>`;
+        const whiteBase = bg.imageWhiteBase !== false ? '#ffffff' : 'transparent';
+        backgroundHTML = `<div style="position: absolute; inset: 0; z-index: 0; background-color: ${whiteBase}; overflow: hidden; pointer-events: none;"><div style="position: absolute; inset: 0; background-image: url('${bg.imageUrl}'); background-size: ${bg.imageFit === 'fill' ? '100% 100%' : (bg.imageFit === 'contain' ? 'contain' : 'cover')}; background-position: center; background-repeat: no-repeat; opacity: ${bgOpacity / 100}; pointer-events: none; ${bg.blur ? `filter: blur(${bg.blur}px);` : ''}"></div></div>`;
     } else if (bg.type === 'gradient') {
         const color1 = bg.gradientColor1 || '#ffffff';
         const color2 = bg.gradientColor2 || '#000000';

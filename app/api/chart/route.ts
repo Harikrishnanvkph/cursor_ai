@@ -10,14 +10,20 @@ export async function POST(req: NextRequest) {
     const body = await req.text()
     console.log('Frontend API proxy - Request body preview:', body.substring(0, 200) + '...')
 
+    const forwardedFor = req.headers.get('x-forwarded-for')
+    const realIp = req.headers.get('x-real-ip')
+    const upstreamHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      // Forward cookies for backend auth
+      'cookie': req.headers.get('cookie') || ''
+    }
+    if (forwardedFor) upstreamHeaders['x-forwarded-for'] = forwardedFor
+    if (realIp) upstreamHeaders['x-real-ip'] = realIp
+
     // No timeout needed - frontend already has 60s timeout
     const upstreamResponse = await fetch(targetUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Forward cookies for backend auth
-        'cookie': req.headers.get('cookie') || ''
-      },
+      headers: upstreamHeaders,
       body,
       cache: 'no-store'
     })

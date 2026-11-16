@@ -4,7 +4,6 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FontWeightSelect } from "@/components/ui/font-family-select"
 import { useState } from "react"
-import { NumberFormattingSection } from "../number-formatting-section"
 import { cn } from "@/lib/utils"
 import { ChevronDown } from "lucide-react"
 
@@ -24,13 +23,6 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
     return (
         <div className="space-y-3 overflow-y-auto overflow-x-hidden h-full pr-0 relative isolate">
             <div className="space-y-3 relative">
-                {/* Number & Value Formatting Section */}
-                <NumberFormattingSection
-                    value={config?.ticks?.numberFormat}
-                    onChange={(newFmt) => updateConfig('ticks.numberFormat', newFmt)}
-                    defaultOpen={true}
-                />
-
                 {/* Tick Mark Section */}
                 <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                     <div
@@ -63,15 +55,16 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
 
                     {/* Tick Mark Options */}
                     {tickMarkConfigDropdownOpen && (
-                        <div className="p-3.5 space-y-3.5 bg-white">
-                            <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3.5 bg-white">
+                            <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-2.5 items-end">
                                 <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Tick Color</Label>
-                                    <div className="flex items-center gap-2">
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Color</Label>
+                                    <div className="flex items-center h-8">
                                         <div
-                                            className="w-7 h-7 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
+                                            className="w-8 h-8 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
                                             style={{ backgroundColor: config?.grid?.tickColor || '#666666' }}
                                             onClick={() => document.getElementById(`grid-tick-color-${axis}`)?.click()}
+                                            title={config?.grid?.tickColor || '#666666'}
                                         />
                                         <input
                                             id={`grid-tick-color-${axis}`}
@@ -80,59 +73,51 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
                                             onChange={(e) => updateConfig('grid.tickColor', e.target.value)}
                                             className="sr-only"
                                         />
-                                        <Input
-                                            value={config?.grid?.tickColor || '#666666'}
-                                            onChange={(e) => updateConfig('grid.tickColor', e.target.value)}
-                                            className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
-                                            placeholder="#666666"
-                                        />
                                     </div>
                                 </div>
 
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Tick Width</Label>
-                                    <div className="flex items-center gap-1.5">
+                                <div className="space-y-1 min-w-0">
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Width</Label>
+                                    <div className="flex items-center gap-1">
                                         <Input
                                             type="number"
                                             value={config?.grid?.tickWidth || ''}
                                             onChange={(e) => updateConfig('grid.tickWidth', e.target.value ? Number(e.target.value) : undefined)}
                                             placeholder="1"
-                                            className="h-8 text-xs bg-white flex-1 min-w-0"
+                                            className="h-8 text-xs bg-white flex-1 min-w-0 px-2"
                                             min={0}
                                             max={10}
                                             step={0.5}
                                         />
-                                        <span className="text-xs text-slate-400 shrink-0">px</span>
+                                        <span className="text-[11px] text-slate-400 shrink-0">px</span>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-3 items-end">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Tick Length</Label>
-                                    <div className="flex items-center gap-1.5">
+                                <div className="space-y-1 min-w-0">
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Length</Label>
+                                    <div className="flex items-center gap-1">
                                         <Input
                                             type="number"
                                             value={config?.grid?.tickLength || ''}
                                             onChange={(e) => updateConfig('grid.tickLength', e.target.value ? Number(e.target.value) : undefined)}
                                             placeholder="6"
-                                            className="h-8 text-xs bg-white flex-1 min-w-0"
+                                            className="h-8 text-xs bg-white flex-1 min-w-0 px-2"
                                             min={0}
                                             max={20}
                                             step={1}
                                         />
-                                        <span className="text-xs text-slate-400 shrink-0">px</span>
+                                        <span className="text-[11px] text-slate-400 shrink-0">px</span>
                                     </div>
                                 </div>
 
                                 <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Grid Offset</Label>
-                                    <div className="flex items-center justify-between h-8 px-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50">
-                                        <span className="text-xs text-slate-600">Offset Grid</span>
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Grid Offset</Label>
+                                    <div className="flex items-center justify-center h-8">
                                         <Switch
                                             checked={config?.grid?.offset ?? ['bar', 'horizontalBar', 'stacked'].includes(chartType || '')}
                                             onCheckedChange={(checked) => updateConfig('grid.offset', checked)}
                                             className="data-[state=checked]:bg-blue-600 scale-90"
+                                            aria-label="Grid Offset"
                                         />
                                     </div>
                                 </div>
@@ -166,40 +151,37 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
 
                     {/* Dropdown Content */}
                     {tickConfigDropdownOpen && (
-                        <div className="p-3.5 space-y-3.5 bg-white">
-                            {/* Limits */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Max Ticks Limit</Label>
+                        <div className="p-3.5 space-y-3 bg-white">
+                            {/* Row 1: 3 columns */}
+                            <div className="grid grid-cols-3 gap-2.5 items-end">
+                                <div className="space-y-1 min-w-0">
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Max Ticks</Label>
                                     <Input
                                         type="number"
                                         value={config?.ticks?.maxTicksLimit || ''}
                                         onChange={(e) => updateConfig('ticks.maxTicksLimit', e.target.value ? Number(e.target.value) : undefined)}
                                         placeholder="11"
-                                        className="h-8 text-xs bg-white min-w-0"
+                                        className="h-8 text-xs bg-white min-w-0 px-2"
                                         min={2}
                                         max={20}
                                     />
                                 </div>
 
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Step Size</Label>
+                                <div className="space-y-1 min-w-0">
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Step Size</Label>
                                     <Input
                                         type="number"
                                         value={config?.ticks?.stepSize || ''}
                                         onChange={(e) => updateConfig('ticks.stepSize', e.target.value ? Number(e.target.value) : undefined)}
                                         placeholder="Auto"
-                                        className="h-8 text-xs bg-white min-w-0"
+                                        className="h-8 text-xs bg-white min-w-0 px-2"
                                         min={0}
                                         step={0.1}
                                     />
                                 </div>
-                            </div>
 
-                            {/* Min/Max Values */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Min Value</Label>
+                                <div className="space-y-1 min-w-0">
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Min Value</Label>
                                     <Input
                                         type="number"
                                         value={config?.min ?? ''}
@@ -208,12 +190,15 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
                                             updateConfig('min', value)
                                         }}
                                         placeholder="Auto"
-                                        className="h-8 text-xs bg-white min-w-0"
+                                        className="h-8 text-xs bg-white min-w-0 px-2"
                                     />
                                 </div>
+                            </div>
 
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Max Value</Label>
+                            {/* Row 2: 3 columns */}
+                            <div className="grid grid-cols-3 gap-2.5 items-end">
+                                <div className="space-y-1 min-w-0">
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Max Value</Label>
                                     <Input
                                         type="number"
                                         value={config?.max ?? ''}
@@ -222,9 +207,46 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
                                             updateConfig('max', value)
                                         }}
                                         placeholder="Auto"
-                                        className="h-8 text-xs bg-white min-w-0"
+                                        className="h-8 text-xs bg-white min-w-0 px-2"
                                     />
                                 </div>
+
+                                <div className="space-y-1 min-w-0">
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Cross Align</Label>
+                                    <Select
+                                        value={config?.ticks?.crossAlign || 'near'}
+                                        onValueChange={(value) => updateConfig('ticks.crossAlign', value)}
+                                    >
+                                        <SelectTrigger className="h-8 text-xs bg-white px-2">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="near">Near</SelectItem>
+                                            <SelectItem value="center">Center</SelectItem>
+                                            <SelectItem value="far">Far</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {config?.ticks?.autoSkip !== false ? (
+                                    <div className="space-y-1 min-w-0">
+                                        <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Skip Padding</Label>
+                                        <div className="flex items-center gap-1">
+                                            <Input
+                                                type="number"
+                                                value={config?.ticks?.autoSkipPadding || ''}
+                                                onChange={(e) => updateConfig('ticks.autoSkipPadding', e.target.value ? Number(e.target.value) : undefined)}
+                                                placeholder="3"
+                                                className="h-8 text-xs bg-white flex-1 min-w-0 px-2"
+                                                min={0}
+                                                max={20}
+                                            />
+                                            <span className="text-[11px] text-slate-400 shrink-0">px</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div />
+                                )}
                             </div>
 
                             {/* Note about numeric scales */}
@@ -239,12 +261,12 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
                                 </div>
                             )}
 
-                            {/* Auto Skip Settings */}
-                            <div className="grid grid-cols-2 gap-3 items-end">
+                            {/* Row 3: 2 columns */}
+                            <div className="grid grid-cols-2 gap-2.5 items-end">
                                 <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Auto Skip</Label>
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Auto Skip</Label>
                                     <div className="flex items-center justify-between h-8 px-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50">
-                                        <span className="text-xs text-slate-600">Skip overlap</span>
+                                        <span className="text-xs text-slate-600 whitespace-nowrap">Skip overlap</span>
                                         <Switch
                                             checked={config?.ticks?.autoSkip !== false}
                                             onCheckedChange={(checked) => updateConfig('ticks.autoSkip', checked)}
@@ -253,50 +275,10 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
                                     </div>
                                 </div>
 
-                                {config?.ticks?.autoSkip !== false ? (
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Skip Padding</Label>
-                                        <div className="flex items-center gap-1.5">
-                                            <Input
-                                                type="number"
-                                                value={config?.ticks?.autoSkipPadding || ''}
-                                                onChange={(e) => updateConfig('ticks.autoSkipPadding', e.target.value ? Number(e.target.value) : undefined)}
-                                                placeholder="3"
-                                                className="h-8 text-xs bg-white flex-1 min-w-0"
-                                                min={0}
-                                                max={20}
-                                            />
-                                            <span className="text-xs text-slate-400 shrink-0">px</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div />
-                                )}
-                            </div>
-
-                            {/* Cross Align and Mirror Settings */}
-                            <div className="grid grid-cols-2 gap-3 items-end">
                                 <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Cross Align</Label>
-                                    <Select
-                                        value={config?.ticks?.crossAlign || 'near'}
-                                        onValueChange={(value) => updateConfig('ticks.crossAlign', value)}
-                                    >
-                                        <SelectTrigger className="h-8 text-xs bg-white">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="near">Near</SelectItem>
-                                            <SelectItem value="center">Center</SelectItem>
-                                            <SelectItem value="far">Far</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Mirror</Label>
+                                    <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Mirror</Label>
                                     <div className="flex items-center justify-between h-8 px-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50">
-                                        <span className="text-xs text-slate-600">Inside Chart</span>
+                                        <span className="text-xs text-slate-600 whitespace-nowrap">Inside Chart</span>
                                         <Switch
                                             checked={!!config?.ticks?.mirror}
                                             onCheckedChange={(checked) => updateConfig('ticks.mirror', checked)}
@@ -397,16 +379,16 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
                                 <div className="space-y-1">
                                     <Label className="text-xs font-medium text-slate-700">Font Style</Label>
                                     <Select
-                                        value={config?.ticks?.major?.fontStyle || 'bold'}
-                                        onValueChange={(value) => updateNestedConfig('ticks.major', 'fontStyle', value)}
+                                        value={config?.ticks?.major?.font?.style || (config?.ticks?.major?.fontStyle === 'italic' ? 'italic' : 'normal')}
+                                        onValueChange={(value) => updateNestedConfig('ticks.major.font', 'style', value)}
                                     >
                                         <SelectTrigger className="h-8 text-xs bg-white">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="normal">Normal</SelectItem>
-                                            <SelectItem value="bold">Bold</SelectItem>
                                             <SelectItem value="italic">Italic</SelectItem>
+                                            <SelectItem value="oblique">Oblique</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

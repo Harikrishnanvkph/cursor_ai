@@ -3,6 +3,11 @@ import { type SupportedChartType } from "../chart-store";
 import { chartTypeMapping } from "../chart-store";
 import type { HTMLExportOptions } from "./export-types";
 import { processChartDataForExport, generateCustomLabelsFromConfig } from "./export-utils";
+import {
+    generateNumberFormatHelpersJS,
+    generateScaleTicksFormattingJS,
+    generateTooltipFormattingJS,
+} from "./number-format-runtime";
 
 /**
  * Generate HTML with custom template
@@ -86,37 +91,9 @@ export function generateMinimalChartHTML(options: HTMLExportOptions = {}) {
     <script>
         const ctx = document.getElementById('chart').getContext('2d');
         const chartOptions = ${JSON.stringify(enhancedChartConfig)};
-        if (chartOptions.scales) {
-            Object.keys(chartOptions.scales).forEach(function(axisKey) {
-                const scale = chartOptions.scales[axisKey];
-                if (scale && scale.ticks) {
-                    const prefix = typeof scale.ticks.prefix === 'string' ? scale.ticks.prefix : '';
-                    const suffix = typeof scale.ticks.suffix === 'string' ? scale.ticks.suffix : '';
-                    if (prefix || suffix) {
-                        const origCallback = scale.ticks.callback;
-                        scale.ticks.callback = function(value, index, ticks) {
-                            let label;
-                            if (typeof origCallback === 'function') {
-                                label = origCallback.call(this, value, index, ticks);
-                            } else if (this && typeof this.getLabelForValue === 'function') {
-                                label = this.getLabelForValue(value);
-                            } else {
-                                label = value;
-                            }
-                            if (label !== undefined && label !== null) {
-                                if (Array.isArray(label)) {
-                                    return label.map(function(l, i) {
-                                        return (i === 0 ? prefix : '') + l + (i === label.length - 1 ? suffix : '');
-                                    });
-                                }
-                                return prefix + label + suffix;
-                            }
-                            return label;
-                        };
-                    }
-                }
-            });
-        }
+        ${generateNumberFormatHelpersJS()}
+        ${generateScaleTicksFormattingJS('chartOptions')}
+        ${generateTooltipFormattingJS('chartOptions', chartType, mappedChartType)}
         new Chart(ctx, {
             type: '${mappedChartType}',
             data: ${JSON.stringify(chartData)},
@@ -176,37 +153,9 @@ export function generateEmbeddedChartHTML(options: HTMLExportOptions = {}) {
         loadChartJS().then(() => {
             const ctx = document.getElementById('chart').getContext('2d');
             const chartOptions = ${JSON.stringify(chartConfig)};
-            if (chartOptions.scales) {
-                Object.keys(chartOptions.scales).forEach(function(axisKey) {
-                    const scale = chartOptions.scales[axisKey];
-                    if (scale && scale.ticks) {
-                        const prefix = typeof scale.ticks.prefix === 'string' ? scale.ticks.prefix : '';
-                        const suffix = typeof scale.ticks.suffix === 'string' ? scale.ticks.suffix : '';
-                        if (prefix || suffix) {
-                            const origCallback = scale.ticks.callback;
-                            scale.ticks.callback = function(value, index, ticks) {
-                                let label;
-                                if (typeof origCallback === 'function') {
-                                    label = origCallback.call(this, value, index, ticks);
-                                } else if (this && typeof this.getLabelForValue === 'function') {
-                                    label = this.getLabelForValue(value);
-                                } else {
-                                    label = value;
-                                }
-                                if (label !== undefined && label !== null) {
-                                    if (Array.isArray(label)) {
-                                        return label.map(function(l, i) {
-                                            return (i === 0 ? prefix : '') + l + (i === label.length - 1 ? suffix : '');
-                                        });
-                                    }
-                                    return prefix + label + suffix;
-                                }
-                                return label;
-                            };
-                        }
-                    }
-                });
-            }
+            ${generateNumberFormatHelpersJS()}
+            ${generateScaleTicksFormattingJS('chartOptions')}
+            ${generateTooltipFormattingJS('chartOptions', chartType, mappedChartType)}
             new Chart(ctx, {
                 type: '${mappedChartType}',
                 data: ${JSON.stringify(chartData)},

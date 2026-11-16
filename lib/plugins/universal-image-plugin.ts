@@ -574,6 +574,9 @@ export const universalImagePlugin = {
             mousemove: handleMouseMove,
             mouseup: handleMouseUp,
             mouseleave: handleMouseUp,
+            touchstart: handleTouchStart,
+            touchmove: handleTouchMove,
+            touchend: handleTouchEnd,
         }
     },
     beforeDestroy: (chart: any) => {
@@ -1228,6 +1231,8 @@ function renderSliceImage(ctx: any, element: any, img: any, config: any, placeho
     drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type, placeholderText)
 }
 
+const sliceContainOffsetCache = new Map<string, { area: number; dx: number; dy: number; w: number; h: number }>()
+
 function renderSliceFillImage(ctx: any, element: any, img: any, config: any, placeholderText?: string) {
     const chart = element._chart || element.chart
     const chartArea = chart.chartArea
@@ -1289,74 +1294,80 @@ function renderSliceFillImage(ctx: any, element: any, img: any, config: any, pla
     const imageFit = config.imageFit || 'cover'
     if (imageFit === 'contain') {
         // --- Mathematically correct: largest rectangle fully inside the sector ---
-        const sliceAngle = Math.abs(endAngle - startAngle)
         const imgAspect = img.width / img.height
-        let best = { area: 0, x: 0, y: 0, w: 0, h: 0 }
-        const angleSteps = 30
-        const radiusSteps = 30
-        for (let ai = 0; ai <= angleSteps; ai++) {
-            const fracA = ai / angleSteps
-            const theta = startAngle + fracA * (endAngle - startAngle)
-            for (let ri = 0; ri <= radiusSteps; ri++) {
-                const fracR = ri / radiusSteps
-                const r = innerRadius + fracR * (outerRadius - innerRadius)
-                // Binary search for max width
-                let low = 0, high = outerRadius - innerRadius, maxW = 0, maxH = 0
-                for (let iter = 0; iter < 10; iter++) {
-                    const mid = (low + high) / 2
-                    let w, h
-                    if (imgAspect > 1) {
-                        w = mid
-                        h = w / imgAspect
-                    } else {
-                        h = mid
-                        w = h * imgAspect
+        const cacheKey = `${startAngle.toFixed(4)}_${endAngle.toFixed(4)}_${innerRadius.toFixed(1)}_${outerRadius.toFixed(1)}_${imgAspect.toFixed(3)}`
+        let cachedOffset = sliceContainOffsetCache.get(cacheKey)
+
+        if (!cachedOffset) {
+            let bestArea = 0, bestDx = 0, bestDy = 0, bestW = 0, bestH = 0
+            const angleSteps = 30
+            const radiusSteps = 30
+            let sA = startAngle, eA = endAngle
+            if (sA < 0) sA += 2 * Math.PI
+            if (eA < 0) eA += 2 * Math.PI
+            if (eA < sA) eA += 2 * Math.PI
+
+            for (let ai = 0; ai <= angleSteps; ai++) {
+                const fracA = ai / angleSteps
+                const theta = startAngle + fracA * (endAngle - startAngle)
+                const cosTheta = Math.cos(theta)
+                const sinTheta = Math.sin(theta)
+                for (let ri = 0; ri <= radiusSteps; ri++) {
+                    const fracR = ri / radiusSteps
+                    const r = innerRadius + fracR * (outerRadius - innerRadius)
+                    const relCx = cosTheta * r
+                    const relCy = sinTheta * r
+                    // Binary search for max width
+                    let low = 0, high = outerRadius - innerRadius, maxW = 0, maxH = 0
+                    for (let iter = 0; iter < 10; iter++) {
+                        const mid = (low + high) / 2
+                        const w = imgAspect > 1 ? mid : mid * imgAspect
+                        const h = imgAspect > 1 ? w / imgAspect : mid
+                        const hw = w / 2
+                        const hh = h / 2
+
+                        let allInside = true
+                        for (let ci = 0; ci < 4; ci++) {
+                            const relX = relCx + (ci === 0 || ci === 3 ? -hw : hw)
+                            const relY = relCy + (ci < 2 ? -hh : hh)
+                            const rad = Math.sqrt(relX * relX + relY * relY)
+                            if (rad < innerRadius - 0.5 || rad > outerRadius + 0.5) {
+                                allInside = false
+                                break
+                            }
+                            let ang = Math.atan2(relY, relX)
+                            if (ang < 0) ang += 2 * Math.PI
+                            if (ang < sA) ang += 2 * Math.PI
+                            if (ang < sA - 1e-6 || ang > eA + 1e-6) {
+                                allInside = false
+                                break
+                            }
+                        }
+
+                        if (allInside) {
+                            maxW = w; maxH = h; low = mid
+                        } else {
+                            high = mid
+                        }
                     }
-                    // Rectangle corners in cartesian
-                    const corners = [
-                        { dx: -w / 2, dy: -h / 2 },
-                        { dx: w / 2, dy: -h / 2 },
-                        { dx: w / 2, dy: h / 2 },
-                        { dx: -w / 2, dy: h / 2 },
-                    ].map(({ dx, dy }) => {
-                        // Place center at (cx,cy)
-                        const cx = centerX + Math.cos(theta) * r
-                        const cy = centerY + Math.sin(theta) * r
-                        return { x: cx + dx, y: cy + dy }
-                    })
-                    // Check all corners are inside the sector
-                    const allInside = corners.every(({ x, y }) => {
-                        const relX = x - centerX
-                        const relY = y - centerY
-                        const rad = Math.sqrt(relX * relX + relY * relY)
-                        let ang = Math.atan2(relY, relX)
-                        if (ang < 0) ang += 2 * Math.PI
-                        let sA = startAngle, eA = endAngle
-                        if (sA < 0) sA += 2 * Math.PI
-                        if (eA < 0) eA += 2 * Math.PI
-                        if (eA < sA) eA += 2 * Math.PI
-                        if (ang < sA) ang += 2 * Math.PI
-                        return (
-                            rad >= innerRadius - 0.5 && rad <= outerRadius + 0.5 &&
-                            ang >= sA - 1e-6 && ang <= eA + 1e-6
-                        )
-                    })
-                    if (allInside) {
-                        maxW = w; maxH = h; low = mid
-                    } else {
-                        high = mid
+                    const area = maxW * maxH
+                    if (maxW > 0 && maxH > 0 && area > bestArea) {
+                        bestArea = area
+                        bestDx = relCx - maxW / 2
+                        bestDy = relCy - maxH / 2
+                        bestW = maxW
+                        bestH = maxH
                     }
-                }
-                if (maxW > 0 && maxH > 0 && maxW * maxH > best.area) {
-                    // Place center at (cx,cy)
-                    const cx = centerX + Math.cos(theta) * r
-                    const cy = centerY + Math.sin(theta) * r
-                    best = { area: maxW * maxH, x: cx - maxW / 2, y: cy - maxH / 2, w: maxW, h: maxH }
                 }
             }
+            cachedOffset = { area: bestArea, dx: bestDx, dy: bestDy, w: bestW, h: bestH }
+            if (sliceContainOffsetCache.size > 500) {
+                sliceContainOffsetCache.clear()
+            }
+            sliceContainOffsetCache.set(cacheKey, cachedOffset)
         }
-        if (best.area > 0) {
-            ctx.drawImage(img, best.x, best.y, best.w, best.h)
+        if (cachedOffset.area > 0) {
+            ctx.drawImage(img, centerX + cachedOffset.dx, centerY + cachedOffset.dy, cachedOffset.w, cachedOffset.h)
         }
     } else {
         // --- Calculate the bounding box for the current slice only ---

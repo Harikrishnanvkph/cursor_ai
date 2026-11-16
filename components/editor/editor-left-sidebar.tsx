@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { useEditorSidebarContext } from "./editor-sidebar-context"
 import { Sidebar, CHART_TABS, TEMPLATE_TABS, getVisibleTemplateTabs } from "@/components/sidebar"
 import { useTemplateStore } from "@/lib/template-store"
-import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useFormatGalleryStore, ensureDefaultFormatSelected } from "@/lib/stores/format-gallery-store"
 import { cn } from "@/lib/utils"
 import {
   ChevronRight,
@@ -170,10 +170,9 @@ export function EditorLeftSidebar() {
                     setSidebarView('tools')
                     if (tab.id === 'templates') {
                       const templateStore = useTemplateStore.getState()
-                      if (!templateStore.currentTemplate) {
-                        templateStore.applyTemplate('template-1')
-                      }
-                      useTemplateStore.getState().setEditorMode('template')
+                      ensureDefaultFormatSelected()
+                      templateStore.setGenerateMode('format')
+                      templateStore.setEditorMode('template')
                       setActiveTab('tpl_templates')
                     } else {
                       setActiveTab(tab.id)

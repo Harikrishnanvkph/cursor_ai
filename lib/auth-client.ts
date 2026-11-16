@@ -184,6 +184,44 @@ export const authApi = {
     // Fallback - this shouldn't happen but satisfies TypeScript
     throw new Error('Invalid response format')
   },
+  sendOtp: async (payload: { email: string; mode: 'signin' | 'signup'; fullName?: string }) => {
+    const response = await request<{ success?: boolean; message?: string } | { error: string; message: string; code?: string }>(`/auth/otp/send`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    if ('error' in response) {
+      if (response.error === 'network_failure' || response.error === 'timeout') {
+        return null
+      }
+      const err: any = new Error(response.message || 'Failed to send verification code')
+      err.code = response.code
+      throw err
+    }
+
+    return { success: true, message: response.message }
+  },
+  verifyOtp: async (payload: { email: string; token: string }) => {
+    const response = await request<{ success: boolean; user: AuthUser } | { error: string; message: string; code?: string }>(`/auth/otp/verify`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    if ('error' in response) {
+      if (response.error === 'network_failure' || response.error === 'timeout') {
+        return null
+      }
+      const err: any = new Error(response.message || 'Invalid or expired verification code')
+      err.code = response.code
+      throw err
+    }
+
+    if ('user' in response) {
+      return response
+    }
+
+    throw new Error('Invalid response format')
+  },
   signOut: async () => {
     const response = await request<{ success: boolean } | { error: string; message: string }>(`/auth/signout`, { method: 'POST' })
 
@@ -216,84 +254,68 @@ export const authApi = {
     // Fallback - this shouldn't happen but satisfies TypeScript
     return null
   },
+  githubUrl: async () => {
+    const response = await request<{ authUrl: string } | { error: string; message: string }>('/auth/github', { method: 'GET' })
+
+    if ('error' in response) {
+      return null
+    }
+
+    if ('authUrl' in response) {
+      return response.authUrl
+    }
+
+    return null
+  },
   forgotPassword: async (payload: { email: string }) => {
-    const response = await request<{ success: true } | { error: string; message: string }>(`/auth/password/forgot`, {
+    const response = await request<{ success?: boolean; message?: string } | { error: string; message: string }>(`/auth/password/forgot`, {
       method: 'POST',
       body: JSON.stringify(payload)
     })
 
-    // Check if this is any error response (network, timeout, unknown) - DON'T THROW, return null
     if ('error' in response) {
-      return null
+      throw new Error(response.message || 'Unable to send reset email')
     }
 
-    // TypeScript guard to ensure response has success
-    if ('success' in response) {
-      return response
-    }
-
-    // Fallback - this shouldn't happen but satisfies TypeScript
-    return null
+    return { success: true, message: response.message }
   },
-  resetPassword: async (payload: { token: string; password: string }) => {
-    const response = await request<{ success: boolean } | { error: string; message: string }>(`/auth/password/reset`, {
+  resetPassword: async (payload: { token?: string; password: string }) => {
+    const response = await request<{ success?: boolean; message?: string } | { error: string; message: string }>(`/auth/password/reset`, {
       method: 'POST',
-      body: JSON.stringify(payload)
+      headers: payload.token ? { Authorization: `Bearer ${payload.token}` } : undefined,
+      body: JSON.stringify({ password: payload.password })
     })
 
-    // Check if this is any error response (network, timeout, unknown) - DON'T THROW, return null
     if ('error' in response) {
-      return null
-    }
-    // TypeScript guard to ensure response has success
-    if ('success' in response) {
-      return response
+      throw new Error(response.message || 'Failed to reset password')
     }
 
-    // Fallback - this shouldn't happen but satisfies TypeScript
-    return null
-  },
-  guestSignIn: async () => {
-    const response = await request<{ user: AuthUser } | { error: string; message: string }>(`/auth/guest`, {
-      method: 'POST',
-    })
-
-    // Check if this is a network failure response (don't throw, return null)
-    if ('error' in response && (response.error === 'network_failure' || response.error === 'timeout')) {
-      return null
-    }
-
-    // Check if this is an API error response (throw it so it goes to catch block)
-    if ('error' in response) {
-      throw new Error(response.message)
-    }
-
-    // TypeScript guard to ensure response has user
-    if ('user' in response) {
-      return response
-    }
-
-    // Fallback
-    throw new Error('Invalid response format')
+    return { success: true, message: response.message }
   },
   resendVerification: async (payload: { email: string }) => {
-    const response = await request<{ success: true } | { error: string; message: string }>(`/auth/resend-verification`, {
+    const response = await request<{ success?: boolean; message?: string } | { error: string; message: string }>(`/auth/resend-verification`, {
       method: 'POST',
       body: JSON.stringify(payload)
     })
 
-    // Check if this is any error response (network, timeout, unknown) - DON'T THROW, return null
     if ('error' in response) {
-      return null
+      throw new Error(response.message || 'Unable to resend verification email')
     }
 
-    // TypeScript guard to ensure response has success
-    if ('success' in response) {
-      return response
+    return { success: true, message: response.message }
+  },
+  exchangeSession: async (accessToken: string, refreshToken?: string) => {
+    const response = await request<{ success: boolean; user: AuthUser } | { error: string; message: string }>(`/auth/session`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    })
+
+    if ('error' in response) {
+      throw new Error(response.message || 'Failed to verify session')
     }
 
-    // Fallback - this shouldn't happen but satisfies TypeScript
-    return null
+    return response
   },
   upgradeToPro: async (packId: string = 'ai_pro') => {
     const response = await request<{ success: boolean; message: string; subscription: any } | { error: string; message: string }>(`/auth/subscription/upgrade`, {

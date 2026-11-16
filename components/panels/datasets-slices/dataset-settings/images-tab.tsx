@@ -338,22 +338,48 @@ export function ImagesTab({
                                 type="file"
                                 accept="image/*"
                                 className="hidden"
-                                onChange={(e) => {
+                                onChange={async (e) => {
                                     const file = e.target.files?.[0];
-                                    if (file) {
+                                    // Clear input value immediately so the same file can be selected again
+                                    if (e.target) {
+                                        e.target.value = '';
+                                    }
+                                    if (!file) return;
+
+                                    const {
+                                        compressImage,
+                                        validateImageFile,
+                                        wouldExceedQuota
+                                    } = await import('@/lib/image-utils');
+
+                                    if (!validateImageFile(file, 10)) {
+                                        toast.error('Invalid image file. Please select an image file under 10MB.');
+                                        return;
+                                    }
+
+                                    try {
+                                        const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true);
+                                        if (wouldExceedQuota(compressedImageUrl)) {
+                                            toast.error('Storage quota exceeded. Please remove some images or clear browser storage.');
+                                            return;
+                                        }
                                         const targetIndices = getTargetDatasetIndices();
                                         targetIndices.forEach(dsIdx => {
                                             const dataset = chartData.datasets[dsIdx];
                                             if (dataset && dataset.data) {
-                                                dataset.data.forEach((_: any, pointIndex: number) => {
-                                                    handleImageUpload(file, dsIdx, pointIndex);
+                                                const newPointImages = dataset.data.map(() => compressedImageUrl);
+                                                const newPointImageConfig = dataset.data.map((_: any, pointIndex: number) =>
+                                                    dataset.pointImageConfig?.[pointIndex] || getDefaultImageConfigFromStore(chartType as any)
+                                                );
+                                                updateDataset(dsIdx, {
+                                                    pointImages: newPointImages,
+                                                    pointImageConfig: newPointImageConfig
                                                 });
                                             }
                                         });
-                                    }
-                                    // Clear input value so the same file can be selected again
-                                    if (e.target) {
-                                        e.target.value = '';
+                                    } catch (error) {
+                                        console.error('Error compressing image:', error);
+                                        toast.error('Failed to process image. Please try a smaller file.');
                                     }
                                 }}
                             />
@@ -365,16 +391,23 @@ export function ImagesTab({
                                     placeholder="Paste image URL..."
                                     className="h-8 text-xs flex-1 border-blue-200 focus:border-blue-400"
                                     onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && imageUploadUrl.trim()) {
+                                        const trimmedUrl = imageUploadUrl.trim();
+                                        if (e.key === 'Enter' && trimmedUrl) {
                                             const targetIndices = getTargetDatasetIndices();
                                             targetIndices.forEach(dsIdx => {
                                                 const dataset = chartData.datasets[dsIdx];
                                                 if (dataset && dataset.data) {
-                                                    dataset.data.forEach((_: any, pointIndex: number) => {
-                                                        handleUrlSubmit(dsIdx, pointIndex);
+                                                    const newPointImages = dataset.data.map(() => trimmedUrl);
+                                                    const newPointImageConfig = dataset.data.map((_: any, pointIndex: number) =>
+                                                        dataset.pointImageConfig?.[pointIndex] || getDefaultImageConfigFromStore(chartType as any)
+                                                    );
+                                                    updateDataset(dsIdx, {
+                                                        pointImages: newPointImages,
+                                                        pointImageConfig: newPointImageConfig
                                                     });
                                                 }
                                             });
+                                            setImageUploadUrl('');
                                         }
                                     }}
                                 />
@@ -382,15 +415,23 @@ export function ImagesTab({
                                     size="sm"
                                     className="h-8 px-2 text-xs bg-blue-600 hover:bg-blue-700"
                                     onClick={() => {
+                                        const trimmedUrl = imageUploadUrl.trim();
+                                        if (!trimmedUrl) return;
                                         const targetIndices = getTargetDatasetIndices();
                                         targetIndices.forEach(dsIdx => {
                                             const dataset = chartData.datasets[dsIdx];
                                             if (dataset && dataset.data) {
-                                                dataset.data.forEach((_: any, pointIndex: number) => {
-                                                    handleUrlSubmit(dsIdx, pointIndex);
+                                                const newPointImages = dataset.data.map(() => trimmedUrl);
+                                                const newPointImageConfig = dataset.data.map((_: any, pointIndex: number) =>
+                                                    dataset.pointImageConfig?.[pointIndex] || getDefaultImageConfigFromStore(chartType as any)
+                                                );
+                                                updateDataset(dsIdx, {
+                                                    pointImages: newPointImages,
+                                                    pointImageConfig: newPointImageConfig
                                                 });
                                             }
                                         });
+                                        setImageUploadUrl('');
                                     }}
                                     disabled={!imageUploadUrl.trim()}
                                 >

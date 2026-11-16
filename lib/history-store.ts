@@ -29,6 +29,7 @@ export type Conversation = {
 
 interface HistoryStore {
   conversations: Conversation[];
+  snapshotCache: Record<string, ChartSnapshot>;
   loading: boolean;
   addConversation: (conv: Omit<Conversation, "id" | "timestamp">) => string;
   deleteConversation: (id: string) => Promise<void>;
@@ -36,12 +37,14 @@ interface HistoryStore {
   clearAllConversations: () => Promise<void>;
   updateConversation: (id: string, updates: Partial<Omit<Conversation, 'id' | 'timestamp'>>) => void;
   loadConversationsFromBackend: (forceRefresh?: boolean) => Promise<void>;
+  hydrateSnapshots: (conversationIds: string[]) => Promise<void>;
 }
 
 export const useHistoryStore = create<HistoryStore>()(
   persist(
     (set, get) => ({
       conversations: [],
+      snapshotCache: {},
       loading: false,
       addConversation: (conv) => {
         const id = Date.now().toString();
@@ -58,9 +61,11 @@ export const useHistoryStore = create<HistoryStore>()(
       deleteConversation: async (id) => {
         const deletedConv = get().conversations.find((c) => c.id === id);
 
-        // Optimistically remove from local state immediately
+        // Optimistically remove from local state & snapshot cache immediately
+        const { [id]: _removedSnap, ...remainingCache } = get().snapshotCache;
         set({
-          conversations: get().conversations.filter((c) => c.id !== id)
+          conversations: get().conversations.filter((c) => c.id !== id),
+          snapshotCache: remainingCache,
         });
 
         // Clean up snap state cache for this chart
@@ -601,7 +606,10 @@ export const useHistoryStore = create<HistoryStore>()(
         });
       },
       loadConversationsFromBackend: async (forceRefresh = false) => {
-        set({ loading: true });
+        set({
+          loading: true,
+          ...(forceRefresh ? { snapshotCache: {} } : {}),
+        });
         try {
           const response = await dataService.getConversations(50, forceRefresh);
 
@@ -652,6 +660,52 @@ export const useHistoryStore = create<HistoryStore>()(
           console.error('Failed to load conversations from backend:', error);
           // Set empty conversations array on error to prevent UI issues
           set({ loading: false, conversations: [] });
+        }
+      },
+      hydrateSnapshots: async (conversationIds: string[]) => {
+        const state = get();
+        const convMap = new Map(state.conversations.map((c) => [c.id, c]));
+        const missingIds = [...new Set(conversationIds)].filter((id) => {
+          if (!id) return false;
+          if (state.snapshotCache[id]?.chartData) return false;
+          const conv = convMap.get(id);
+          if (conv?.snapshot?.chartData) return false;
+          return true;
+        });
+
+        if (missingIds.length === 0) return;
+
+        // Fetch in chunks of 24 (matching backend cap)
+        for (let i = 0; i < missingIds.length; i += 24) {
+          const chunk = missingIds.slice(i, i + 24);
+          const response = await dataService.getBatchCurrentSnapshots(chunk);
+          if (response.error || !response.data?.snapshots) {
+            continue;
+          }
+
+          const rawSnapshots = response.data.snapshots;
+          const mappedEntries: Record<string, ChartSnapshot> = {};
+          Object.entries(rawSnapshots).forEach(([convId, raw]) => {
+            if (!raw) return;
+            mappedEntries[convId] = {
+              id: raw.id,
+              chartType: raw.chart_type,
+              chartData: raw.chart_data,
+              chartConfig: raw.chart_config,
+              is_template_mode: raw.is_template_mode || false,
+              template_structure: raw.template_structure,
+              template_content: raw.template_content,
+            };
+          });
+
+          if (Object.keys(mappedEntries).length > 0) {
+            set((prev) => ({
+              snapshotCache: {
+                ...prev.snapshotCache,
+                ...mappedEntries,
+              },
+            }));
+          }
         }
       },
     }),

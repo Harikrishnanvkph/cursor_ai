@@ -56,17 +56,30 @@ export function PiePanel({ className }: PiePanelProps) {
 
   // Ensure formatter exists for pie/doughnut
   const currentFormatter = dataLabelsConfig?.formatter;
-  const isPercentageFormat = typeof currentFormatter === 'function' && currentFormatter.toString().includes('percentage');
+  const isPercentageFormat = (dataLabelsConfig as any)?.displayMode === 'percentage' ||
+    (typeof currentFormatter === 'function' && currentFormatter.toString().includes('percentage'));
 
   const toggleFormat = () => {
-    const newFormatter = isPercentageFormat
-      ? (value: any, context: any) => value // Show actual value
-      : (value: any, context: any) => { // Show percentage
+    const nextIsPercentage = !isPercentageFormat;
+    const newFormatter = nextIsPercentage
+      ? (value: any, context: any) => { // Show percentage
         const total = context.chart.data.datasets[0].data.reduce((acc: number, val: number) => acc + val, 0);
         const percentage = (value / total * 100).toFixed(1) + '%';
         return percentage;
-      };
-    handleDatalabelsUpdate('formatter', newFormatter);
+      }
+      : (value: any, context: any) => value; // Show actual value
+    const newConfig = {
+      ...chartConfig,
+      plugins: {
+        ...chartConfig.plugins,
+        datalabels: {
+          ...chartConfig.plugins?.datalabels,
+          displayMode: nextIsPercentage ? 'percentage' : 'value',
+          formatter: newFormatter,
+        },
+      },
+    };
+    updateChartConfig(newConfig);
   };
 
   return (

@@ -1,4 +1,5 @@
 import { useChartStore } from "@/lib/chart-store"
+import { useShallow } from "zustand/react/shallow"
 
 /**
  * Granular hooks for accessing chart state.
@@ -49,7 +50,7 @@ export const useOriginalCloudDimensions = () => useChartStore(state => state.ori
 export const useCurrentSnapshotId = () => useChartStore(state => state.currentSnapshotId)
 
 // Style Toggles - read from the resolved active config
-export const useChartStyleOptions = () => useChartStore(state => {
+export const useChartStyleOptions = () => useChartStore(useShallow(state => {
     const config = resolveActiveConfig(state);
     return {
         fillArea: config?.visualSettings?.fillArea ?? true,
@@ -57,7 +58,7 @@ export const useChartStyleOptions = () => useChartStore(state => {
         showImages: config?.visualSettings?.showImages ?? true,
         showLabels: config?.visualSettings?.showLabels ?? false
     };
-})
+}))
 
 export const useFillArea = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.fillArea ?? true)
 export const useFillPoints = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.fillPoints !== false)

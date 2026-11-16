@@ -9,9 +9,15 @@ import { BarChart2, LogIn, UserPlus } from 'lucide-react'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  signInPath?: string
+  showSignUp?: boolean
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  signInPath = '/signin',
+  showSignUp = true,
+}: ProtectedRouteProps) {
   const { user, loading } = useAuth()
 
   // While auth is loading, we MUST NOT render children to prevent data leaks.
@@ -68,19 +74,21 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           </div>
           
           <div className="flex flex-col gap-3">
-            <Link href="/signin">
+            <Link href={signInPath}>
               <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white" size="lg">
                 <LogIn className="w-4 h-4 mr-2" />
                 Sign In
               </Button>
             </Link>
             
-            <Link href="/signup">
-              <Button variant="outline" className="w-full border-gray-300 hover:bg-gray-50" size="lg">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Create Account
-              </Button>
-            </Link>
+            {showSignUp && (
+              <Link href="/signup">
+                <Button variant="outline" className="w-full border-gray-300 hover:bg-gray-50" size="lg">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Create Account
+                </Button>
+              </Link>
+            )}
           </div>
           
           <div className="text-center">

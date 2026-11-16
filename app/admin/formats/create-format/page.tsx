@@ -10,24 +10,22 @@ import { dataService } from "@/lib/data-service"
 export default function AdminCreateFormatPage() {
   const searchParams = useSearchParams()
   const editId = searchParams.get('id')
-  const { user, loading } = useAuth()
+  const { user, sessionVerified } = useAuth()
   const router = useRouter()
   const [editFormat, setEditFormat] = useState<any>(null)
   const [isLoadingFormat, setIsLoadingFormat] = useState(!!editId)
 
-  // Redirect non-admin users
+  // Redirect unauthenticated or non-admin users to admin sign-in
   useEffect(() => {
-    if (!loading && user && !user.is_admin) {
-      router.push('/')
+    if (!sessionVerified) return
+    if (!user || !user.is_admin) {
+      router.replace('/admin/signin?redirect=/admin/formats/create-format')
     }
-    if (!loading && !user) {
-      router.push('/signin')
-    }
-  }, [user, loading, router])
+  }, [user, sessionVerified, router])
 
   // Load format for editing if ID is provided
   useEffect(() => {
-    if (loading) return
+    if (!sessionVerified) return
     if (!user || !user.is_admin) return
 
     if (!editId) {
@@ -50,9 +48,9 @@ export default function AdminCreateFormatPage() {
     }
 
     loadFormat()
-  }, [editId, loading, user])
+  }, [editId, sessionVerified, user])
 
-  if (loading || !user?.is_admin) return null
+  if (!sessionVerified || !user?.is_admin) return null
 
   if (isLoadingFormat) {
     return (

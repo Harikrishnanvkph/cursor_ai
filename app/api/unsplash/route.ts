@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { checkContentSafety } from '@/lib/safety/content-filter';
 
-const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || 'YxCw07HI-V889DBTU5J2y2tRaEf_V0Cc8GFWjLCSUZY';
+const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || '';
 
 export async function GET(request: Request) {
   try {
@@ -9,6 +10,25 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const perPage = Math.min(parseInt(searchParams.get('per_page') || '24', 10), 30);
     const orientation = searchParams.get('orientation'); // landscape, portrait, squarish
+
+    // SafeSearch / Content moderation check
+    if (query) {
+      const safety = checkContentSafety(query);
+      if (safety.isDisallowed) {
+        return NextResponse.json({
+          total: 0,
+          total_pages: 0,
+          page: 1,
+          per_page: perPage,
+          photos: [],
+          results: [],
+          url: null,
+          authorName: null,
+          authorLink: null,
+          warning: safety.reason || 'Search blocked by content moderation policy.',
+        });
+      }
+    }
 
     if (!UNSPLASH_ACCESS_KEY) {
       console.error('UNSPLASH_ACCESS_KEY is not configured');
@@ -29,6 +49,7 @@ export async function GET(request: Request) {
         query,
         page: page.toString(),
         per_page: perPage.toString(),
+        content_filter: 'high', // Enforces strict SafeSearch filter on Unsplash
       });
       if (orientation && ['landscape', 'portrait', 'squarish'].includes(orientation)) {
         params.set('orientation', orientation);
@@ -39,6 +60,7 @@ export async function GET(request: Request) {
         page: page.toString(),
         per_page: perPage.toString(),
         order_by: 'popular',
+        content_filter: 'high', // Enforces strict SafeSearch filter on Unsplash
       });
       url = `https://api.unsplash.com/photos?${params.toString()}`;
     }
@@ -141,15 +163,25 @@ export async function POST(request: Request) {
 
     let targetUrl = downloadLocation;
     if (!targetUrl && photoId) {
-      targetUrl = `https://api.unsplash.com/photos/${photoId}/download`;
+      targetUrl = `https://api.unsplash.com/photos/${encodeURIComponent(String(photoId))}/download`;
     }
 
-    if (!targetUrl) {
+    if (!targetUrl || typeof targetUrl !== 'string') {
       return NextResponse.json({ error: 'Missing downloadLocation or photoId' }, { status: 400 });
     }
 
-    // Unsplash requires authorization header on the download_location call
-    const res = await fetch(targetUrl, {
+    let parsedTarget: URL;
+    try {
+      parsedTarget = new URL(targetUrl);
+    } catch {
+      return NextResponse.json({ error: 'Invalid downloadLocation URL' }, { status: 400 });
+    }
+
+    if (parsedTarget.protocol !== 'https:' || parsedTarget.hostname !== 'api.unsplash.com') {
+      return NextResponse.json({ error: 'Untrusted Unsplash download endpoint' }, { status: 400 });
+    }
+
+    const res = await fetch(parsedTarget.toString(), {
       headers: {
         Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}`,
       },

@@ -21,12 +21,27 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'images.pexels.com',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'thumb.wikimedia.org',
         pathname: '/**',
       },
     ],

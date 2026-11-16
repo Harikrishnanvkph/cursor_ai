@@ -241,13 +241,6 @@ export const DatasetService = {
         const dataset = currentState.chartData.datasets[index] as ExtendedChartDataset;
         if (!dataset) return null;
 
-        // Store the previous state for undo comparison
-        const previousState = {
-            chartType: currentState.chartType,
-            chartData: JSON.parse(JSON.stringify(currentState.chartData)),
-            chartConfig: JSON.parse(JSON.stringify(currentState.chartConfig))
-        };
-
         // Prevent adding/removing points in Grouped Mode
         if (currentState.chartMode === 'grouped' && currentState.chartData.datasets.length > 1 && (updates.addPoint || updates.removePoint)) {
             console.warn('Adding/removing points is not allowed in Grouped Mode to maintain dataset consistency');

@@ -641,6 +641,23 @@ export const useChartStore = create<ChartStore>()(
       hasJSON: state.hasJSON,
     }),
     limit: 25,
+    // Throttle undo snapshot recording so 60fps slider/color-picker drags coalesce into 1 history step
+    handleSet: (handleSet) => {
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let latestArgs: Parameters<typeof handleSet> | null = null;
+      return (...args: Parameters<typeof handleSet>) => {
+        latestArgs = args;
+        if (!timeoutId) {
+          timeoutId = setTimeout(() => {
+            timeoutId = null;
+            if (latestArgs) {
+              handleSet(...latestArgs);
+              latestArgs = null;
+            }
+          }, 500);
+        }
+      };
+    },
     // Prevent duplicate snapshots when state hasn't actually changed (shallow is faster than JSON.stringify)
     equality: (pastState, currentState) => {
       const keys = Object.keys(pastState) as (keyof typeof pastState)[];
@@ -673,14 +690,16 @@ if (typeof window !== 'undefined') {
     const activeIndexChanged = state.activeDatasetIndex !== prevState.activeDatasetIndex;
     const activeGroupChanged = state.activeGroupId !== prevState.activeGroupId;
     const modeChanged = state.chartMode !== prevState.chartMode;
-    const shapesChanged = JSON.stringify(activeConfig?.decorationShapes || []) !== JSON.stringify(prevActiveConfig?.decorationShapes || []);
+    const shapesRefChanged = activeConfig?.decorationShapes !== prevActiveConfig?.decorationShapes;
+    const shapesChanged = shapesRefChanged &&
+      JSON.stringify(activeConfig?.decorationShapes || []) !== JSON.stringify(prevActiveConfig?.decorationShapes || []);
     
     if (activeIndexChanged || activeGroupChanged || modeChanged || shapesChanged) {
       const incomingShapes = activeConfig?.decorationShapes || [];
       const currentDecoShapes = useDecorationStore.getState().shapes;
       
       // Only set if different to prevent infinite loops
-      if (JSON.stringify(incomingShapes) !== JSON.stringify(currentDecoShapes)) {
+      if (incomingShapes !== currentDecoShapes && JSON.stringify(incomingShapes) !== JSON.stringify(currentDecoShapes)) {
         useDecorationStore.getState().setShapes(incomingShapes, 'chart');
         useDecorationStore.getState().clearShapeHistory();
       }

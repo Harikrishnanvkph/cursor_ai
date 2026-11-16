@@ -272,7 +272,7 @@ function StylingAndLabelsDocs() {
             setActiveSubTab("presets")
             window.location.hash = "numerical-presets"
           }}
-          className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all \${
+          className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
             activeSubTab === "presets"
               ? "bg-white text-indigo-600 shadow-sm border border-slate-200/20"
               : "text-slate-500 hover:text-slate-900 hover:bg-white/40"
@@ -285,7 +285,7 @@ function StylingAndLabelsDocs() {
             setActiveSubTab("js")
             window.location.hash = "js-formatters"
           }}
-          className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all \${
+          className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
             activeSubTab === "js"
               ? "bg-white text-indigo-600 shadow-sm border border-slate-200/20"
               : "text-slate-500 hover:text-slate-900 hover:bg-white/40"
@@ -298,7 +298,7 @@ function StylingAndLabelsDocs() {
             setActiveSubTab("conditional")
             window.location.hash = "conditional-styling"
           }}
-          className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all \${
+          className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
             activeSubTab === "conditional"
               ? "bg-white text-indigo-600 shadow-sm border border-slate-200/20"
               : "text-slate-500 hover:text-slate-900 hover:bg-white/40"
@@ -311,7 +311,7 @@ function StylingAndLabelsDocs() {
             setActiveSubTab("sorting")
             window.location.hash = "sorting-thresholds"
           }}
-          className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all \${
+          className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
             activeSubTab === "sorting"
               ? "bg-white text-indigo-600 shadow-sm border border-slate-200/20"
               : "text-slate-500 hover:text-slate-900 hover:bg-white/40"

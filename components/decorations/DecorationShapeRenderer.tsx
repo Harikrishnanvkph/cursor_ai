@@ -29,7 +29,8 @@ function cloudPath(x: number, y: number, w: number, h: number): string {
     const angle = (i / bumps) * Math.PI * 2
     const nextAngle = ((i + 1) / bumps) * Math.PI * 2
     const midAngle = (angle + nextAngle) / 2
-    const bumpDepth = 0.15 + Math.random() * 0.08 // slight randomness for organic feel
+    const pseudoRandom = Math.abs(Math.sin(i * 12.9898 + x * 0.01 + y * 0.01)) % 1
+    const bumpDepth = 0.15 + pseudoRandom * 0.08 // deterministic organic feel
 
     const px = cx + rx * Math.cos(angle)
     const py = cy + ry * Math.sin(angle)
@@ -716,9 +717,11 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
     }
 
     case 'deco-svg': {
-      const activeColor = shape.fillColor && shape.fillColor !== 'original' && shape.fillColor !== 'transparent' && shape.fillColor !== 'none'
+      const activeColor = (shape.fillColor && shape.fillColor !== 'original' && shape.fillColor !== 'transparent' && shape.fillColor !== 'none')
         ? shape.fillColor
-        : null
+        : (shape.strokeColor && shape.strokeColor !== 'original' && shape.strokeColor !== 'transparent' && shape.strokeColor !== 'none'
+            ? shape.strokeColor
+            : null)
       const svgOpacity = (shape.fillOpacity !== undefined ? shape.fillOpacity : 100) / 100
 
       return (
@@ -1857,7 +1860,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
       const shape = storeState.shapes.find(s => s.id === editingShapeId)
 
       if (shape) {
-        editRef.current.innerHTML = shape.text || ''
+        editRef.current.innerHTML = sanitizeHTML(shape.text || '')
       }
 
       editRef.current.focus()
@@ -2155,29 +2158,29 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
         const bottomObjectY = Math.max(globalMaxY, rotHandleRotated.y)
 
         const isTextbox = selectedShape.type === 'textbox' || selectedShape.type === 'textbox-auto'
+        const isImage = selectedShape.type === 'deco-image'
         
         const effectiveZoom = Math.max(0.15, Math.min(3.0, zoom))
         
         // Define fixed screen sizes for the toolbars (these match the values inside DecorationToolbar.tsx)
-        const screenToolbarWidth = isTextbox ? (editingShapeId === selectedShape.id ? 350 : 290) : 152
+        const screenToolbarWidth = isTextbox ? (editingShapeId === selectedShape.id ? 350 : 290) : (isImage ? 140 : 180)
         const screenToolbarHeight = isTextbox ? 80 : 38
         const screenGap = 10
 
         // Calculate positions in screen coordinates, then map back to SVG coordinates considering zoom scale
-        let yScreen = topObjectY * zoom - screenGap - screenToolbarHeight
-        // If it goes off top edge of screen, place below instead
-        if (yScreen < 10) {
-          yScreen = bottomObjectY * zoom + screenGap
-        }
+        const isBelow = (topObjectY * zoom - screenGap - screenToolbarHeight) < 10
+        let yScreen = isBelow
+          ? (bottomObjectY * zoom + screenGap)
+          : (topObjectY * zoom - screenGap - screenToolbarHeight)
         const toolbarYPosition = yScreen / zoom
 
         let xScreen = cx * zoom - screenToolbarWidth / 2
-        // Constrain to container boundaries in screen coordinates
+        // Constrain to container boundaries in screen coordinates so toolbar never clips/overflows
         if (xScreen < 10) {
           xScreen = 10
         }
-        if (screenToolbarWidth < containerWidth * zoom && xScreen + screenToolbarWidth > containerWidth * zoom - 10) {
-          xScreen = containerWidth * zoom - screenToolbarWidth - 10
+        if (xScreen + screenToolbarWidth > containerWidth * zoom - 10) {
+          xScreen = Math.max(10, containerWidth * zoom - screenToolbarWidth - 10)
         }
         const toolbarXPosition = xScreen / zoom
 
@@ -2193,6 +2196,8 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
                 editingShapeId={editingShapeId}
                 onStartEditing={(id) => setEditingShapeId(id)}
                 zoom={effectiveZoom}
+                containerWidth={containerWidth}
+                placement={isBelow ? 'below' : 'above'}
               />
             )}
 
@@ -2370,15 +2375,13 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
       {/* "A" cursor preview for textbox-auto tool */}
       {!readOnly && drawingMode === 'textbox-auto' && !drawingInProgress && cursorPos && (
         <g style={{ pointerEvents: 'none' }}>
-          {/* Blinking cursor line */}
+          {/* Cursor line */}
           <line
             x1={cursorPos.x} y1={cursorPos.y - 18}
             x2={cursorPos.x} y2={cursorPos.y + 2}
             stroke="#ec4899" strokeWidth={1.5}
             opacity={0.9}
-          >
-            <animate attributeName="opacity" values="0.9;0.2;0.9" dur="1s" repeatCount="indefinite" />
-          </line>
+          />
           {/* "A" character showing text height */}
           <text
             x={cursorPos.x + 4}

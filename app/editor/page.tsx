@@ -32,7 +32,7 @@ import { clearCurrentChart } from "@/lib/storage-utils"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
-import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useFormatGalleryStore, ensureDefaultFormatSelected } from "@/lib/stores/format-gallery-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { cleanupDecorationFiles } from "@/lib/stores/decoration-file-registry"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -1316,10 +1316,8 @@ function EditorPageContent() {
                       onClick={(e) => {
                         e.stopPropagation();
                         const templateStore = useTemplateStore.getState();
-                        templateStore.setGenerateMode('template');
-                        if (!templateStore.currentTemplate) {
-                          templateStore.applyTemplate('template-1');
-                        }
+                        ensureDefaultFormatSelected(useChartStore.getState().chartType || 'bar');
+                        templateStore.setGenerateMode('format');
                         templateStore.setEditorMode('template');
                       }} 
                       className={`flex-1 py-1 text-[11px] font-semibold rounded-full transition-colors text-center antialiased subpixel-antialiased ${
@@ -1597,9 +1595,8 @@ function EditorPageContent() {
                   onClick={() => {
                     if (tab.id === 'templates') {
                       const templateStore = useTemplateStore.getState()
-                      if (!templateStore.currentTemplate) {
-                        templateStore.applyTemplate('template-1')
-                      }
+                      ensureDefaultFormatSelected(useChartStore.getState().chartType || 'bar')
+                      templateStore.setGenerateMode('format')
                       setEditorMode('template')
                       setMobilePanel('tpl_templates')
                       setActiveTab('tpl_templates')
@@ -1885,10 +1882,9 @@ function EditorPageContent() {
                   onClick={() => {
                     if (tab.id === 'templates') {
                       const templateStore = useTemplateStore.getState()
-                      if (!templateStore.currentTemplate) {
-                        templateStore.applyTemplate('template-1')
-                      }
-                      useTemplateStore.getState().setEditorMode('template')
+                      ensureDefaultFormatSelected(useChartStore.getState().chartType || 'bar')
+                      templateStore.setGenerateMode('format')
+                      templateStore.setEditorMode('template')
                       setActiveTab('tpl_templates')
                     } else {
                       setActiveTab(tab.id)

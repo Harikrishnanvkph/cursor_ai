@@ -1,21 +1,21 @@
 "use client"
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { SignUpForm } from '@/components/auth/SignUpForm'
-import { SiteHeader } from '@/components/site-header'
+import { AuthPageShell, AuthLoadingCard } from '@/components/auth/AuthPageShell'
 
 export default function SignUpPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <SiteHeader />
-      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-20 sm:pt-24 pb-16">
+    <AuthPageShell>
+      <Suspense fallback={<AuthLoadingCard />}>
         <SignUpForm />
-        <p className="mt-4 text-sm text-muted-foreground text-center">
-          Already have an account?{' '}
-          <Link className="text-primary font-medium hover:underline" href="/signin">
-            Sign in
-          </Link>
-        </p>
-      </main>
-    </div>
+      </Suspense>
+      <p className="mt-5 text-sm text-slate-500 dark:text-slate-400 text-center">
+        Already have an account?{' '}
+        <Link className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline" href="/signin">
+          Sign in
+        </Link>
+      </p>
+    </AuthPageShell>
   )
 }

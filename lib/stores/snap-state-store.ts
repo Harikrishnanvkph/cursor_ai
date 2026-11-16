@@ -134,13 +134,25 @@ export const useSnapStateStore = create<SnapStateStore>()(
             generateMode: templateState.generateMode,
           };
 
-          set((prev) => ({
-            snapState: snap,
-            chartSnaps: {
+          set((prev) => {
+            const nextSnaps: Record<string, SnapStateData> = {
               ...prev.chartSnaps,
               [id]: snap,
-            },
-          }));
+            };
+            const keys = Object.keys(nextSnaps);
+            if (keys.length > 10) {
+              keys
+                .sort((a, b) => (nextSnaps[b]?.timestamp || 0) - (nextSnaps[a]?.timestamp || 0))
+                .slice(10)
+                .forEach((oldKey) => {
+                  delete nextSnaps[oldKey];
+                });
+            }
+            return {
+              snapState: snap,
+              chartSnaps: nextSnaps,
+            };
+          });
         } catch (err) {
           console.error("[SnapStateStore] Error capturing current state:", err);
         }
@@ -187,13 +199,25 @@ export const useSnapStateStore = create<SnapStateStore>()(
             generateMode: extraMeta?.generateMode,
           };
 
-          set((prevState) => ({
-            snapState: snap,
-            chartSnaps: {
+          set((prevState) => {
+            const nextSnaps: Record<string, SnapStateData> = {
               ...prevState.chartSnaps,
               [id]: snap,
-            },
-          }));
+            };
+            const keys = Object.keys(nextSnaps);
+            if (keys.length > 10) {
+              keys
+                .sort((a, b) => (nextSnaps[b]?.timestamp || 0) - (nextSnaps[a]?.timestamp || 0))
+                .slice(10)
+                .forEach((oldKey) => {
+                  delete nextSnaps[oldKey];
+                });
+            }
+            return {
+              snapState: snap,
+              chartSnaps: nextSnaps,
+            };
+          });
         } catch (err) {
           console.error("[SnapStateStore] Error capturing snapshot:", err);
         }

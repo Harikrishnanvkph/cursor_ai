@@ -1,31 +1,36 @@
 "use client"
 
 import { useAuth } from "@/components/auth/AuthProvider"
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { BarChart3, Shield, LayoutTemplate, Settings, LogOut, Palette, ExternalLink, LayoutDashboard, Sparkles, Edit3 } from "lucide-react"
+import { BarChart3, Shield, LayoutTemplate, Settings, LogOut, Palette, ExternalLink, LayoutDashboard, Sparkles, Edit3, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 
 export default function AdminPage() {
-  return (
-    <ProtectedRoute>
-      <AdminPageContent />
-    </ProtectedRoute>
-  )
+  return <AdminPageContent />
 }
 
 function AdminPageContent() {
-  const { user, loading, signOut } = useAuth()
+  const { user, sessionVerified, signOut } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    // ProtectedRoute handles unauthenticated users; this only guards admin access
-    if (!loading && user && !user.is_admin) {
-      router.push("/")
+    if (!sessionVerified) return
+
+    if (!user || !user.is_admin) {
+      router.replace("/admin/signin?redirect=/admin")
     }
-  }, [user, loading, router])
+  }, [user, sessionVerified, router])
+
+  if (!sessionVerified) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-4">
+        <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-3" />
+        <p className="text-sm text-gray-400">Verifying admin access...</p>
+      </div>
+    )
+  }
 
   if (!user?.is_admin) {
     return null // Will redirect via useEffect
@@ -94,7 +99,7 @@ function AdminPageContent() {
               </DropdownMenu>
 
               <button
-                onClick={() => signOut()}
+                onClick={() => signOut('/admin/signin')}
                 className="flex items-center gap-2 text-xs text-gray-500 hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10"
               >
                 <LogOut className="w-3.5 h-3.5" />

@@ -2,7 +2,11 @@
 
 import React, { useState, useMemo } from "react"
 import { useChartStore } from "@/lib/chart-store"
-import { extractPresetFromCurrentChart } from "@/lib/chart-style-engine"
+import {
+  extractPresetFromCurrentChart,
+  resolvePublishDatasets,
+  resolveTargetColorMode,
+} from "@/lib/chart-style-engine"
 import { dataService } from "@/lib/data-service"
 import type { PresetCategory, PresetPublishData, ColorMode } from "@/lib/chart-style-types"
 import type { SupportedChartType } from "@/lib/chart-defaults"
@@ -43,7 +47,16 @@ interface PublishStyleDialogProps {
 }
 
 export function PublishStyleDialog({ open, onOpenChange }: PublishStyleDialogProps) {
-  const { chartType, chartData, chartConfig, hasJSON } = useChartStore()
+  const {
+    chartType,
+    chartData,
+    chartConfig,
+    hasJSON,
+    activeDatasetIndex,
+    activeGroupId,
+    chartMode,
+    getActiveChartConfig,
+  } = useChartStore()
   const hasChartData = hasJSON && chartData?.datasets?.length > 0
 
   const [name, setName] = useState('')
@@ -53,16 +66,19 @@ export function PublishStyleDialog({ open, onOpenChange }: PublishStyleDialogPro
   const [visibility, setVisibility] = useState<'official' | 'private'>('official')
   const [isPublishing, setIsPublishing] = useState(false)
 
+  const { primaryDataset } = useMemo(
+    () => resolvePublishDatasets(chartData, { activeDatasetIndex, activeGroupId, chartMode }),
+    [chartData, activeDatasetIndex, activeGroupId, chartMode]
+  )
+
   // Preview of extracted colors
   const previewColors = useMemo(() => {
-    if (!hasChartData) return []
-    const ds = chartData.datasets[0]
-    if (!ds) return []
-    const bg = ds.backgroundColor
+    if (!hasChartData || !primaryDataset) return []
+    const bg = primaryDataset.backgroundColor
     if (Array.isArray(bg)) return bg.slice(0, 8) as string[]
     if (typeof bg === 'string') return [bg]
     return []
-  }, [hasChartData, chartData])
+  }, [hasChartData, primaryDataset])
 
   const handlePublish = async () => {
     if (!name.trim()) {
@@ -82,21 +98,26 @@ export function PublishStyleDialog({ open, onOpenChange }: PublishStyleDialogPro
         .map(t => t.trim().toLowerCase())
         .filter(Boolean)
 
+      const activeConfig = getActiveChartConfig ? getActiveChartConfig() : chartConfig
+
       const publishData: PresetPublishData = {
         name: name.trim(),
         description: description.trim() || '',
         category,
         tags: tagList,
-        colorMode: (chartData.datasets[0] as any)?.datasetColorMode === 'single' ? 'single' : 'slice',
+        colorMode: resolveTargetColorMode(primaryDataset),
         isOfficial: visibility === 'official',
         applyDimensions: true, // Always capture dimensions from the current chart
+        activeDatasetIndex,
+        activeGroupId,
+        chartMode,
       }
 
       // Extract the preset using the engine
       const preset = extractPresetFromCurrentChart(
         chartType as SupportedChartType,
         chartData,
-        chartConfig,
+        activeConfig,
         publishData
       )
 

@@ -14,10 +14,10 @@ import {
   Pencil, Minus, ArrowRight, ArrowRightLeft, Square, CircleIcon, MessageSquare,
   Triangle, Star, Hexagon, Cloud, CloudLightning, GitBranch, ChevronDown, Trash2, Copy,
   Lock, Unlock, Eye, EyeOff, ArrowUpToLine, ArrowDownToLine,
-  Check, X as XIcon, CircleDot, Pentagon, Diamond, Heart, MousePointer2, SquareDashedMousePointer,
+  Pentagon, Diamond, Heart, MousePointer2, SquareDashedMousePointer,
   Type, Image as ImageIcon, FileCode, Upload, Bold, Italic, Underline, Strikethrough,
-  AlignLeft, AlignCenter, AlignRight, Spline, Octagon, Info, Undo2, Redo2, Blend,
-  Sparkles, Paintbrush, Droplets, Highlighter, Smile, Search, Globe, Loader2
+  AlignLeft, AlignCenter, AlignRight, Spline, Octagon, Undo2, Redo2, Blend,
+  Sparkles, Paintbrush, Droplets, Highlighter, Search, Globe, Loader2
 } from "lucide-react"
 import { toast } from "sonner"
 import { useDecorationStore, type DecorationShapeType, type DrawingMode } from "@/lib/stores/decoration-store"
@@ -29,12 +29,6 @@ import { PexelsImageTab } from "./PexelsImageTab"
 // ═══════════════════════════════════════════════════════
 // Shape definitions for the picker
 // ═══════════════════════════════════════════════════════
-
-const TextIcon = ({ text, className }: { text: string, className?: string }) => (
-  <div className={`flex items-center justify-center ${className}`}>
-    <span className="text-xl leading-none">{text}</span>
-  </div>
-)
 
 const CustomPathIcon = (props: any) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -101,63 +95,6 @@ export const SHAPE_GROUPS: Array<{ label: string; shapes: { type: DecorationShap
       { type: 'text-callout' as DecorationShapeType, label: 'Callout', icon: MessageSquare },
     ]
   },
-  {
-    label: 'Annotations',
-    shapes: [
-      { type: 'checkmark' as DecorationShapeType, label: 'Check', icon: Check },
-      { type: 'crossmark' as DecorationShapeType, label: 'Cross', icon: XIcon },
-      { type: 'dot' as DecorationShapeType, label: 'Dot', icon: CircleDot },
-      { type: 'info' as DecorationShapeType, label: 'Info', icon: Info },
-    ]
-  },
-  {
-    label: 'Numbers',
-    shapes: [
-      { type: 'num-1' as DecorationShapeType, label: '1', icon: (p: any) => <TextIcon text="1" {...p} /> },
-      { type: 'num-2' as DecorationShapeType, label: '2', icon: (p: any) => <TextIcon text="2" {...p} /> },
-      { type: 'num-3' as DecorationShapeType, label: '3', icon: (p: any) => <TextIcon text="3" {...p} /> },
-      { type: 'num-4' as DecorationShapeType, label: '4', icon: (p: any) => <TextIcon text="4" {...p} /> },
-      { type: 'num-5' as DecorationShapeType, label: '5', icon: (p: any) => <TextIcon text="5" {...p} /> },
-      { type: 'num-6' as DecorationShapeType, label: '6', icon: (p: any) => <TextIcon text="6" {...p} /> },
-      { type: 'num-7' as DecorationShapeType, label: '7', icon: (p: any) => <TextIcon text="7" {...p} /> },
-      { type: 'num-8' as DecorationShapeType, label: '8', icon: (p: any) => <TextIcon text="8" {...p} /> },
-      { type: 'num-9' as DecorationShapeType, label: '9', icon: (p: any) => <TextIcon text="9" {...p} /> },
-      { type: 'num-0' as DecorationShapeType, label: '0', icon: (p: any) => <TextIcon text="0" {...p} /> },
-    ]
-  },
-  {
-    label: 'Emojis',
-    shapes: [
-      { type: 'emoji-star' as DecorationShapeType, label: 'Star', icon: (p: any) => <TextIcon text="⭐" {...p} /> },
-      { type: 'emoji-warning' as DecorationShapeType, label: 'Warning', icon: (p: any) => <TextIcon text="⚠️" {...p} /> },
-      { type: 'emoji-heart' as DecorationShapeType, label: 'Heart', icon: (p: any) => <TextIcon text="❤️" {...p} /> },
-      { type: 'emoji-thumb' as DecorationShapeType, label: 'Thumb', icon: (p: any) => <TextIcon text="👍" {...p} /> },
-      { type: 'emoji-fire' as DecorationShapeType, label: 'Fire', icon: (p: any) => <TextIcon text="🔥" {...p} /> },
-      { type: 'emoji-idea' as DecorationShapeType, label: 'Idea', icon: (p: any) => <TextIcon text="💡" {...p} /> },
-      { type: 'emoji-check' as DecorationShapeType, label: 'Check', icon: (p: any) => <TextIcon text="✅" {...p} /> },
-      { type: 'emoji-cross' as DecorationShapeType, label: 'Cross', icon: (p: any) => <TextIcon text="❌" {...p} /> },
-      { type: 'emoji-smile' as DecorationShapeType, label: 'Smile', icon: (p: any) => <TextIcon text="😊" {...p} /> },
-      { type: 'emoji-sad' as DecorationShapeType, label: 'Sad', icon: (p: any) => <TextIcon text="😢" {...p} /> },
-      { type: 'emoji-rocket' as DecorationShapeType, label: 'Rocket', icon: (p: any) => <TextIcon text="🚀" {...p} /> },
-      { type: 'emoji-target' as DecorationShapeType, label: 'Target', icon: (p: any) => <TextIcon text="🎯" {...p} /> },
-      { type: 'emoji-laugh' as DecorationShapeType, label: 'Laugh', icon: (p: any) => <TextIcon text="😂" {...p} /> },
-      { type: 'emoji-clap' as DecorationShapeType, label: 'Clap', icon: (p: any) => <TextIcon text="👏" {...p} /> },
-      { type: 'emoji-eyes' as DecorationShapeType, label: 'Eyes', icon: (p: any) => <TextIcon text="👀" {...p} /> },
-      { type: 'emoji-sparkles' as DecorationShapeType, label: 'Sparkles', icon: (p: any) => <TextIcon text="✨" {...p} /> },
-      { type: 'emoji-party' as DecorationShapeType, label: 'Party', icon: (p: any) => <TextIcon text="🎉" {...p} /> },
-      { type: 'emoji-brain' as DecorationShapeType, label: 'Brain', icon: (p: any) => <TextIcon text="🧠" {...p} /> },
-      { type: 'emoji-muscle' as DecorationShapeType, label: 'Muscle', icon: (p: any) => <TextIcon text="💪" {...p} /> },
-      { type: 'emoji-crown' as DecorationShapeType, label: 'Crown', icon: (p: any) => <TextIcon text="👑" {...p} /> },
-      { type: 'emoji-diamond' as DecorationShapeType, label: 'Diamond', icon: (p: any) => <TextIcon text="💎" {...p} /> },
-      { type: 'emoji-medal' as DecorationShapeType, label: 'Medal', icon: (p: any) => <TextIcon text="🏅" {...p} /> },
-      { type: 'emoji-clock' as DecorationShapeType, label: 'Clock', icon: (p: any) => <TextIcon text="⏰" {...p} /> },
-      { type: 'emoji-lock' as DecorationShapeType, label: 'Lock', icon: (p: any) => <TextIcon text="🔒" {...p} /> },
-      { type: 'emoji-umbrella' as DecorationShapeType, label: 'Umbrella', icon: (p: any) => <TextIcon text="☂️" {...p} /> },
-      { type: 'exclamation' as DecorationShapeType, label: 'Alert!', icon: (p: any) => <TextIcon text="❗" {...p} /> },
-      { type: 'question' as DecorationShapeType, label: 'Question', icon: (p: any) => <TextIcon text="❓" {...p} /> },
-      { type: 'pushpin' as DecorationShapeType, label: 'Pin', icon: (p: any) => <TextIcon text="📌" {...p} /> },
-    ]
-  }
 ]
 
 // Section element types (for icon lookup)
@@ -230,21 +167,46 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
       {isSelected && (
         <CardContent className="space-y-5 pt-1 pb-4 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
           {/* Quick actions */}
-          <div className="flex gap-1.5 pt-2">
-            <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={onDuplicate}>
-              <Copy className="h-3 w-3 mr-1" /> Duplicate
+          <div className="grid grid-cols-4 gap-1.5 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 p-0 flex items-center justify-center hover:bg-slate-50"
+              onClick={onDuplicate}
+              title="Duplicate"
+            >
+              <Copy className="h-3.5 w-3.5 text-slate-700" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={onToggleLock}>
-              {shape.locked ? <Lock className="h-3 w-3 mr-1" /> : <Unlock className="h-3 w-3 mr-1" />}
-              {shape.locked ? 'Locked' : 'Lock'}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 p-0 flex items-center justify-center hover:bg-slate-50"
+              onClick={onToggleLock}
+              title={shape.locked ? 'Unlock' : 'Lock'}
+            >
+              {shape.locked ? (
+                <Lock className="h-3.5 w-3.5 text-amber-600" />
+              ) : (
+                <Unlock className="h-3.5 w-3.5 text-slate-700" />
+              )}
             </Button>
-          </div>
-          <div className="flex gap-1.5">
-            <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={onBringFront}>
-              <ArrowUpToLine className="h-3 w-3 mr-1" /> Front
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 p-0 flex items-center justify-center hover:bg-slate-50"
+              onClick={onBringFront}
+              title="Bring to Front"
+            >
+              <ArrowUpToLine className="h-3.5 w-3.5 text-slate-700" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={onSendBack}>
-              <ArrowDownToLine className="h-3 w-3 mr-1" /> Back
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 p-0 flex items-center justify-center hover:bg-slate-50"
+              onClick={onSendBack}
+              title="Send to Back"
+            >
+              <ArrowDownToLine className="h-3.5 w-3.5 text-slate-700" />
             </Button>
           </div>
 
@@ -356,48 +318,40 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                     )}
                   </div>
 
-                  {/* Render an interactive swatch row for every color in the graphic */}
-                  <div className="space-y-1.5">
-                    {colors.map((color, idx) => (
-                      <div key={idx} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border border-slate-100">
-                        <div className="relative flex items-center gap-1.5 shrink-0">
+                  {/* Compact color boxes */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {colors.map((color, idx) => {
+                      const displayColor = color.startsWith('#')
+                        ? color
+                        : (shape.fillColor && shape.fillColor.startsWith('#') ? shape.fillColor : '#0F172A')
+                      const pickerValue = /^#[0-9a-f]{3}$/i.test(displayColor)
+                        ? `#${displayColor[1]}${displayColor[1]}${displayColor[2]}${displayColor[2]}${displayColor[3]}${displayColor[3]}`
+                        : /^#[0-9a-f]{6}$/i.test(displayColor)
+                        ? displayColor
+                        : '#0F172A'
+                      return (
+                        <div
+                          key={idx}
+                          className="relative h-7 w-7 shrink-0"
+                          title={color === 'currentColor' ? displayColor : color}
+                        >
                           <Input
                             type="color"
-                            value={color.startsWith('#') ? color : '#0F172A'}
+                            value={pickerValue}
                             onChange={e => {
                               const newColor = e.target.value
                               const newSvg = replaceSvgColor(shape.svgContent || '', color, newColor)
                               onUpdate({ svgContent: newSvg, fillColor: newColor, strokeColor: newColor })
                             }}
-                            className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer"
+                            className="h-7 w-7 p-0 border opacity-0 absolute inset-0 z-10 cursor-pointer"
                           />
                           <div
-                            className="h-7 w-7 rounded-md border border-slate-300 shadow-2xs shrink-0"
-                            style={{ backgroundColor: color.startsWith('#') ? color : '#0F172A' }}
+                            className="h-7 w-7 rounded-md border border-slate-300 shadow-2xs hover:scale-105 transition-transform"
+                            style={{ backgroundColor: displayColor }}
                           />
                         </div>
-                        <span className="text-[10px] font-mono text-slate-600 uppercase font-medium">
-                          {color}
-                        </span>
-
-                        {/* Preset swatches for this specific color channel */}
-                        <div className="flex items-center gap-1 ml-auto">
-                          {['#2F88FF', '#43CCF8', '#EC4899', '#F59E0B', '#10B981', '#0F172A', '#FFFFFF'].map(preset => (
-                            <button
-                              key={preset}
-                              type="button"
-                              onClick={() => {
-                                const newSvg = replaceSvgColor(shape.svgContent || '', color, preset)
-                                onUpdate({ svgContent: newSvg, fillColor: preset, strokeColor: preset })
-                              }}
-                              className="w-4 h-4 rounded-full border border-black/10 transition-transform hover:scale-115 shadow-2xs"
-                              style={{ backgroundColor: preset }}
-                              title={preset}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               <div>
@@ -426,38 +380,6 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
               </details>
             </div>
           )})()}
-
-          {/* Position & Size (shared) */}
-          <div>
-            <Label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-2">Position & Size</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-[10px] text-slate-500">X</Label>
-                <Input type="number" value={Math.round(shape.x)} onChange={e => onUpdate({ x: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" disabled={shape.locked} />
-              </div>
-              <div>
-                <Label className="text-[10px] text-slate-500">Y</Label>
-                <Input type="number" value={Math.round(shape.y)} onChange={e => onUpdate({ y: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" disabled={shape.locked} />
-              </div>
-              <div>
-                <Label className="text-[10px] text-slate-500">W</Label>
-                <Input type="number" value={Math.round(shape.width)} onChange={e => onUpdate({ width: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" disabled={shape.locked} />
-              </div>
-              <div>
-                <Label className="text-[10px] text-slate-500">H</Label>
-                <Input type="number" value={Math.round(shape.height)} onChange={e => onUpdate({ height: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" disabled={shape.locked} />
-              </div>
-            </div>
-          </div>
-
-          {/* Rotation */}
-          <div>
-            <div className="flex justify-between mb-1.5">
-              <Label className="text-[10px] text-slate-500">Rotation</Label>
-              <span className="text-[10px] text-slate-400">{shape.rotation}°</span>
-            </div>
-            <Slider value={[shape.rotation]} onValueChange={([v]) => onUpdate({ rotation: v })} min={-180} max={180} disabled={shape.locked} />
-          </div>
 
           {/* Style (for shapes that have fill/stroke) */}
           {!isImage && !isSvg && !shape.type.startsWith('emoji-') && !['exclamation', 'question', 'pushpin'].includes(shape.type) && (
@@ -585,64 +507,8 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
 // ═══════════════════════════════════════════════════════
 
 function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: any) => void }) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const blobUrl = URL.createObjectURL(file)
-    decorationFileRegistry.set(blobUrl, file)
-    onUpdate({ imageUrl: blobUrl })
-    event.target.value = ''
-  }
-
   return (
     <>
-      <div>
-        <Label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-2">Image Source</Label>
-        {shape.imageUrl ? (
-          <div className="space-y-2">
-            <div className="w-full h-20 rounded border border-slate-200 overflow-hidden bg-slate-50">
-              <img src={shape.imageUrl} alt="" className="w-full h-full object-contain" />
-            </div>
-            <div className="flex gap-1.5">
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-              <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="h-3 w-3 mr-1" /> Replace
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-[10px] text-red-500" onClick={() => onUpdate({ imageUrl: '' })}>
-                Remove
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-            <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="h-3.5 w-3.5 mr-2" /> Upload Image
-            </Button>
-            <div className="flex gap-1.5">
-              <Input
-                placeholder="or paste URL..."
-                className="h-8 text-xs flex-1"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const url = e.currentTarget.value.trim()
-                    if (url) { onUpdate({ imageUrl: url }); e.currentTarget.value = '' }
-                  }
-                }}
-              />
-              <Button variant="outline" size="sm" className="h-8 text-xs px-2"
-                onClick={() => {
-                  const input = document.querySelector('input[placeholder="or paste URL..."]') as HTMLInputElement
-                  const url = input?.value.trim()
-                  if (url) { onUpdate({ imageUrl: url }); input.value = '' }
-                }}
-              >Add</Button>
-            </div>
-          </div>
-        )}
-      </div>
       <div>
         <Label className="text-[10px] text-slate-500">Image Fit</Label>
         <div className="flex gap-1 mt-1.5">
@@ -652,28 +518,55 @@ function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: an
           ))}
         </div>
       </div>
-      <div>
-        <div className="flex justify-between mb-1.5">
-          <Label className="text-[10px] text-slate-500">Border Radius</Label>
-          <span className="text-[10px] text-slate-400">{shape.borderRadius || 0}px</span>
+      {/* Border: Radius, Width, Color in the same line */}
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <Label className="text-[10px] text-slate-500 block mb-1 truncate" title="Border Radius">Radius</Label>
+          <div className="relative">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={shape.borderRadius ?? 0}
+              onChange={e => onUpdate({ borderRadius: Math.max(0, parseInt(e.target.value) || 0) })}
+              className="h-8 text-xs pr-4"
+            />
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 pointer-events-none select-none">px</span>
+          </div>
         </div>
-        <Slider value={[shape.borderRadius || 0]} onValueChange={([v]) => onUpdate({ borderRadius: v })} min={0} max={50} />
-      </div>
-      {/* Border Width */}
-      <div>
-        <div className="flex justify-between mb-1.5">
-          <Label className="text-[10px] text-slate-500">Border Width</Label>
-          <span className="text-[10px] text-slate-400">{shape.strokeWidth}px</span>
+
+        <div>
+          <Label className="text-[10px] text-slate-500 block mb-1 truncate" title="Border Width">Width</Label>
+          <div className="relative">
+            <Input
+              type="number"
+              min={0}
+              max={50}
+              value={shape.strokeWidth ?? 0}
+              onChange={e => onUpdate({ strokeWidth: Math.max(0, parseFloat(e.target.value) || 0) })}
+              className="h-8 text-xs pr-4"
+            />
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 pointer-events-none select-none">px</span>
+          </div>
         </div>
-        <Slider value={[shape.strokeWidth]} onValueChange={([v]) => onUpdate({ strokeWidth: v })} min={0} max={20} />
-      </div>
-      {/* Border Color */}
-      <div>
-        <Label className="text-[10px] text-slate-500 block mb-1">Border Color</Label>
-        <div className="relative flex items-center gap-2">
-          <Input type="color" value={shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1'} onChange={e => onUpdate({ strokeColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-          <div className="h-8 w-8 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1' }} />
-          <span className="text-[9px] text-slate-400 font-mono uppercase truncate">{shape.strokeColor || '#cbd5e1'}</span>
+
+        <div>
+          <Label className="text-[10px] text-slate-500 block mb-1 truncate" title="Border Color">Color</Label>
+          <div className="relative flex items-center h-8 rounded-md border border-slate-200 px-2 bg-white cursor-pointer hover:border-slate-300">
+            <Input
+              type="color"
+              value={shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1'}
+              onChange={e => onUpdate({ strokeColor: e.target.value })}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            />
+            <div
+              className="h-4 w-4 rounded-sm border border-slate-300 mr-1.5 shrink-0"
+              style={{ backgroundColor: shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1' }}
+            />
+            <span className="text-[9px] text-slate-600 font-mono uppercase truncate">
+              {shape.strokeColor || '#cbd5e1'}
+            </span>
+          </div>
         </div>
       </div>
       <div>
@@ -691,6 +584,9 @@ function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: an
 // ═══════════════════════════════════════════════════════
 // Panel Component
 // ═══════════════════════════════════════════════════════
+
+const GRAPHICS_ALLOWED_MODES: ("elements" | "emojis")[] = ["elements", "emojis"]
+const SHAPE_ICON_ALLOWED_MODES: ("icons")[] = ["icons"]
 
 export function DecorationsPanel() {
   const {
@@ -724,6 +620,7 @@ export function DecorationsPanel() {
   const svgFileRef = useRef<HTMLInputElement>(null)
   const imgFileRef = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<'graphics' | 'shapes' | 'section' | 'images'>('graphics')
+  const [shapesSubTab, setShapesSubTab] = useState<'basic' | 'advanced'>('basic')
   const elementsListRef = useRef<HTMLDivElement>(null)
   const shapesListRef = useRef<HTMLDivElement>(null)
   const sectionListRef = useRef<HTMLDivElement>(null)
@@ -946,16 +843,44 @@ export function DecorationsPanel() {
   return (
     <div className="space-y-2.5">
       <div className="flex w-full items-center justify-between pb-2 mb-1 border-b border-slate-100">
-        <button
-          type="button"
-          onClick={handleScrollToHistory}
-          className="text-xs font-semibold text-slate-700 hover:text-blue-600 flex items-center gap-1.5 focus:outline-none transition-colors group cursor-pointer"
-        >
-          <span>Canvas Elements</span>
-          <span className="inline-flex items-center justify-center bg-slate-100 group-hover:bg-blue-100 text-slate-600 group-hover:text-blue-700 text-[11px] font-medium px-2 py-0.5 rounded-full min-w-[18px] h-[18px] transition-colors">
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center p-0.5 bg-slate-100/90 rounded-lg border border-slate-200/70">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-6.5 w-7 p-0 rounded-md transition-all cursor-pointer ${
+                drawingMode === null
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+              onClick={() => handleSelectTool('select')}
+              title="Select Tool"
+            >
+              <MousePointer2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-6.5 w-7 p-0 rounded-md transition-all cursor-pointer ${
+                drawingMode === 'marquee-select'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+              onClick={() => handleSelectTool('marquee-select')}
+              title="Marquee Select"
+            >
+              <SquareDashedMousePointer className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <button
+            type="button"
+            onClick={handleScrollToHistory}
+            title="Scroll to canvas elements list"
+            className="inline-flex items-center justify-center bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 text-[11px] font-medium px-2 py-0.5 rounded-full min-w-[20px] h-[20px] transition-colors cursor-pointer"
+          >
             {activeCount}
-          </span>
-        </button>
+          </button>
+        </div>
         <div className="flex gap-1 items-center">
           <Button
             variant="ghost"
@@ -1018,19 +943,50 @@ export function DecorationsPanel() {
             </span>
           </TabsTrigger>
         </TabsList>
-        {/* ═══════════ GRAPHICS TAB (Elements + Icons + Emojis) ═══════════ */}
+        {/* ═══════════ GRAPHICS TAB (Elements + Emojis) ═══════════ */}
         <TabsContent value="graphics" className="mt-3">
           <IconifySearchTab
             renderElementList={renderElementList}
             elementsListRef={elementsListRef}
+            allowedModes={GRAPHICS_ALLOWED_MODES}
+            initialMode="elements"
           />
         </TabsContent>
 
 
         {/* ═══════════ SHAPES TAB ═══════════ */}
         <TabsContent value="shapes" className="space-y-4 mt-3">
+          {/* Sub-tabs: Drawing vs All Icons & Shapes */}
+          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100/90 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setShapesSubTab('basic')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                shapesSubTab === 'basic'
+                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                  : 'text-slate-500 hover:text-slate-800 font-medium'
+              }`}
+            >
+              <Pencil className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <span>Drawing</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShapesSubTab('advanced')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                shapesSubTab === 'advanced'
+                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                  : 'text-slate-500 hover:text-slate-800 font-medium'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span>All Icons & Shapes</span>
+            </button>
+          </div>
 
-          {/* Multiple Selection Actions */}
+          {shapesSubTab === 'basic' ? (
+            <>
+              {/* Multiple Selection Actions */}
           {selectedShapeIds.length > 1 && (
             <div className="p-3 bg-amber-50/80 rounded-lg border border-amber-200">
               <div className="flex items-center justify-between">
@@ -1201,8 +1157,11 @@ export function DecorationsPanel() {
               <div className="px-2 pb-3 pt-1 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-300 ease-out">
                 {SHAPE_GROUPS.map(g => {
                   const isLabeledToolGroup = g.label === 'Tools'
-                  const isEmojiGroup = g.label === 'Emojis'
-                  const gridCols = isLabeledToolGroup ? 'grid grid-cols-3' : isEmojiGroup ? 'grid grid-cols-7' : 'grid grid-cols-5'
+                  const visibleShapes = isLabeledToolGroup
+                    ? g.shapes.filter(s => s.type !== 'select' && s.type !== 'marquee-select')
+                    : g.shapes
+                  if (visibleShapes.length === 0) return null
+                  const gridCols = isLabeledToolGroup ? 'grid grid-cols-1' : 'grid grid-cols-5'
                   return (
                     <div key={g.label} className="space-y-1.5">
                       <div className="flex items-center gap-2">
@@ -1211,15 +1170,15 @@ export function DecorationsPanel() {
                         <div className="h-[1px] flex-1 bg-slate-100" />
                       </div>
                       <div className={`${gridCols} gap-1`}>
-                        {g.shapes.map(s => {
-                          const isActive = s.type === 'select' ? drawingMode === null : drawingMode === s.type
-                          const isLabeledTool = s.type === 'freehand' || s.type === 'select' || s.type === 'marquee-select'
+                        {visibleShapes.map(s => {
+                          const isActive = drawingMode === s.type
+                          const isLabeledTool = s.type === 'freehand'
                           return (
                             <Button
                               key={s.type}
                               variant={isActive ? "default" : "outline"}
                               title={s.label}
-                              className={`${isLabeledTool ? 'h-8 px-3 flex items-center gap-1.5' : 'h-8 w-8 p-0 flex items-center justify-center'} transition-all duration-200 ${isActive
+                              className={`${isLabeledTool ? 'h-8 w-full px-3 flex items-center justify-center gap-1.5' : 'h-8 w-8 p-0 flex items-center justify-center'} transition-all duration-200 ${isActive
                                 ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-200/50'
                                 : 'hover:border-amber-400 hover:bg-amber-50/50 hover:text-amber-600 border-slate-100 bg-white/50'
                                 }`}
@@ -1239,8 +1198,6 @@ export function DecorationsPanel() {
                   )
                 })}
 
-
-
                 {drawingMode && (
                   <p className="text-[10px] text-slate-400 text-center px-2">
                     {drawingMode === 'freehand' && 'Click and drag on the canvas to draw freely'}
@@ -1258,11 +1215,6 @@ export function DecorationsPanel() {
                     {drawingMode === 'bezier-line' && 'Click to add points. Double-click to finish. Curve strictly passes through points (Catmull-Rom)'}
                     {drawingMode === 'bspline-curve' && 'Click to add control points. Double-click to finish. Curve smoothly flows near points (DaVinci Resolve-style)'}
                     {drawingMode === 'cloud-line' && 'Click to add points to a cloud-line path. Double-click to finish'}
-                    {drawingMode === 'checkmark' && 'Click and drag to stamp a checkmark'}
-                    {drawingMode === 'crossmark' && 'Click and drag to stamp a crossmark'}
-                    {drawingMode === 'dot' && 'Click and drag to stamp a dot'}
-                    {drawingMode?.startsWith('num-') && 'Click and drag to stamp a number'}
-                    {drawingMode?.startsWith('emoji-') && 'Click and drag to stamp an emoji'}
                     {drawingMode === 'marquee-select' && 'Click and drag a rectangle to select multiple shapes'}
                   </p>
                 )}
@@ -1278,7 +1230,16 @@ export function DecorationsPanel() {
           >
             {renderElementList(shapeElements, Hexagon, 'No shapes added yet. Select a tool above and draw on the canvas.', 'shapes')}
           </div>
-        </TabsContent>
+        </>
+      ) : (
+        <IconifySearchTab
+          renderElementList={renderElementList}
+          elementsListRef={shapesListRef}
+          allowedModes={SHAPE_ICON_ALLOWED_MODES}
+          initialMode="icons"
+        />
+      )}
+    </TabsContent>
 
         {/* ═══════════ TEXT & MEDIA TAB ═══════════ */}
         <TabsContent value="section" className="space-y-4 mt-3">

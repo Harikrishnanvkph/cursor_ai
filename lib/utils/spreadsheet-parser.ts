@@ -219,7 +219,7 @@ export function parseHtmlTable(html: string): string[][] | null {
  */
 export function normalizeGrid(rows: string[][]): string[][] {
   if (rows.length === 0) return []
-  const maxCols = Math.max(...rows.map(r => r.length), 0)
+  const maxCols = rows.reduce((max, r) => (r.length > max ? r.length : max), 0)
   if (maxCols === 0) return []
 
   return rows.map(r => {
@@ -601,6 +601,14 @@ export function parseGridToModel(
   }
 }
 
+function sanitizeSpreadsheetCell(value: string): string {
+  // Neutralize spreadsheet formula prefixes (=, +, @, or non-numeric -/tab/carriage-return)
+  if (/^[=+@\t\r]/.test(value) || (/^-/.test(value) && isNaN(Number(value)))) {
+    return `'${value}`
+  }
+  return value
+}
+
 /**
  * Convert chart datasets, slice labels, and values into a 2D spreadsheet grid
  */
@@ -617,7 +625,7 @@ export function chartDataToGrid(params: {
     const hasRadius = coordinatePoints.some(p => p.r !== undefined && p.r !== 10)
     const header = hasRadius ? ['Point', 'X', 'Y', 'Radius'] : ['Point', 'X', 'Y']
     const rows = coordinatePoints.map((p, i) => {
-      const name = p.name || `Point ${i + 1}`
+      const name = sanitizeSpreadsheetCell(p.name || `Point ${i + 1}`)
       return hasRadius
         ? [name, String(p.x ?? 0), String(p.y ?? 0), String(p.r ?? 10)]
         : [name, String(p.x ?? 0), String(p.y ?? 0)]
@@ -626,15 +634,15 @@ export function chartDataToGrid(params: {
   }
 
   // Categorical charts
-  const header = ['', ...datasetNames.map((name, i) => name || `Dataset ${i + 1}`)]
+  const header = ['', ...datasetNames.map((name, i) => sanitizeSpreadsheetCell(name || `Dataset ${i + 1}`))]
   const rows: string[][] = []
 
   for (let sIdx = 0; sIdx < sliceLabels.length; sIdx++) {
-    const label = sliceLabels[sIdx] || `Slice ${sIdx + 1}`
+    const label = sanitizeSpreadsheetCell(sliceLabels[sIdx] || `Slice ${sIdx + 1}`)
     const row = [label]
     for (let dsIdx = 0; dsIdx < datasetNames.length; dsIdx++) {
       const val = datasetValues[dsIdx]?.[sIdx] ?? 0
-      row.push(String(val))
+      row.push(sanitizeSpreadsheetCell(String(val)))
     }
     rows.push(row)
   }

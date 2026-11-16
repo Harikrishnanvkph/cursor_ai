@@ -14,7 +14,7 @@ import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animat
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { TemplateListTab } from "@/components/panels/template-settings/template-list-tab"
 import { FileText, Layout, BarChart3, Edit3, Cloud, Sparkles, LayoutGrid, Palette } from "lucide-react"
-import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useFormatGalleryStore, ensureDefaultFormatSelected } from "@/lib/stores/format-gallery-store"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 
 import { useState, useCallback, useEffect } from "react"
@@ -153,10 +153,11 @@ export function ConfigSidebar() {
                 >Chart</button>
                 <button
                   onClick={() => {
-                    if (!currentTemplate) {
-                      applyTemplate('template-1')
+                    if (!useFormatGalleryStore.getState().selectedFormatId) {
+                      ensureDefaultFormatSelected(chartType || 'bar')
                       setActiveSidebarTab('templates')
                     }
+                    useTemplateStore.getState().setGenerateMode('format')
                     setEditorMode('template')
                   }}
                   className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}

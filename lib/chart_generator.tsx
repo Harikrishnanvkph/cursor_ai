@@ -1306,12 +1306,22 @@ export const ChartGenerator = memo(function ChartGenerator({
     return signPrefix + prefix + currencySymbol + formatted + suffix;
   };
 
+  const UNSAFE_CALLBACK_TOKENS = /\b(window|document|globalThis|self|top|parent|frames|fetch|XMLHttpRequest|WebSocket|Worker|EventSource|navigator|location|history|localStorage|sessionStorage|indexedDB|caches|cookie|eval|Function|constructor|__proto__|prototype|import|require|process|alert|prompt|confirm)\b/;
+
+  const isSafeUserCallback = (code: string): boolean => {
+    if (readOnly) return false;
+    if (!code || code.length > 2000) return false;
+    return !UNSAFE_CALLBACK_TOKENS.test(code);
+  };
+
   // Apply custom formatter function if provided
   const applyCustomFormatter = (text: string, value: any, config: any): string => {
     if (config.customFormatter && typeof config.customFormatter === 'string' && config.customFormatter.trim()) {
+      if (!isSafeUserCallback(config.customFormatter)) return text;
       try {
         // Create a safe function from the string
         const formatterFn = new Function('value', 'text', `
+          "use strict";
           try {
             ${config.customFormatter}
             return text;
@@ -1338,8 +1348,10 @@ export const ChartGenerator = memo(function ChartGenerator({
     borderColor?: string;
   } => {
     if (config.conditionalFormatting && typeof config.conditionalFormatting === 'string' && config.conditionalFormatting.trim()) {
+      if (!isSafeUserCallback(config.conditionalFormatting)) return { text };
       try {
         const condFn = new Function('value', 'text', `
+          "use strict";
           try {
             ${config.conditionalFormatting}
             return { text: text };
@@ -1790,24 +1802,35 @@ export const ChartGenerator = memo(function ChartGenerator({
   const getBackgroundLayers = () => {
     const background = (chartConfig as any)?.background || { type: 'color', color: '#ffffff' };
     if (background.type === "image" && background.imageUrl) {
-      const opacity = background.opacity || 100;
+      const opacity = typeof background.opacity === 'number' ? background.opacity : 100;
+      const showWhiteBase = background.imageWhiteBase !== false;
       return (
         <div
           style={{
             position: 'absolute',
             inset: 0,
             zIndex: 0,
-            backgroundImage: `url(${background.imageUrl})`,
-            backgroundSize: background.imageFit === 'fill' ? '100% 100%' :
-              background.imageFit === 'contain' ? 'contain' : 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            objectFit: background.imageFit || 'cover',
-            opacity: opacity / 100,
+            backgroundColor: showWhiteBase ? '#ffffff' : 'transparent',
+            overflow: 'hidden',
             pointerEvents: 'none',
-            filter: background.blur ? `blur(${background.blur}px)` : 'none',
           }}
-        />
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: `url(${background.imageUrl})`,
+              backgroundSize: background.imageFit === 'fill' ? '100% 100%' :
+                background.imageFit === 'contain' ? 'contain' : 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              objectFit: background.imageFit || 'cover',
+              opacity: opacity / 100,
+              pointerEvents: 'none',
+              filter: background.blur ? `blur(${background.blur}px)` : 'none',
+            }}
+          />
+        </div>
       );
     }
     if (background.type === "gradient") {
@@ -2162,15 +2185,10 @@ export const ChartGenerator = memo(function ChartGenerator({
           // Identify if it's a function declaration or expression
           // Basic handling for "function(val) { ... }" pattern which is common from AI
           if (trimmed.startsWith('function')) {
-            // Convert "function(x) { return x; }" to actual function
-            // We use new Function(return <code_as_expression>)() approach 
-            // OR specifically wrap it to evaluate.
-            // But "new Function(obj)" won't work directly if obj is "function() {}". 
-            // It needs to be "return " + obj if we want to get the function reference back.
-
-            // Safety: Using new Function is risky with untrusted input, 
-            // but necessary for this feature allowing AI/User inserted JS callbacks.
-            return new Function('return ' + trimmed)();
+            if (!isSafeUserCallback(trimmed)) {
+              return undefined;
+            }
+            return new Function('"use strict"; return (' + trimmed + ')')();
           }
         } catch (e) {
           console.warn('Failed to parse callback string:', trimmed, e);
@@ -2229,6 +2247,52 @@ export const ChartGenerator = memo(function ChartGenerator({
           _customPadding: { top: padTop, bottom: padBottom },
           padding: padTop,
         };
+      }
+
+      // Bridge Chart.js v2-style ticks.major.{color,font,fontStyle} into v4 scriptable options
+      if (scale.ticks?.major?.enabled) {
+        const majorCfg = scale.ticks.major;
+        const majorColor = majorCfg.color;
+        const legacyFontStyle = majorCfg.fontStyle;
+        const majorFont: Record<string, any> = {
+          ...(majorCfg.font && typeof majorCfg.font === 'object' ? majorCfg.font : {}),
+        };
+        if (legacyFontStyle === 'italic' && !majorFont.style) {
+          majorFont.style = 'italic';
+        } else if (legacyFontStyle === 'bold' && !majorFont.weight) {
+          majorFont.weight = 'bold';
+        }
+        const hasMajorFont = Object.values(majorFont).some((v) => v !== undefined && v !== '');
+
+        if (majorColor) {
+          const baseColor = scale.ticks.color;
+          scale.ticks = {
+            ...scale.ticks,
+            color: (ctx: any) => {
+              if (ctx?.tick?.major) {
+                return majorColor;
+              }
+              return typeof baseColor === 'function' ? baseColor(ctx) : (baseColor ?? ChartJS.defaults.color);
+            },
+          };
+        }
+
+        if (hasMajorFont) {
+          const baseFont = scale.ticks.font;
+          scale.ticks = {
+            ...scale.ticks,
+            font: (ctx: any) => {
+              const resolvedBase = typeof baseFont === 'function' ? baseFont(ctx) : (baseFont || {});
+              if (ctx?.tick?.major) {
+                return {
+                  ...(resolvedBase || {}),
+                  ...majorFont,
+                };
+              }
+              return resolvedBase;
+            },
+          };
+        }
       }
 
       const prefix = typeof scale.ticks?.prefix === 'string' ? scale.ticks.prefix : '';
@@ -2764,19 +2828,18 @@ export const ChartGenerator = memo(function ChartGenerator({
                       axis: chartType === 'timeline' ? 'x' : undefined,
                     },
                     onHover: (event: any, elements: any[]) => {
-                      // Guard: Chart.js can call onHover during init/re-renders.
-                      // Only update React state when the hovered dataset index actually changes.
-                      if (!appliedOptions.interaction?.mode) {
+                      // Only track hovered dataset index in interactive grouped mode when hoverFadeEffect is enabled
+                      if (readOnly || chartMode !== 'grouped' || chartConfig.hoverFadeEffect === false || !appliedOptions.interaction?.mode) {
                         setHoveredDatasetIndex((prev) => (prev === null ? prev : null));
-                        return
+                        return;
                       }
 
                       const next =
-                        chartMode === 'grouped' && elements && elements.length > 0
+                        elements && elements.length > 0
                           ? elements[0].datasetIndex
-                          : null
+                          : null;
 
-                      setHoveredDatasetIndex((prev) => (prev === next ? prev : next))
+                      setHoveredDatasetIndex((prev) => (prev === next ? prev : next));
                     },
                     plugins: ({
                       ...appliedOptions.plugins,

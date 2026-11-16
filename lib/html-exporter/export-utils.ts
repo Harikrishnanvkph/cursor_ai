@@ -306,11 +306,20 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
         return signPrefix + prefix + currencySymbol + formatted + suffix;
     };
 
+    const UNSAFE_CALLBACK_TOKENS = /\b(window|document|globalThis|self|top|parent|frames|fetch|XMLHttpRequest|WebSocket|Worker|EventSource|navigator|location|history|localStorage|sessionStorage|indexedDB|caches|cookie|eval|Function|constructor|__proto__|prototype|import|require|process|alert|prompt|confirm)\b/;
+
+    const isSafeUserCallback = (code: string): boolean => {
+        if (!code || code.length > 2000) return false;
+        return !UNSAFE_CALLBACK_TOKENS.test(code);
+    };
+
     // Apply custom formatter function if provided
     const applyCustomFormatter = (text: string, value: any, config: any): string => {
         if (config.customFormatter && typeof config.customFormatter === 'string' && config.customFormatter.trim()) {
+            if (!isSafeUserCallback(config.customFormatter)) return text;
             try {
                 const formatterFn = new Function('value', 'text', `
+          "use strict";
           try {
             ${config.customFormatter}
             return text;
@@ -337,8 +346,10 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
         borderColor?: string;
     } => {
         if (config.conditionalFormatting && typeof config.conditionalFormatting === 'string' && config.conditionalFormatting.trim()) {
+            if (!isSafeUserCallback(config.conditionalFormatting)) return { text };
             try {
                 const condFn = new Function('value', 'text', `
+          "use strict";
           try {
             ${config.conditionalFormatting}
             return { text: text };

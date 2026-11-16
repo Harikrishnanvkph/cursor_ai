@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || 'YxCw07HI-V889DBTU5J2y2tRaEf_V0Cc8GFWjLCSUZY';
+const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || '';
 
 /**
  * Dedicated endpoint for Unsplash Download Tracking (Requirement for API compliance)
@@ -18,14 +18,25 @@ export async function POST(request: Request) {
 
     let targetUrl = downloadLocation;
     if (!targetUrl && photoId) {
-      targetUrl = `https://api.unsplash.com/photos/${photoId}/download`;
+      targetUrl = `https://api.unsplash.com/photos/${encodeURIComponent(String(photoId))}/download`;
     }
 
-    if (!targetUrl) {
+    if (!targetUrl || typeof targetUrl !== 'string') {
       return NextResponse.json({ error: 'Missing downloadLocation or photoId' }, { status: 400 });
     }
 
-    const res = await fetch(targetUrl, {
+    let parsedTarget: URL;
+    try {
+      parsedTarget = new URL(targetUrl);
+    } catch {
+      return NextResponse.json({ error: 'Invalid downloadLocation URL' }, { status: 400 });
+    }
+
+    if (parsedTarget.protocol !== 'https:' || parsedTarget.hostname !== 'api.unsplash.com') {
+      return NextResponse.json({ error: 'Untrusted Unsplash download endpoint' }, { status: 400 });
+    }
+
+    const res = await fetch(parsedTarget.toString(), {
       headers: {
         Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}`,
       },

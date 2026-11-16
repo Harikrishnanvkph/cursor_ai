@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { ChevronDown } from "lucide-react"
 import { PaddingControl } from "@/components/ui/padding-control"
+import { NumberFormattingSection } from "../number-formatting-section"
 
 interface GeneralTabProps {
     axis: 'x' | 'y' | 'y1'
@@ -477,11 +478,18 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                     max={60}
                                     onChange={(val) => updateConfig('ticks.padding', val)}
                                 />
+
+                                {/* Number & Value Formatting Section */}
+                                <NumberFormattingSection
+                                    value={config?.ticks?.numberFormat}
+                                    onChange={(newFmt) => updateConfig('ticks.numberFormat', newFmt)}
+                                    defaultOpen={false}
+                                />
                             </div>
                         )}
                     </div>
 
-                    {/* Grid Appearance Section */}
+                    {/* Line Appearance Section */}
                     <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                         <div
                             className={cn(
@@ -492,168 +500,219 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                         >
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 bg-blue-600 rounded-full" />
-                                <h3 className="text-xs font-semibold text-slate-800">Grid Appearance</h3>
+                                <h3 className="text-xs font-semibold text-slate-800">Line Appearance</h3>
                             </div>
-                            <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                <Switch
-                                    checked={config?.grid?.display !== false}
-                                    onCheckedChange={(checked) => updateConfig('grid.display', checked)}
-                                    className="data-[state=checked]:bg-blue-600"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setGridAppearanceDropdownOpen(!gridAppearanceDropdownOpen)}
-                                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
-                                    aria-label="Toggle grid appearance options"
-                                >
-                                    <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", gridAppearanceDropdownOpen && "rotate-180")} />
-                                </button>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setGridAppearanceDropdownOpen(!gridAppearanceDropdownOpen)
+                                }}
+                                className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                                aria-label="Toggle line appearance options"
+                            >
+                                <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", gridAppearanceDropdownOpen && "rotate-180")} />
+                            </button>
                         </div>
 
-                        {/* Grid Options */}
+                        {/* Line Appearance Options */}
                         {gridAppearanceDropdownOpen && (
-                            <div className="p-3.5 space-y-3.5 bg-white">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Grid Color</Label>
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="w-7 h-7 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
-                                                style={{ backgroundColor: config?.grid?.color || '#e5e7eb' }}
-                                                onClick={() => document.getElementById(`grid-color-${axis}`)?.click()}
-                                            />
-                                            <input
-                                                id={`grid-color-${axis}`}
-                                                type="color"
-                                                value={config?.grid?.color || '#e5e7eb'}
-                                                onChange={(e) => updateConfig('grid.color', e.target.value)}
-                                                className="sr-only"
-                                            />
-                                            <Input
-                                                value={config?.grid?.color || '#e5e7eb'}
-                                                onChange={(e) => updateConfig('grid.color', e.target.value)}
-                                                className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
-                                                placeholder="#e5e7eb"
-                                            />
-                                        </div>
+                            <div className="p-3.5 space-y-4 bg-white">
+                                {/* Top Toggles: Axis Line & Grid Line */}
+                                <div className="grid grid-cols-2 gap-2.5">
+                                    <div className="flex items-center justify-between h-8 px-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50">
+                                        <span className="text-xs font-medium text-slate-700 whitespace-nowrap">Axis Line</span>
+                                        <Switch
+                                            checked={config?.border?.display !== false}
+                                            onCheckedChange={(checked) => updateConfig('border.display', checked)}
+                                            className="data-[state=checked]:bg-blue-600 scale-90"
+                                            aria-label="Toggle Axis Line"
+                                        />
                                     </div>
 
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Line Width</Label>
-                                        <div className="flex items-center gap-1.5">
-                                            <Input
-                                                type="number"
-                                                value={config?.grid?.lineWidth ?? ''}
-                                                onChange={(e) => updateConfig('grid.lineWidth', e.target.value ? Number(e.target.value) : undefined)}
-                                                placeholder="1"
-                                                className="h-8 text-xs bg-white flex-1 min-w-0"
-                                                min={0}
-                                                max={10}
-                                                step={0.5}
-                                            />
-                                            <span className="text-xs text-slate-400 shrink-0">px</span>
+                                    <div className="flex items-center justify-between h-8 px-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50">
+                                        <span className="text-xs font-medium text-slate-700 whitespace-nowrap">Grid Line</span>
+                                        <Switch
+                                            checked={config?.grid?.drawOnChartArea !== false}
+                                            onCheckedChange={(checked) => updateConfig('grid.drawOnChartArea', checked)}
+                                            className="data-[state=checked]:bg-blue-600 scale-90"
+                                            aria-label="Toggle Grid Line"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Axis Line Section */}
+                                <div className="space-y-2.5 pt-1 border-t border-slate-100">
+                                    <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider block">Axis Line</span>
+                                    <div className="grid grid-cols-2 gap-3 items-end">
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] font-medium text-slate-700">Color</Label>
+                                            <div className="flex items-center gap-2">
+                                                <div
+                                                    className="w-8 h-8 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
+                                                    style={{ backgroundColor: config?.border?.color || '#e5e7eb' }}
+                                                    onClick={() => document.getElementById(`axis-border-color-${axis}`)?.click()}
+                                                />
+                                                <input
+                                                    id={`axis-border-color-${axis}`}
+                                                    type="color"
+                                                    value={config?.border?.color || '#e5e7eb'}
+                                                    onChange={(e) => updateConfig('border.color', e.target.value)}
+                                                    className="sr-only"
+                                                />
+                                                <Input
+                                                    value={config?.border?.color || '#e5e7eb'}
+                                                    onChange={(e) => updateConfig('border.color', e.target.value)}
+                                                    className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
+                                                    placeholder="#e5e7eb"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] font-medium text-slate-700">Width</Label>
+                                            <div className="flex items-center gap-1.5">
+                                                <Input
+                                                    type="number"
+                                                    value={config?.border?.width ?? ''}
+                                                    onChange={(e) => updateConfig('border.width', e.target.value ? Number(e.target.value) : undefined)}
+                                                    placeholder="1"
+                                                    className="h-8 text-xs bg-white flex-1 min-w-0"
+                                                    min={0}
+                                                    max={10}
+                                                    step={0.5}
+                                                />
+                                                <span className="text-[11px] text-slate-400 shrink-0">px</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3 items-end">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Line Style</Label>
-                                        <Select
-                                            value={currentDashStr}
-                                            onValueChange={(value) => {
-                                                const parsed = JSON.parse(value)
-                                                updateConfig('grid.borderDash', parsed)
-                                                updateConfig('border.dash', parsed)
-                                            }}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs bg-white">
-                                                <SelectValue placeholder="Select style">
-                                                    {currentDashLabel}
-                                                </SelectValue>
-                                            </SelectTrigger>
-                                            <SelectContent position="popper" sideOffset={4}>
-                                                {lineDashOptions.map((option) => (
-                                                    <SelectItem key={option.value} value={option.value}>
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                {/* Grid Line Section */}
+                                <div className="space-y-3 pt-1 border-t border-slate-100">
+                                    <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider block">Grid Line</span>
+                                    <div className="grid grid-cols-[auto_1fr_1fr] gap-2.5 items-end">
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Color</Label>
+                                            <div className="flex items-center h-8">
+                                                <div
+                                                    className="w-8 h-8 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
+                                                    style={{ backgroundColor: config?.grid?.color || '#e5e7eb' }}
+                                                    onClick={() => document.getElementById(`grid-color-${axis}`)?.click()}
+                                                    title={config?.grid?.color || '#e5e7eb'}
+                                                />
+                                                <input
+                                                    id={`grid-color-${axis}`}
+                                                    type="color"
+                                                    value={config?.grid?.color || '#e5e7eb'}
+                                                    onChange={(e) => updateConfig('grid.color', e.target.value)}
+                                                    className="sr-only"
+                                                />
+                                            </div>
+                                        </div>
 
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Chart Area Lines</Label>
-                                        <div className="flex items-center justify-between h-8 px-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50">
-                                            <span className="text-xs text-slate-600">Draw on Chart</span>
-                                            <Switch
-                                                checked={config?.grid?.drawOnChartArea !== false}
-                                                onCheckedChange={(checked) => updateConfig('grid.drawOnChartArea', checked)}
-                                                className="data-[state=checked]:bg-blue-600 scale-90"
-                                            />
+                                        <div className="space-y-1 min-w-0">
+                                            <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Width</Label>
+                                            <div className="flex items-center gap-1">
+                                                <Input
+                                                    type="number"
+                                                    value={config?.grid?.lineWidth ?? ''}
+                                                    onChange={(e) => updateConfig('grid.lineWidth', e.target.value ? Number(e.target.value) : undefined)}
+                                                    placeholder="1"
+                                                    className="h-8 text-xs bg-white flex-1 min-w-0 px-2"
+                                                    min={0}
+                                                    max={10}
+                                                    step={0.5}
+                                                />
+                                                <span className="text-[11px] text-slate-400 shrink-0">px</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1 min-w-0">
+                                            <Label className="text-[11px] font-medium text-slate-700 whitespace-nowrap block">Style</Label>
+                                            <Select
+                                                value={currentDashStr}
+                                                onValueChange={(value) => {
+                                                    const parsed = JSON.parse(value)
+                                                    updateConfig('grid.borderDash', parsed)
+                                                    updateConfig('border.dash', parsed)
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-8 text-xs bg-white px-2">
+                                                    <SelectValue placeholder="Select">
+                                                        {currentDashLabel}
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                                <SelectContent position="popper" sideOffset={4}>
+                                                    {lineDashOptions.map((option) => (
+                                                        <SelectItem key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Custom Dash Pattern */}
-                                <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/70 space-y-2.5">
-                                    <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider block">Custom Dash Pattern</span>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px] text-slate-500 font-medium">Dash</Label>
-                                            <Input
-                                                type="number"
-                                                value={(currentDash && currentDash[0]) || ''}
-                                                onChange={(e) => {
-                                                    const value = e.target.value ? Number(e.target.value) : 0
-                                                    const newDash = [value, currentDash[1] || value]
-                                                    updateConfig('grid.borderDash', newDash)
-                                                    updateConfig('border.dash', newDash)
-                                                }}
-                                                placeholder="0"
-                                                className="h-8 text-xs bg-white"
-                                                min={0}
-                                                max={20}
-                                                step={1}
-                                            />
-                                        </div>
+                                    {/* Custom Dash Pattern */}
+                                    <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/70 space-y-2.5">
+                                        <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider block">Custom Dash Pattern</span>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] text-slate-500 font-medium">Dash</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={(currentDash && currentDash[0]) || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value ? Number(e.target.value) : 0
+                                                        const newDash = [value, currentDash[1] || value]
+                                                        updateConfig('grid.borderDash', newDash)
+                                                        updateConfig('border.dash', newDash)
+                                                    }}
+                                                    placeholder="0"
+                                                    className="h-8 text-xs bg-white"
+                                                    min={0}
+                                                    max={20}
+                                                    step={1}
+                                                />
+                                            </div>
 
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px] text-slate-500 font-medium">Gap</Label>
-                                            <Input
-                                                type="number"
-                                                value={(currentDash && currentDash[1]) || ''}
-                                                onChange={(e) => {
-                                                    const value = e.target.value ? Number(e.target.value) : 0
-                                                    const newDash = [currentDash[0] || value, value]
-                                                    updateConfig('grid.borderDash', newDash)
-                                                    updateConfig('border.dash', newDash)
-                                                }}
-                                                placeholder="0"
-                                                className="h-8 text-xs bg-white"
-                                                min={0}
-                                                max={20}
-                                                step={1}
-                                            />
-                                        </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] text-slate-500 font-medium">Gap</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={(currentDash && currentDash[1]) || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value ? Number(e.target.value) : 0
+                                                        const newDash = [currentDash[0] || value, value]
+                                                        updateConfig('grid.borderDash', newDash)
+                                                        updateConfig('border.dash', newDash)
+                                                    }}
+                                                    placeholder="0"
+                                                    className="h-8 text-xs bg-white"
+                                                    min={0}
+                                                    max={20}
+                                                    step={1}
+                                                />
+                                            </div>
 
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px] text-slate-500 font-medium">Offset</Label>
-                                            <Input
-                                                type="number"
-                                                value={config?.grid?.borderDashOffset ?? config?.border?.dashOffset ?? ''}
-                                                onChange={(e) => {
-                                                    const value = e.target.value ? Number(e.target.value) : 0
-                                                    updateConfig('grid.borderDashOffset', value)
-                                                    updateConfig('border.dashOffset', value)
-                                                }}
-                                                placeholder="0"
-                                                className="h-8 text-xs bg-white"
-                                                min={0}
-                                                max={20}
-                                                step={1}
-                                            />
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] text-slate-500 font-medium">Offset</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={config?.grid?.borderDashOffset ?? config?.border?.dashOffset ?? ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value ? Number(e.target.value) : 0
+                                                        updateConfig('grid.borderDashOffset', value)
+                                                        updateConfig('border.dashOffset', value)
+                                                    }}
+                                                    placeholder="0"
+                                                    className="h-8 text-xs bg-white"
+                                                    min={0}
+                                                    max={20}
+                                                    step={1}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

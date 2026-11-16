@@ -192,6 +192,9 @@ export function PromptTemplate({
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-center">
               Generate As
             </label>
+            <span className="text-[10px] text-slate-400 text-center leading-tight">
+              1 credit / chart, 2 credits / template
+            </span>
             <ToggleGroup
               type="single"
               value={generateMode}

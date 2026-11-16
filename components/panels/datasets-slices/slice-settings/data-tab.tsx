@@ -32,14 +32,12 @@ export function DataTab({
     const [showImportModal, setShowImportModal] = useState(false)
     const [showAllRows, setShowAllRows] = useState(false)
 
-    if (!currentDataset) return null
-
-    const totalPoints = currentDataset.data?.length || 0
+    const totalPoints = currentDataset?.data?.length || 0
     const isDense = totalPoints > 50 || selectedGroupChartType === 'timeline'
 
     // Compute summary stats for dense datasets
     const stats = useMemo(() => {
-        if (!isDense || totalPoints === 0) return null
+        if (!currentDataset || !isDense || totalPoints === 0) return null
 
         const firstLabel = currentSliceLabels[0] || 'Start'
         const lastLabel = currentSliceLabels[currentSliceLabels.length - 1] || 'End'
@@ -70,7 +68,9 @@ export function DataTab({
             avgVal,
             lastVal: typeof lastVal === 'number' ? lastVal.toLocaleString() : lastVal
         }
-    }, [isDense, totalPoints, currentDataset.data, currentSliceLabels])
+    }, [currentDataset, isDense, totalPoints, currentSliceLabels])
+
+    if (!currentDataset) return null
 
     return (
         <div className="space-y-4">
