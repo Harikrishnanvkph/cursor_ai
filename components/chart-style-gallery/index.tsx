@@ -7,7 +7,7 @@ import { X, Palette, SlidersHorizontal, Sparkles, ChevronDown, RefreshCw, Check 
 import { toast } from "sonner"
 import { PresetCard } from "./preset-card"
 import { PresetFilters } from "./preset-filters"
-import type { ChartStylePreset } from "@/lib/chart-style-types"
+import type { ChartStylePreset, PresetDimensions } from "@/lib/chart-style-types"
 import { checkPresetCompatibility } from "@/lib/chart-style-engine"
 import { parseDimension } from "@/lib/utils/dimension-utils"
 import { PresetPreviewDialog } from "./preset-preview-dialog"
@@ -198,7 +198,10 @@ export function ChartStyleGallery() {
     setVisibleCount(prev => prev + PAGE_SIZE)
   }, [])
 
-  const handleApplyPreset = useCallback((preset: ChartStylePreset) => {
+  const handleApplyPreset = useCallback((
+    preset: ChartStylePreset,
+    explicitTargetDimensions?: PresetDimensions | null
+  ) => {
     if (!hasChartData) {
       toast.error("Generate a chart first, then apply a style.")
       return
@@ -220,22 +223,20 @@ export function ChartStyleGallery() {
           })
           useChartStyleStore.getState().setSelectedPresetId('preset-simple')
           closeGallery()
-          toast.success("Reverted to original AI-generated chart style.")
         } else {
           useChartStyleStore.getState().setSelectedPresetId(null)
           closeGallery()
-          toast.info("Original style restored.")
         }
       } catch (e) {
         useChartStyleStore.getState().setSelectedPresetId(null)
         closeGallery()
-        toast.info("Original style restored.")
       }
       return
     }
 
     const { warnings } = checkPresetCompatibility(preset, chartData)
-    const success = applyPreset(preset.id, !!preset.dimensions)
+    const shouldApplyDims = explicitTargetDimensions ? true : !!preset.dimensions
+    const success = applyPreset(preset.id, shouldApplyDims, explicitTargetDimensions ?? null)
 
     if (success) {
       closeGallery()

@@ -31,28 +31,31 @@ import {
  */
 export async function generateChartHTML(options: HTMLExportOptions = {}) {
     const storeState = useChartStore.getState();
-    const {
-        chartType,
-        chartData,
-        chartMode,
-        activeDatasetIndex,
-        legendFilter,
-        activeGroupId
-    } = storeState;
+    const hasOverrideState = Boolean(options.chartDataOverride || options.chartConfigOverride || options.chartTypeOverride);
+    const chartType = options.chartTypeOverride ?? storeState.chartType;
+    const chartData = options.chartDataOverride ?? storeState.chartData;
+    const chartMode = options.chartModeOverride ?? storeState.chartMode;
+    const activeDatasetIndex = hasOverrideState ? 0 : storeState.activeDatasetIndex;
+    const legendFilter = hasOverrideState ? { datasets: {}, slices: {} } : storeState.legendFilter;
+    const activeGroupId = hasOverrideState
+        ? ((chartData?.datasets?.find((d: any) => typeof d.groupId === 'string')?.groupId) || 'default')
+        : storeState.activeGroupId;
 
     // Resolve per-chart config (same logic as use-chart-state hooks)
-    let chartConfig = storeState.chartConfig;
-    if (chartMode === 'single') {
-        const ds = chartData?.datasets?.[activeDatasetIndex];
-        chartConfig = (ds as any)?.chartConfig ?? chartConfig;
-    } else {
-        const group = (storeState as any).groups?.find((g: any) => g.id === activeGroupId);
-        chartConfig = group?.chartConfig ?? chartConfig;
+    let chartConfig = options.chartConfigOverride ?? storeState.chartConfig;
+    if (!options.chartConfigOverride) {
+        if (chartMode === 'single') {
+            const ds = chartData?.datasets?.[activeDatasetIndex];
+            chartConfig = (ds as any)?.chartConfig ?? chartConfig;
+        } else {
+            const group = (storeState as any).groups?.find((g: any) => g.id === activeGroupId);
+            chartConfig = group?.chartConfig ?? chartConfig;
+        }
     }
 
     // Map custom chart types to actual Chart.js types
     // In grouped mixed mode, the base chart type should be 'bar' (each dataset has its own type)
-    const uniformityMode = (storeState as any).uniformityMode || 'uniform';
+    const uniformityMode = (chartConfig as any)?.visualSettings?.uniformityMode || (!hasOverrideState ? (storeState as any).uniformityMode : undefined) || 'uniform';
     let mappedChartType: string;
     if (chartMode !== 'single' && uniformityMode === 'mixed') {
         mappedChartType = 'bar';
@@ -629,7 +632,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         originalChartType: chartType
     };
 
-    const decorationShapes = useDecorationStore.getState().shapes || [];
+    const decorationShapes = options.decorationShapesOverride ?? (useDecorationStore.getState().shapes || []);
     const decorationsSVG = decorationShapes.length > 0 ? generateDecorationsSVG(decorationShapes, width, height) : "";
     const decorationsCSS = decorationShapes.length > 0 ? generateDecorationsCSS() : "";
 
@@ -654,6 +657,32 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     // Get Chart.js CDN version (using latest stable)
     const chartJsVersion = "4.4.1";
     const reactChartJsVersion = "5.2.0";
+
+    const fallbackBg = (enhancedChartConfig as any)?.background || { type: 'color', color: backgroundColor };
+    const fallbackBgOpacity = typeof fallbackBg.opacity === 'number' ? fallbackBg.opacity : 100;
+    let fallbackWrapperBgStyle = '';
+    let fallbackBgLayerHTML = '';
+
+    if (fallbackBg.type === 'image' && fallbackBg.imageUrl) {
+        const baseColor = fallbackBg.imageWhiteBase !== false ? (fallbackBg.imageBaseColor || '#ffffff') : 'transparent';
+        const imgFit = fallbackBg.imageFit === 'fill' ? '100% 100%' : (fallbackBg.imageFit === 'contain' ? 'contain' : 'cover');
+        const imgUrl = fallbackBg.imageUrl.startsWith('data:') ? fallbackBg.imageUrl : JSON.stringify(fallbackBg.imageUrl);
+        const blurCss = fallbackBg.blur ? `; filter: blur(${fallbackBg.blur}px)` : '';
+        fallbackWrapperBgStyle = `background-color: ${baseColor}; overflow: hidden;`;
+        fallbackBgLayerHTML = `<div class="chart-background" style="position: absolute; inset: 0; z-index: 0; background-image: url(${imgUrl}); background-size: ${imgFit}; background-position: center; background-repeat: no-repeat; opacity: ${fallbackBgOpacity / 100}; pointer-events: none${blurCss};"></div>`;
+    } else if (fallbackBg.type === 'gradient') {
+        const c1 = fallbackBg.gradientColor1 || '#ffffff';
+        const c2 = fallbackBg.gradientColor2 || '#000000';
+        const gType = fallbackBg.gradientType || 'linear';
+        const gDir = fallbackBg.gradientDirection || 'to right';
+        const grad = gType === 'radial' ? `radial-gradient(circle, ${c1}, ${c2})` : `linear-gradient(${gDir}, ${c1}, ${c2})`;
+        fallbackBgLayerHTML = `<div class="chart-background" style="position: absolute; inset: 0; z-index: 0; background-image: ${grad}; opacity: ${fallbackBgOpacity / 100}; pointer-events: none;"></div>`;
+    } else if (fallbackBg.type === 'transparent') {
+        fallbackWrapperBgStyle = 'background-color: transparent;';
+    } else if (fallbackBg.type === 'color' || fallbackBg.type === undefined) {
+        const hexOpacity = Math.round(fallbackBgOpacity * 2.55).toString(16).padStart(2, '0');
+        fallbackWrapperBgStyle = `background-color: ${(fallbackBg.color || backgroundColor)}${hexOpacity};`;
+    }
 
     // Generate the complete HTML structure
     const htmlContent = `<!DOCTYPE html>
@@ -714,6 +743,7 @@ ${googleFontsHTML ? googleFontsHTML + '\n' : ''}
             height: ${height}px;
             max-width: 100%;
             margin: 0 auto;
+            ${fallbackWrapperBgStyle}
         }
         
         .chart-canvas {
@@ -777,6 +807,7 @@ ${googleFontsHTML ? googleFontsHTML + '\n' : ''}
         <h1 class="chart-title">${title}</h1>
         
         <div class="chart-wrapper">
+            ${fallbackBgLayerHTML}
             <canvas id="chartCanvas" class="chart-canvas" style="position: relative; z-index: 1;"></canvas>
             ${decorationsSVG}
         </div>

@@ -166,7 +166,7 @@ export function TabletLandingView({
   }, [currentSnapshotId])
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex overflow-hidden font-sans">
+    <div className="fixed inset-0 w-full h-full bg-white dark:bg-slate-950 flex overflow-hidden font-sans">
       <AnimatedBackground />
 
       {/* Header */}
@@ -226,7 +226,6 @@ export function TabletLandingView({
                 onClick={() => {
                   if (window.confirm("Are you sure you want to clear the current workspace and chat?")) {
                     handleResetChart()
-                    toast.success("Workspace cleared successfully")
                   }
                 }}
                 className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition-colors cursor-pointer"
@@ -340,7 +339,6 @@ export function TabletLandingView({
                     type="button"
                     onClick={() => {
                       useChatStore.getState().stopGeneration()
-                      toast.info("Generation cancelled")
                     }}
                     className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 text-slate-600 dark:text-slate-300 font-medium transition-colors flex items-center gap-1 cursor-pointer"
                   >
@@ -377,8 +375,8 @@ export function TabletLandingView({
       {/* Overlaying Right Sidebar (Non-blocking transparent backdrop) */}
       {tabletRightSidebarOpen && (
         <div className="fixed inset-0 z-50">
-          {/* Non-dimming click-outside backdrop so chart remains visible */}
-          <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-[1px]" onClick={closeTabletSidebar} />
+          {/* Non-blur click-outside backdrop so chart remains sharp and visible */}
+          <div className="absolute inset-0 bg-slate-950/25" onClick={closeTabletSidebar} />
 
           {/* Sidebar */}
           <div className="absolute right-0 top-0 bottom-0 w-80 bg-white dark:bg-slate-950 shadow-2xl border-l border-slate-200/80 dark:border-slate-800 flex flex-col transition-colors">

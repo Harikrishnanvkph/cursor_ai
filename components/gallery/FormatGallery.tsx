@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useMemo } from "react"
+import React, { useEffect, useState, useMemo, useRef } from "react"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
@@ -16,6 +16,7 @@ import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { getStandardAspectRatio } from "@/lib/utils/dimension-utils"
 import { ContentBankDrawer } from "@/components/gallery/ContentBankDrawer"
 import { FormatRichEditorDialog } from "@/components/format/FormatRichEditorDialog"
+import { trackUnsplashDownload } from "@/lib/utils/unsplash-utils"
 
 const FORMAT_PAGE_SIZE = 8
 
@@ -160,6 +161,24 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     loadFormats()
   }, [])
 
+  const contextualPhotoMetaRef = useRef<{
+    url: string
+    photoId?: string | null
+    downloadLocation?: string | null
+    tracked: boolean
+  } | null>(null)
+
+  const trackContextualPhotoIfUsed = () => {
+    const meta = contextualPhotoMetaRef.current
+    if (meta && !meta.tracked && contextualImageUrl && meta.url === contextualImageUrl) {
+      meta.tracked = true
+      trackUnsplashDownload({
+        downloadLocation: meta.downloadLocation,
+        photoId: meta.photoId,
+      })
+    }
+  }
+
   // Fetch contextual image when content package is ready
   useEffect(() => {
     const activePkg = effectiveContentPackage || localContentPackage
@@ -168,6 +187,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
       : activePkg?.keywords
 
     if (!keywords?.length) {
+      contextualPhotoMetaRef.current = null
       setContextualImageUrl(null)
       return
     }
@@ -179,6 +199,12 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
         if (res.ok) {
           const data = await res.json()
           if (data.url) {
+            contextualPhotoMetaRef.current = {
+              url: data.url,
+              photoId: data.photoId,
+              downloadLocation: data.downloadLocation,
+              tracked: false,
+            }
             setContextualImageUrl(data.url)
           }
         }
@@ -256,6 +282,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
           templateStore.setEditorMode('template')
           templateStore.setGenerateMode('format')
           const rendered = renderFormat(format, contentToApply, chartType || undefined, contextualImageUrl || undefined)
+          trackContextualPhotoIfUsed()
           setSelectedFormat(format.id, rendered.chartType)
           // Snap State: Capture initial state of newly applied format
           try {
@@ -264,7 +291,6 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
           } catch (e) {}
           closeGallery()
           if (setLeftSidebarOpen) setLeftSidebarOpen(true)
-          toast.success(`Template "${format.name}" applied!`)
           return
         } catch (err) {
           console.error('Failed to render format:', err)
@@ -293,15 +319,14 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     if (contentToApply) {
       try {
         const rendered = renderFormat(previewFormat, contentToApply, chartType || undefined, contextualImageUrl || undefined)
+        trackContextualPhotoIfUsed()
         setSelectedFormat(previewFormat.id, rendered.chartType)
-        toast.success(`Template "${previewFormat.name}" selected!`)
       } catch (err) {
         console.error('Failed to render format:', err)
         toast.error('Failed to apply template')
       }
     } else {
       setSelectedFormat(previewFormat.id, chartType || 'bar')
-      toast.info(`Template "${previewFormat.name}" selected. Generate a chart to see it applied.`)
     }
 
     // Once handled, close gallery and automatically open the chat sidebar for immediate usage

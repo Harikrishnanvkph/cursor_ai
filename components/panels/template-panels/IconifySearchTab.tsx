@@ -220,7 +220,6 @@ export function IconifySearchTab({
     })
     setSelectedShapeId(newId)
     setDrawingMode(null)
-    toast.success(`Added ${element.name} to canvas!`)
   }
 
   // ── Icons & Emojis Search state ──
@@ -416,9 +415,6 @@ export function IconifySearchTab({
 
       setSelectedShapeId(newId)
       setDrawingMode(null)
-
-      const shortName = fullName.split(":")[1] || fullName
-      toast.success(`Added "${shortName.replace(/-/g, " ")}" to canvas!`)
     } catch (err) {
       console.error("[Vector Add] Failed:", err)
       toast.error("Failed to load SVG vector")

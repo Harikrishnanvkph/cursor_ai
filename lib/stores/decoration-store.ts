@@ -87,6 +87,8 @@ export interface DecorationShape {
   fontWeight?: string
   fontStyle?: string
   textDecoration?: string
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
+  letterSpacing?: number
   textAlign?: 'left' | 'center' | 'right'
   textColor?: string
   lineHeight?: number

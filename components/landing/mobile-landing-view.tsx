@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
-  Menu, SquarePen, MoreVertical, Pencil, Check, Loader2, Palette, Maximize2,
+  Menu, SquarePen, MoreVertical, Pencil, Check, Loader2, Palette,
   Cloud, Share2, ChevronDown, Copy, ExternalLink, Download, FileImage, FileCode,
   FileText, Trash2, ChartColumnBig, MessageCircleDashed, LineChart, PieChart,
   BarChart2, ArrowRight, Sparkles, Settings, Plus, Square, ArrowUp, Zap, Bot,
@@ -234,7 +234,7 @@ export function MobileLandingView({
       }
       const shareUrl = `${window.location.origin}/share/${response.data.share_id}`
       newWindow.location.href = shareUrl
-      toast.success("Opened share link!", { id: "share-link" })
+      toast.dismiss("share-link")
     } catch (err: any) {
       newWindow.close()
       toast.error(err.message || "Failed to generate share link.", { id: "share-link" })
@@ -464,17 +464,6 @@ export function MobileLandingView({
                 </DropdownMenuItem>
               )}
 
-              {/* 3.5 Fullscreen Trigger */}
-              <DropdownMenuItem
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('triggerFullscreen'))
-                }}
-                className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
-              >
-                <Maximize2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                <span>Fullscreen</span>
-              </DropdownMenuItem>
-
               {/* 4. Save Chart/Template to Cloud */}
               <DropdownMenuItem
                 onSelect={handleSaveToCloudClick}
@@ -644,7 +633,6 @@ export function MobileLandingView({
                 onClick={() => {
                   if (window.confirm("Are you sure you want to clear the current workspace and chat?")) {
                     handleResetChart()
-                    toast.success("Workspace cleared successfully")
                   }
                 }}
                 className="flex items-center gap-2 px-2.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium cursor-pointer"
@@ -679,7 +667,6 @@ export function MobileLandingView({
                       type="button"
                       onClick={() => {
                         useChatStore.getState().stopGeneration()
-                        toast.info("Generation cancelled")
                       }}
                       className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 text-slate-600 dark:text-slate-300 font-medium transition-colors flex items-center gap-1 cursor-pointer"
                     >
@@ -937,7 +924,6 @@ export function MobileLandingView({
                 type="button"
                 onClick={() => {
                   useChatStore.getState().stopGeneration()
-                  toast.info("Generation cancelled")
                 }}
                 className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 bg-red-500 hover:bg-red-600 text-white shadow-xs cursor-pointer"
                 title="Stop generation"

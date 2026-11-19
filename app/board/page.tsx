@@ -605,56 +605,40 @@ function BoardPageContent() {
 
             {/* Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {/* Single dropdown for My Charts vs My Images (hidden below 450px, available in mobile sidebar) */}
-              <div className="hidden phab:block">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 px-2.5 sm:px-3 text-xs font-semibold rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-none transition-all gap-1.5 flex items-center justify-center shrink-0"
-                    >
-                      {viewTab === "charts" ? (
-                        <>
-                          <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                          <span>My Charts</span>
-                        </>
-                      ) : (
-                        <>
-                          <ImageIcon className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                          <span>My Images</span>
-                        </>
-                      )}
-                      <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500 shrink-0 ml-0.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40 p-1 z-50 font-sans">
-                    <DropdownMenuItem
-                      onClick={() => setViewTab("charts")}
-                      className={`text-xs font-medium gap-2 cursor-pointer rounded-md ${
-                        viewTab === "charts"
-                          ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
-                          : "text-slate-700 dark:text-slate-300"
-                      }`}
-                    >
-                      <BarChart3 className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                      <span className="flex-1">My Charts</span>
-                      {viewTab === "charts" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setViewTab("images")}
-                      className={`text-xs font-medium gap-2 cursor-pointer rounded-md ${
-                        viewTab === "images"
-                          ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
-                          : "text-slate-700 dark:text-slate-300"
-                      }`}
-                    >
-                      <ImageIcon className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                      <span className="flex-1">My Images</span>
-                      {viewTab === "images" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              {/* 1-Click Segmented Toggle Pill for My Charts vs My Images (hidden below 450px, available in mobile sidebar) */}
+              <div
+                role="tablist"
+                aria-label="Board View"
+                className="hidden phab:flex items-center gap-0.5 h-9 p-1 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shrink-0"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === "charts"}
+                  onClick={() => setViewTab("charts")}
+                  className={`h-full px-2 sm:px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+                    viewTab === "charts"
+                      ? "bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-xs border border-slate-200/60 dark:border-slate-600/60"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent"
+                  }`}
+                >
+                  <BarChart3 className={`h-3.5 w-3.5 shrink-0 ${viewTab === "charts" ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                  <span><span className="hidden sm:inline">My </span>Charts</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === "images"}
+                  onClick={() => setViewTab("images")}
+                  className={`h-full px-2 sm:px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+                    viewTab === "images"
+                      ? "bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-xs border border-slate-200/60 dark:border-slate-600/60"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent"
+                  }`}
+                >
+                  <ImageIcon className={`h-3.5 w-3.5 shrink-0 ${viewTab === "images" ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                  <span><span className="hidden sm:inline">My </span>Images</span>
+                </button>
               </div>
 
               <div className="w-[1px] h-4 sm:h-5 bg-slate-200 dark:bg-slate-700 mx-0.5 sm:mx-1 shrink-0 hidden phab:block"></div>
@@ -1420,7 +1404,6 @@ function MyImagesManager({ loadConversationsFromBackend }: MyImagesManagerProps)
   const handleCopyUrl = (id: string, url: string) => {
     navigator.clipboard.writeText(url)
     setCopiedId(id)
-    toast.success("Image URL copied to clipboard!")
     setTimeout(() => setCopiedId(null), 2000)
   }
 

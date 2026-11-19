@@ -4,20 +4,15 @@ export default function EditorLoading() {
   return (
     <>
       {/* Center Area minimal generic loader - App Shell Architecture */}
-      <div className="flex-1 pr-4 pl-1 pt-2 pb-4 h-full overflow-hidden flex flex-col relative z-10 bg-transparent">
+      <div className="flex-1 pr-4 pl-1 pt-2 pb-4 h-full overflow-hidden flex flex-col relative z-10 bg-white">
         <div className="flex flex-1 items-center justify-center h-full relative">
-          <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
-            <div className="relative">
-              {/* Outer spinning ring */}
-              <div className="w-16 h-16 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin shadow-lg"></div>
-              {/* Inner pulsing core */}
-              <div className="absolute inset-0 m-auto w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 animate-pulse"></div>
-            </div>
+          <div className="flex flex-col items-center gap-3.5">
+            <div className="w-10 h-10 rounded-full border-[3px] border-slate-200 border-t-violet-600 animate-spin" />
             <div className="flex flex-col items-center">
-              <span className="text-sm font-semibold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 animate-pulse">
+              <span className="text-sm font-semibold text-slate-800 tracking-tight">
                 Preparing Editor
               </span>
-              <span className="text-xs text-gray-400 mt-1">Loading workspace...</span>
+              <span className="text-xs text-slate-500 mt-0.5">Loading workspace...</span>
             </div>
           </div>
         </div>

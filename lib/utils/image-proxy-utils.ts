@@ -1,8 +1,15 @@
 // Utility for routing restricted images through the backend proxy
 
+const UNSPLASH_HOTLINK_HOSTS = new Set(['images.unsplash.com', 'plus.unsplash.com']);
+
+function isUnsplashHotlinkHost(hostname: string): boolean {
+    return UNSPLASH_HOTLINK_HOSTS.has(hostname.toLowerCase());
+}
+
 /**
  * Checks if a URL requires proxying to bypass CORS or hotlinking protection
- * Now proxies all external URLs to ensure exports work flawlessly
+ * Proxies external URLs except Unsplash CDN hosts, which must be hotlinked directly
+ * per Unsplash API guidelines so CDN views are tracked accurately.
  */
 export function requiresProxy(url: string): boolean {
     if (!url) return false;
@@ -18,6 +25,11 @@ export function requiresProxy(url: string): boolean {
             return false;
         }
 
+        // Unsplash API guidelines require hotlinking directly from photo.urls (images.unsplash.com)
+        if (isUnsplashHotlinkHost(parsedUrl.hostname)) {
+            return false;
+        }
+
         // Only proxy HTTP/HTTPS
         return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
     } catch (e) {
@@ -28,12 +40,37 @@ export function requiresProxy(url: string): boolean {
 
 /**
  * Returns the proxied URL if necessary, otherwise returns the original URL.
- * It uses the session token to authenticate to the backend proxy route.
+ * For Unsplash CDN URLs, hotlinks directly and maps resize/format options to Imgix query params.
  */
 export function getProxiedImageUrl(
     originalUrl: string, 
     options?: { width?: number; quality?: number; format?: string }
 ): string {
+    if (!originalUrl) {
+        return originalUrl;
+    }
+
+    try {
+        const parsed = new URL(originalUrl);
+        if (
+            (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+            isUnsplashHotlinkHost(parsed.hostname)
+        ) {
+            if (!options) {
+                return originalUrl;
+            }
+            if (options.width) parsed.searchParams.set('w', String(options.width));
+            if (options.quality) parsed.searchParams.set('q', String(options.quality));
+            if (options.format) {
+                parsed.searchParams.set('fm', options.format);
+                parsed.searchParams.set('auto', 'format');
+            }
+            return parsed.toString();
+        }
+    } catch {
+        // Fall through for relative paths or data URIs
+    }
+
     if (!requiresProxy(originalUrl)) {
         return originalUrl;
     }

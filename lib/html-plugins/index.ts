@@ -1,5 +1,6 @@
 import { generateCustomLabelPluginCode } from "./custom-label-plugin-code";
 import { generateUniversalImagePluginCode } from "./image-plugin-code";
+import { generateEnhancedTitlePluginCode } from "./enhanced-title-plugin-code";
 
 import { generateSubtitlePluginCode } from "./subtitle-plugin-code";
 import { generate3DPiePluginCode } from "./3d-pie-plugin-code";
@@ -48,7 +49,16 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     const hasTimelineCrosshair = (chartConfig.plugins as any)?.timelineCrosshair?.enabled !== false &&
         (chartConfig.chartType === 'timeline' || (chartConfig.plugins as any)?.timelineCrosshair !== undefined);
 
+    const hasEnhancedTitle = Boolean(
+        titleConfig?.display &&
+        (titleConfig?.shadow || titleConfig?.stroke || (titleConfig?.rotation !== false && titleConfig?.rotation !== undefined))
+    );
     let pluginCode = '';
+
+    // Add enhanced title plugin if needed
+    if (hasEnhancedTitle) {
+        pluginCode += generateEnhancedTitlePluginCode();
+    }
 
     // Add custom label plugin if needed
     if (hasCustomLabels) {

@@ -219,6 +219,7 @@ export class ChartStateService {
                 sourceTitle: (name !== undefined && name !== null && name.trim() !== "") ? name : (ds.sourceTitle || "Untitled Chart"),
                 // Assign source ID if provided
                 sourceId: ds.sourceId || conversationId || id,
+                sourceSnapshotId: ds.sourceSnapshotId || id,
                 // Ensure the dataset owns its labels so they aren't lost
                 sliceLabels: ds.sliceLabels && ds.sliceLabels.length > 0 
                     ? ds.sliceLabels 
@@ -266,6 +267,7 @@ export class ChartStateService {
                 isDefault: false,
                 createdAt: Date.now(),
                 sourceId: conversationId || id,
+                sourceSnapshotId: id,
                 sourceTitle: name,
                 chartConfig: JSON.parse(JSON.stringify(chartConfig)) // Per-group config
             };

@@ -229,19 +229,16 @@ function LandingPageContent() {
   const handleSaveChart = useCallback(async (name: string) => {
     setIsSaving(true)
     try {
-      toast.loading("Saving chart to cloud...", { id: "save-toast" })
       await saveChartToCloud({
         chartName: name,
         user,
-        onSaveComplete: (res) => {
+        onSaveComplete: () => {
           setIsSaving(false)
           setShowSaveChartDialog(false)
-          toast.success(res.isUpdate ? "Chart updated successfully!" : "Chart saved successfully!", { id: "save-toast" })
         }
       })
     } catch {
       setIsSaving(false)
-      toast.error("Failed to save chart.", { id: "save-toast" })
     }
   }, [user])
 
@@ -594,7 +591,7 @@ function LandingPageContent() {
 
       {/* Skeleton overlay: covers the content area until chart/format is fully painted */}
       {(!storeHydrated || (!contentReady && hasJSON)) && (
-        <div className="absolute inset-0 z-20 bg-slate-50/90 backdrop-blur-sm rounded-l-2xl">
+        <div className="absolute inset-0 z-20 bg-white dark:bg-slate-950 rounded-l-2xl">
           <ChartAreaSkeleton />
         </div>
       )}
@@ -612,7 +609,6 @@ function LandingPageContent() {
                 type="button"
                 onClick={() => {
                   useChatStore.getState().stopGeneration()
-                  toast.info("Generation cancelled")
                 }}
                 className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 text-slate-600 dark:text-slate-300 font-medium transition-colors flex items-center gap-1 cursor-pointer"
               >

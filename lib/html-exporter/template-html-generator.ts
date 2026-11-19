@@ -32,19 +32,21 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     pluginsScript: string
     chartContainer: string
 }> {
-    const {
-        chartType,
-        chartData,
-        chartConfig,
-        chartMode,
-        activeDatasetIndex,
-        legendFilter,
-        activeGroupId
-    } = useChartStore.getState();
+    const storeState = useChartStore.getState();
+    const hasOverrideState = Boolean(options.chartDataOverride || options.chartConfigOverride || options.chartTypeOverride);
+    const chartType = options.chartTypeOverride ?? storeState.chartType;
+    const chartData = options.chartDataOverride ?? storeState.chartData;
+    const chartConfig = options.chartConfigOverride ?? storeState.chartConfig;
+    const chartMode = options.chartModeOverride ?? storeState.chartMode;
+    const activeDatasetIndex = hasOverrideState ? 0 : storeState.activeDatasetIndex;
+    const legendFilter = hasOverrideState ? { datasets: {}, slices: {} } : storeState.legendFilter;
+    const activeGroupId = hasOverrideState
+        ? ((chartData?.datasets?.find((d: any) => typeof d.groupId === 'string')?.groupId) || 'default')
+        : storeState.activeGroupId;
 
     // Map custom chart types to actual Chart.js types
     // In grouped mixed mode, the base chart type should be 'bar' (each dataset has its own type)
-    const uniformityMode = (useChartStore.getState() as any).uniformityMode || 'uniform';
+    const uniformityMode = (chartConfig as any)?.visualSettings?.uniformityMode || (!hasOverrideState ? (storeState as any).uniformityMode : undefined) || 'uniform';
     let mappedChartType: string;
     if (chartMode !== 'single' && uniformityMode === 'mixed') {
         mappedChartType = 'bar';
@@ -54,14 +56,15 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
 
     // Resolve visual settings from the per-chart config (same logic as use-chart-state hooks)
     // This ensures we read the same truth the UI and chart_generator see.
-    const storeState = useChartStore.getState();
     let resolvedConfig = chartConfig;
-    if (storeState.chartMode === 'single') {
-        const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex];
-        resolvedConfig = ds?.chartConfig ?? chartConfig;
-    } else {
-        const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId);
-        resolvedConfig = group?.chartConfig ?? chartConfig;
+    if (!options.chartConfigOverride) {
+        if (storeState.chartMode === 'single') {
+            const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex];
+            resolvedConfig = ds?.chartConfig ?? chartConfig;
+        } else {
+            const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId);
+            resolvedConfig = group?.chartConfig ?? chartConfig;
+        }
     }
     const visualSettings = (resolvedConfig as any)?.visualSettings ?? {};
     const effectiveShowImages = options.showImages ?? visualSettings.showImages ?? true;
@@ -802,8 +805,8 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     const bgOpacity = typeof bg.opacity === 'number' ? bg.opacity : 100;
 
     if (bg.type === 'image' && bg.imageUrl) {
-        const whiteBase = bg.imageWhiteBase !== false ? '#ffffff' : 'transparent';
-        backgroundHTML = `<div style="position: absolute; inset: 0; z-index: 0; background-color: ${whiteBase}; overflow: hidden; pointer-events: none;"><div style="position: absolute; inset: 0; background-image: url('${bg.imageUrl}'); background-size: ${bg.imageFit === 'fill' ? '100% 100%' : (bg.imageFit === 'contain' ? 'contain' : 'cover')}; background-position: center; background-repeat: no-repeat; opacity: ${bgOpacity / 100}; pointer-events: none; ${bg.blur ? `filter: blur(${bg.blur}px);` : ''}"></div></div>`;
+        const baseColor = bg.imageWhiteBase !== false ? (bg.imageBaseColor || '#ffffff') : 'transparent';
+        backgroundHTML = `<div style="position: absolute; inset: 0; z-index: 0; background-color: ${baseColor}; overflow: hidden; pointer-events: none;"><div style="position: absolute; inset: 0; background-image: url('${bg.imageUrl}'); background-size: ${bg.imageFit === 'fill' ? '100% 100%' : (bg.imageFit === 'contain' ? 'contain' : 'cover')}; background-position: center; background-repeat: no-repeat; opacity: ${bgOpacity / 100}; pointer-events: none; ${bg.blur ? `filter: blur(${bg.blur}px);` : ''}"></div></div>`;
     } else if (bg.type === 'gradient') {
         const color1 = bg.gradientColor1 || '#ffffff';
         const color2 = bg.gradientColor2 || '#000000';

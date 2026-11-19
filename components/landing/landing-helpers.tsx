@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react"
 import { Sparkles, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useChatStore } from "@/lib/chat-store"
-import { toast } from "sonner"
 
 // --- Pure Helper Functions ---
 
@@ -59,18 +58,13 @@ export function getChartTypeName(type: string): string {
 export function ChartAreaSkeleton() {
   return (
     <div className="flex flex-1 items-center justify-center h-full relative z-10 bg-transparent">
-      <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
-        <div className="relative">
-          {/* Outer spinning ring */}
-          <div className="w-16 h-16 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin shadow-lg"></div>
-          {/* Inner pulsing core */}
-          <div className="absolute inset-0 m-auto w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 animate-pulse"></div>
-        </div>
+      <div className="flex flex-col items-center gap-3.5">
+        <div className="w-10 h-10 rounded-full border-[3px] border-slate-200 dark:border-slate-800 border-t-violet-600 dark:border-t-violet-400 animate-spin" />
         <div className="flex flex-col items-center">
-          <span className="text-sm font-semibold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 animate-pulse">
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 tracking-tight">
             Preparing Workspace
           </span>
-          <span className="text-xs text-gray-400 mt-1">Loading your context...</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Loading your context...</span>
         </div>
       </div>
     </div>
@@ -112,7 +106,7 @@ export function GenerationProgressView() {
 
   return (
     <div className="flex flex-1 items-center justify-center h-full relative z-10 bg-transparent px-4">
-      <div className="flex flex-col items-center max-w-sm w-full p-8 rounded-3xl bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 shadow-2xl text-center animate-in fade-in zoom-in-95 duration-300">
+      <div className="flex flex-col items-center max-w-sm w-full p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl text-center animate-in fade-in zoom-in-95 duration-200">
         <div className="relative mb-5">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-0.5 shadow-xl shadow-indigo-500/20 animate-pulse">
             <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[14px] flex items-center justify-center">
@@ -156,7 +150,6 @@ export function GenerationProgressView() {
           size="sm"
           onClick={() => {
             useChatStore.getState().stopGeneration()
-            toast.info("Generation cancelled")
           }}
           className="text-xs h-8 px-4 rounded-xl gap-1.5 text-slate-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-200 dark:hover:border-red-900/50 cursor-pointer"
         >
@@ -171,19 +164,16 @@ export function GenerationProgressView() {
 export function AnimatedBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/20 blur-[100px]"></div>
-      <div className="absolute top-1/3 right-0 w-[350px] h-[350px] rounded-full bg-purple-500/10 dark:bg-purple-600/20 blur-[100px]"></div>
-      <div className="absolute bottom-0 left-1/3 w-[300px] h-[300px] rounded-full bg-cyan-400/10 dark:bg-cyan-500/15 blur-[100px]"></div>
-      {/* Grid pattern */}
+      {/* Crisp Grid pattern */}
       <div
-        className="absolute inset-0 transition-opacity duration-300"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px)`,
           backgroundSize: '60px 60px'
         }}
       ></div>
       <div
-        className="absolute inset-0 opacity-0 dark:opacity-100 transition-opacity duration-300"
+        className="absolute inset-0 opacity-0 dark:opacity-100"
         style={{
           backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`,
           backgroundSize: '60px 60px'

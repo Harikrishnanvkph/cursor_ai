@@ -24,8 +24,18 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import type { ContentBankTextBlock, ContentBankTitle, ContentBankSubtitle, ContentBankPhrase, ContentBankSliceImage } from "@/lib/format-types"
+import { UNSPLASH_HOME_URL, trackUnsplashDownload, withUnsplashUtm } from "@/lib/utils/unsplash-utils"
 
 type TabType = "all" | "text" | "titles" | "media" | "sources"
+
+interface UnsplashBankImage {
+  url: string
+  photoId?: string | null
+  authorName?: string | null
+  authorLink?: string | null
+  downloadLocation?: string | null
+  query: string
+}
 
 /** Length tier badge colors */
 const LENGTH_BADGE: Record<string, { label: string; color: string }> = {
@@ -156,8 +166,9 @@ export function ContentBankDrawer() {
   const [activeTab, setActiveTab] = useState<TabType>("all")
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [unsplashQuery, setUnsplashQuery] = useState("")
+  const [emptySearchQuery, setEmptySearchQuery] = useState<string | null>(null)
   const [isSearchingImages, setIsSearchingImages] = useState(false)
-  const [fetchedImages, setFetchedImages] = useState<Array<{ url: string; authorName?: string; query: string }>>([])
+  const [fetchedImages, setFetchedImages] = useState<UnsplashBankImage[]>([])
 
   // Get active format working copy to enumerate available zones
   const activeFormat = useMemo(() => {
@@ -212,7 +223,14 @@ export function ContentBankDrawer() {
             if (res.ok) {
               const data = await res.json()
               if (data.url) {
-                return { url: data.url, authorName: data.authorName, query: q }
+                return {
+                  url: data.url,
+                  photoId: data.photoId,
+                  authorName: data.authorName,
+                  authorLink: data.authorLink,
+                  downloadLocation: data.downloadLocation,
+                  query: q,
+                } as UnsplashBankImage
               }
             }
           } catch (e) {
@@ -222,7 +240,7 @@ export function ContentBankDrawer() {
         })
 
         const settled = await Promise.allSettled(fetchPromises)
-        const results: Array<{ url: string; authorName?: string; query: string }> = []
+        const results: UnsplashBankImage[] = []
         settled.forEach((item) => {
           if (item.status === 'fulfilled' && item.value) {
             if (!results.some(r => r.url === item.value!.url)) {
@@ -247,15 +265,25 @@ export function ContentBankDrawer() {
     if (!unsplashQuery.trim()) return
 
     setIsSearchingImages(true)
+    setEmptySearchQuery(null)
     try {
       const res = await fetch(`/api/unsplash?query=${encodeURIComponent(unsplashQuery.trim())}`)
       if (res.ok) {
         const data = await res.json()
         if (data.url) {
-          setFetchedImages(prev => [{ url: data.url, authorName: data.authorName, query: unsplashQuery.trim() }, ...prev.slice(0, 5)])
-          toast.success(`Found image for "${unsplashQuery.trim()}"`)
+          setFetchedImages(prev => [
+            {
+              url: data.url,
+              photoId: data.photoId,
+              authorName: data.authorName,
+              authorLink: data.authorLink,
+              downloadLocation: data.downloadLocation,
+              query: unsplashQuery.trim(),
+            },
+            ...prev.slice(0, 5),
+          ])
         } else {
-          toast.info(`No image found for "${unsplashQuery.trim()}"`)
+          setEmptySearchQuery(unsplashQuery.trim())
         }
       } else {
         toast.error('Failed to search Unsplash')
@@ -271,7 +299,6 @@ export function ContentBankDrawer() {
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
     setCopiedId(id)
-    toast.success("Copied to clipboard")
     setTimeout(() => setCopiedId(null), 1500)
   }
 
@@ -284,7 +311,6 @@ export function ContentBankDrawer() {
         if (firstText) {
           setZoneContentOverride(firstText.id, content)
           updateZoneContent(firstText.id, content)
-          toast.success(`Applied "${label}" to ${firstText.role || firstText.id}`)
           return
         }
       }
@@ -294,18 +320,19 @@ export function ContentBankDrawer() {
 
     setZoneContentOverride(targetId, content)
     updateZoneContent(targetId, content)
-    const targetName = availableZones.find(z => z.id === targetId)?.role || targetId
-    toast.success(`Applied "${label}" to ${targetName}`)
   }
 
-  const handleApplyImageToBackground = (url: string) => {
-    setContextualImageUrl(url)
+  const handleApplyImageToBackground = (img: UnsplashBankImage) => {
+    trackUnsplashDownload({
+      downloadLocation: img.downloadLocation,
+      photoId: img.photoId,
+    })
+    setContextualImageUrl(img.url)
     const bgZone = availableZones.find(z => z.type === 'background')
     if (bgZone) {
-      setZoneContentOverride(bgZone.id, url)
-      updateZoneContent(bgZone.id, url)
+      setZoneContentOverride(bgZone.id, img.url)
+      updateZoneContent(bgZone.id, img.url)
     }
-    toast.success("Applied image to background")
   }
 
 /** Helper to format text block into HTML or clean plain text, including bullets */
@@ -642,6 +669,11 @@ function getBlockFormattedContent(block: ContentBankTextBlock, asHtml = true): s
                 {isSearchingImages ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Search"}
               </button>
             </form>
+            {emptySearchQuery && (
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/80 rounded-lg px-2.5 py-1.5">
+                No image found for &ldquo;{emptySearchQuery}&rdquo;. Try another keyword.
+              </p>
+            )}
 
             {/* General Images Grid */}
             <div className="space-y-2">
@@ -652,7 +684,13 @@ function getBlockFormattedContent(block: ContentBankTextBlock, asHtml = true): s
                     <div
                       key={idx}
                       draggable={true}
-                      onDragStart={(e) => handleDragStart(e, "image", img.url, `Image (${img.query})`)}
+                      onDragStart={(e) => {
+                        trackUnsplashDownload({
+                          downloadLocation: img.downloadLocation,
+                          photoId: img.photoId,
+                        })
+                        handleDragStart(e, "image", img.url, `Image (${img.query})`)
+                      }}
                       className="group relative rounded-xl border border-gray-200 overflow-hidden bg-gray-100 hover:border-purple-400 hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
                     >
                       <div className="aspect-video w-full overflow-hidden bg-gray-200">
@@ -663,18 +701,42 @@ function getBlockFormattedContent(block: ContentBankTextBlock, asHtml = true): s
                           loading="lazy"
                         />
                       </div>
-                      <div className="p-1.5 bg-white/95 text-[10px] flex items-center justify-between">
-                        <span className="truncate max-w-[90px] font-medium text-gray-700 capitalize" title={img.query}>
-                          {img.query}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleApplyImageToBackground(img.url)}
-                            className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 font-semibold"
-                            title="Set as Canvas Background"
+                      <div className="p-1.5 bg-white/95 text-[10px] space-y-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="truncate max-w-[90px] font-medium text-gray-700 capitalize" title={img.query}>
+                            {img.query}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => handleApplyImageToBackground(img)}
+                              className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 font-semibold"
+                              title="Set as Canvas Background"
+                            >
+                              Set BG
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-[9px] text-gray-500 truncate">
+                          Photo by{" "}
+                          <a
+                            href={withUnsplashUtm(img.authorLink)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="underline hover:text-gray-800"
                           >
-                            Set BG
-                          </button>
+                            {img.authorName || "Unsplash Photographer"}
+                          </a>{" "}
+                          on{" "}
+                          <a
+                            href={UNSPLASH_HOME_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="underline hover:text-gray-800"
+                          >
+                            Unsplash
+                          </a>
                         </div>
                       </div>
                     </div>

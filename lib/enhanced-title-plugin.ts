@@ -2,6 +2,12 @@
 // Adds support for text shadow, outline (stroke), and rotation
 
 import { Chart, Plugin } from 'chart.js';
+import {
+  applyTextTransformToContent,
+  buildCanvasFont,
+  drawCanvasTextDecoration,
+  withCanvasLetterSpacing,
+} from '@/lib/utils/font-decoration';
 
 export const enhancedTitlePlugin: Plugin = {
   id: 'enhancedTitle',
@@ -22,18 +28,23 @@ export const enhancedTitlePlugin: Plugin = {
     
     const ctx = chart.ctx;
     const chartArea = chart.chartArea;
-    const text = titleConfig.text || '';
+    const font = titleConfig.font || {};
+    const rawText = titleConfig.text || '';
+    const transformed = applyTextTransformToContent(rawText, font.textTransform);
+    const text = Array.isArray(transformed) ? transformed.join(' ') : String(transformed);
     
     if (!text) return;
     
     // Get title position and dimensions
     const position = titleConfig.position || 'top';
     const align = titleConfig.align || 'center';
-    const padding = titleConfig.padding || 10;
-    const font = titleConfig.font || {};
+    const padding = typeof titleConfig.padding === 'number'
+      ? titleConfig.padding
+      : (titleConfig.padding?.top ?? 10);
     const fontSize = font.size || 16;
     const fontFamily = font.family || 'Arial';
     const fontWeight = font.weight || '700';
+    const fontStyle = font.style || 'normal';
     const color = titleConfig.color || '#000000';
     
     // Calculate position
@@ -49,8 +60,13 @@ export const enhancedTitlePlugin: Plugin = {
     
     ctx.save();
     
-    // Set font
-    ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+    // Set font (including style: italic/oblique)
+    ctx.font = buildCanvasFont({
+      style: fontStyle,
+      weight: fontWeight,
+      size: fontSize,
+      family: fontFamily,
+    });
     ctx.textAlign = align === 'start' ? 'left' : align === 'end' ? 'right' : 'center';
     ctx.textBaseline = 'middle';
     
@@ -71,19 +87,26 @@ export const enhancedTitlePlugin: Plugin = {
       ctx.shadowOffsetY = shadow.offsetY || 2;
     }
     
-    // Apply text outline (stroke)
-    if (titleConfig.stroke) {
-      const stroke = titleConfig.stroke;
-      ctx.strokeStyle = stroke.color || '#000000';
-      ctx.lineWidth = stroke.width || 1;
-      ctx.lineJoin = 'round';
-      ctx.miterLimit = 2;
-      ctx.strokeText(text, x, y);
-    }
-    
-    // Draw the main text
-    ctx.fillStyle = color;
-    ctx.fillText(text, x, y);
+    // Draw text outline, fill text, and underline/strikethrough with optional letterSpacing
+    withCanvasLetterSpacing(ctx, font.letterSpacing, () => {
+      if (titleConfig.stroke) {
+        const stroke = titleConfig.stroke;
+        ctx.strokeStyle = stroke.color || '#000000';
+        ctx.lineWidth = stroke.width || 1;
+        ctx.lineJoin = 'round';
+        ctx.miterLimit = 2;
+        ctx.strokeText(text, x, y);
+      }
+
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+      drawCanvasTextDecoration(ctx, text, x, y, {
+        underline: Boolean(font.underline),
+        strikethrough: Boolean(font.strikethrough),
+        color,
+        fontSize,
+      });
+    });
     
     // Reset shadow to avoid affecting other elements
     ctx.shadowColor = 'transparent';

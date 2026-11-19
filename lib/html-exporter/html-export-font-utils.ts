@@ -1,4 +1,5 @@
 import { findFontByInput } from "@/lib/typography-registry";
+import { generateNativeChartJsFontPatchScript } from "@/lib/utils/font-decoration";
 
 /**
  * Standard system fonts that do not require external network requests.
@@ -75,11 +76,16 @@ export function collectAllChartFonts(chartConfig: any, chartData?: any, shapes?:
         if (sc) {
           addFont(sc.title?.font?.family);
           addFont(sc.ticks?.font?.family);
+          addFont(sc.ticks?.major?.font?.family);
+          addFont(sc.pointLabels?.font?.family);
         }
       });
     }
 
     // 6. Custom labels
+    if (chartConfig.plugins?.customLabelsConfig) {
+      addFont(chartConfig.plugins.customLabelsConfig.fontFamily);
+    }
     if (chartConfig.plugins?.customLabels) {
       addFont(chartConfig.plugins.customLabels.fontFamily);
       if (Array.isArray(chartConfig.plugins.customLabels.labels)) {
@@ -90,17 +96,25 @@ export function collectAllChartFonts(chartConfig: any, chartData?: any, shapes?:
       }
     }
 
+    // 6b. Gauge
+    addFont(chartConfig.plugins?.gauge?.valueFontFamily);
+    addFont(chartConfig.plugins?.gauge?.minMaxFontFamily);
+
     // 7. Watermark
     addFont(chartConfig.plugins?.watermark?.font?.family);
     addFont(chartConfig.plugins?.watermark?.fontFamily);
   }
 
-  // 8. Datasets font options (datalabels, etc.)
+  // 8. Datasets font options (datalabels, customLabelsConfig, sliceLabelOverrides, etc.)
   if (chartData && Array.isArray(chartData.datasets)) {
     chartData.datasets.forEach((ds: any) => {
       addFont(ds.fontFamily);
       addFont(ds.font?.family);
       addFont(ds.datalabels?.font?.family);
+      addFont(ds.customLabelsConfig?.fontFamily);
+      if (ds.sliceLabelOverrides && typeof ds.sliceLabelOverrides === 'object') {
+        Object.values(ds.sliceLabelOverrides).forEach((ov: any) => addFont(ov?.fontFamily));
+      }
     });
   }
 
@@ -256,6 +270,7 @@ export function generatePaddingAndFontPatchesCode(): string {
         console.warn('Scale padding patch error:', e);
     }
 })();
+${generateNativeChartJsFontPatchScript()}
 `;
 }
 

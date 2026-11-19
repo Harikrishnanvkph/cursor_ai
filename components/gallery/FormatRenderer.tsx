@@ -36,7 +36,6 @@ import { ChartGenerator } from "@/lib/chart_generator"
 import { getPatternCSS } from "@/lib/utils"
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 import { Maximize2, X, Move } from "lucide-react"
-import { toast } from "sonner"
 
 // ========================================
 // COLLISION-AWARE RESIZE HELPERS
@@ -322,6 +321,8 @@ interface FormatRendererProps {
   zoomLevel?: number
   /** Force rendering the actual ChartJS canvas locally instead of using ChartGenerator */
   renderLocalCanvas?: boolean
+  /** Isolate ChartGenerator from global Zustand stores while preserving tooltips & animations */
+  isolatedChart?: boolean
 }
 
 export const FormatRenderer = React.memo(function FormatRenderer({
@@ -333,6 +334,7 @@ export const FormatRenderer = React.memo(function FormatRenderer({
   forceRealChart = false,
   zoomLevel = 1,
   renderLocalCanvas = false,
+  isolatedChart = false,
 }: FormatRendererProps) {
   const { skeleton, renderedZones, colorPalette } = rendered
   const { width, height } = skeleton.dimensions
@@ -426,6 +428,7 @@ export const FormatRenderer = React.memo(function FormatRenderer({
             forceRealChart={forceRealChart}
             zoomLevel={zoomLevel}
             renderLocalCanvas={renderLocalCanvas}
+            isolatedChart={isolatedChart}
             allObstacles={allObstacles}
           />
         ))}
@@ -483,6 +486,7 @@ interface ZoneViewProps {
   forceRealChart?: boolean
   zoomLevel?: number
   renderLocalCanvas?: boolean
+  isolatedChart?: boolean
   allObstacles?: Obstacle[]
 }
 
@@ -496,6 +500,7 @@ function ZoneView({
   forceRealChart,
   zoomLevel,
   renderLocalCanvas,
+  isolatedChart,
   allObstacles = []
 }: ZoneViewProps) {
   const { zone } = renderedZone
@@ -578,7 +583,7 @@ function ZoneView({
       content = <TextZoneContent renderedZone={renderedZone} scale={scale} interactive={!!interactive} />
       break
     case 'chart':
-      content = <ChartZoneView renderedZone={renderedZone} scale={scale} style={{}} palette={palette} interactive={interactive} forceRealChart={forceRealChart} zoomLevel={zoomLevel} renderLocalCanvas={renderLocalCanvas} />
+      content = <ChartZoneView renderedZone={renderedZone} scale={scale} style={{}} palette={palette} interactive={interactive} forceRealChart={forceRealChart} zoomLevel={zoomLevel} renderLocalCanvas={renderLocalCanvas} isolatedChart={isolatedChart} />
       break
     case 'stat':
       content = <StatZoneContent renderedZone={renderedZone} scale={scale} interactive={!!interactive} />
@@ -716,21 +721,17 @@ function InteractiveZoneWrapper({
     try {
       const rawData = e.dataTransfer.getData('application/json')
       let content = ''
-      let label = ''
       if (rawData) {
         const parsed = JSON.parse(rawData)
         content = parsed.content || ''
-        label = parsed.label || parsed.category || 'Asset'
       } else {
         content = e.dataTransfer.getData('text/plain') || ''
-        label = 'Text'
       }
 
       if (content) {
         setZoneContentOverride(zoneId, content)
         updateZoneContent(zoneId, content)
         setSelectedZoneId(zoneId)
-        toast.success(`Updated ${zoneRole || zoneType} with ${label}!`)
       }
     } catch (err) {
       console.error('Drop error:', err)
@@ -739,7 +740,6 @@ function InteractiveZoneWrapper({
         setZoneContentOverride(zoneId, plainText)
         updateZoneContent(zoneId, plainText)
         setSelectedZoneId(zoneId)
-        toast.success(`Updated ${zoneRole || zoneType}!`)
       }
     }
   }, [zoneId, zoneRole, zoneType, setZoneContentOverride, updateZoneContent, setSelectedZoneId])
@@ -1233,25 +1233,29 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
 
   const isEditing = interactive && editingZoneId === zone.id
 
-  // Read content from contentPackage directly (reactive) or fallback to resolvedContent
+  // Read content from store contentPackage only in interactive mode;
+  // non-interactive previews/shares must use the resolvedContent produced by renderFormat()
+  // so another chart's persisted localStorage state never leaks in.
   const text = useMemo(() => {
-    if (contentPackage?.zoneOverrides && contentPackage.zoneOverrides[zone.id] !== undefined) {
-      return String(contentPackage.zoneOverrides[zone.id])
-    }
-    if (contentPackage && zone.id && (contentPackage as any)[zone.id] !== undefined) {
-      return String((contentPackage as any)[zone.id])
-    }
-    if ((zone as any).content !== undefined) {
-      return String((zone as any).content)
+    if (interactive) {
+      if (contentPackage?.zoneOverrides && contentPackage.zoneOverrides[zone.id] !== undefined) {
+        return String(contentPackage.zoneOverrides[zone.id])
+      }
+      if (contentPackage && zone.id && (contentPackage as any)[zone.id] !== undefined) {
+        return String((contentPackage as any)[zone.id])
+      }
     }
     if (renderedZone.resolvedContent) {
       return renderedZone.resolvedContent
     }
-    if (contentPackage && zone.role && (contentPackage as any)[zone.role] !== undefined) {
+    if ((zone as any).content !== undefined) {
+      return String((zone as any).content)
+    }
+    if (interactive && contentPackage && zone.role && (contentPackage as any)[zone.role] !== undefined) {
       return String((contentPackage as any)[zone.role])
     }
     return ''
-  }, [contentPackage, zone.id, zone.role, renderedZone.resolvedContent, (zone as any).content])
+  }, [interactive, contentPackage, zone.id, zone.role, renderedZone.resolvedContent, (zone as any).content])
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -1521,6 +1525,7 @@ function ChartZoneView({
   forceRealChart,
   zoomLevel = 1,
   renderLocalCanvas = false,
+  isolatedChart = false,
 }: {
   renderedZone: RenderedZone
   scale: number
@@ -1530,6 +1535,7 @@ function ChartZoneView({
   forceRealChart?: boolean
   zoomLevel?: number
   renderLocalCanvas?: boolean
+  isolatedChart?: boolean
 }) {
   const chartType = renderedZone.resolvedChartType || 'bar'
   const data = renderedZone.resolvedChartData
@@ -1554,11 +1560,13 @@ function ChartZoneView({
       <div style={{ ...containerStyle, padding: 0 }}>
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
           <ChartGenerator
-            readOnly
+            readOnly={!isolatedChart}
+            isolated={isolatedChart}
             dataOverride={data}
             configOverride={config}
             typeOverride={chartType}
             isTemplateOrFormat={true}
+            devicePixelRatioMultiplier={isolatedChart ? Math.max(1, zoomLevel) : 1}
             responsiveWidth={zoneWidth}
             responsiveHeight={zoneHeight}
           />

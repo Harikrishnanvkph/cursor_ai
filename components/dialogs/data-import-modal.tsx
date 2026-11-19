@@ -226,7 +226,6 @@ export function DataImportModal({
         setPastedText(text)
         const cleanName = file.name.replace(/\.[^/.]+$/, "")
         setDatasetTitle(cleanName)
-        toast.success(`Loaded ${file.name}`)
       }
     }
     reader.readAsText(file)

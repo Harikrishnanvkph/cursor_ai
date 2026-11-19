@@ -15,6 +15,7 @@ import ChartGenerator from "@/lib/chart_generator"
 import { TemplateChartPreview } from "@/components/template-chart-preview"
 import { Chart as ChartJS } from "chart.js"
 import { parseDimension, getBackgroundConfig } from "@/lib/utils/dimension-utils"
+import { copyConversationShareLink, openConversationShareLink } from "@/lib/share-utils"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { getChartTypeBadgeClass, formatChartTypeName } from "@/lib/chart-type-meta"
 import { toast } from "sonner"
@@ -75,7 +76,6 @@ interface ChartPreviewModalProps {
 
 export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvanced }: ChartPreviewModalProps) {
   const [activeTab, setActiveTab] = useState("preview")
-  const [shareUrl, setShareUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
@@ -113,11 +113,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   // Check if this is a template mode snapshot - use live data
   const isTemplateMode = liveConversation.snapshot?.is_template_mode && liveConversation.snapshot?.template_structure
-
-  useEffect(() => {
-    // Generate share URL
-    setShareUrl(`${window.location.origin}/chart/${conversation.id}`)
-  }, [conversation.id])
+  const resolvedSnapshotId = liveConversation.snapshot?.id || undefined
 
   // --- Ctrl + mouse wheel/trackpad zoom handler ---
   const { setZoom, attachTouchHandlers } = zoomPan;
@@ -378,12 +374,17 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
   }
 
   const handleCopyShareLink = () => {
-    navigator.clipboard.writeText(shareUrl)
-    toast.success("Share link copied to clipboard!")
+    void copyConversationShareLink({
+      conversationId: conversation.id,
+      snapshotId: resolvedSnapshotId,
+    })
   }
 
   const handleOpenInNewTab = () => {
-    window.open(`/chart/${conversation.id}`, "_blank")
+    void openConversationShareLink({
+      conversationId: conversation.id,
+      snapshotId: resolvedSnapshotId,
+    })
   }
 
   const handleFullscreen = () => {
@@ -498,10 +499,11 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => {
-                        const url = shareTab === "share"
-                          ? `${window.location.origin}/share/${conversation.id}`
-                          : `${window.location.origin}/chart/${conversation.id}`
-                        navigator.clipboard.writeText(url)
+                        void copyConversationShareLink({
+                          conversationId: conversation.id,
+                          snapshotId: resolvedSnapshotId,
+                          embed: shareTab === "embed",
+                        })
                       }}
                       className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-zinc-700 hover:text-violet-750 hover:bg-violet-50/50 rounded-md border border-zinc-200/60 hover:border-violet-100 transition-all"
                     >
@@ -510,10 +512,11 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                     </button>
                     <button
                       onClick={() => {
-                        const url = shareTab === "share"
-                          ? `/share/${conversation.id}`
-                          : `/chart/${conversation.id}`
-                        window.open(url, "_blank")
+                        void openConversationShareLink({
+                          conversationId: conversation.id,
+                          snapshotId: resolvedSnapshotId,
+                          embed: shareTab === "embed",
+                        })
                       }}
                       className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-zinc-700 hover:text-violet-750 hover:bg-violet-50/50 rounded-md border border-zinc-200/60 hover:border-violet-100 transition-all"
                     >

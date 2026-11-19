@@ -185,34 +185,38 @@ export function ColorsTab({
             {/* Color Mode Selection - Only show for grouped mode */}
             {chartMode === 'grouped' && (
                 <>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-medium text-gray-700">Color Mode</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Button
-                                variant={colorMode === 'slice' ? "default" : "outline"}
-                                size="sm"
-                                className="h-8 text-xs"
+                    <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-0.5">Color Mode</Label>
+                        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100/90 border border-slate-200/70 rounded-xl">
+                            <button
+                                type="button"
+                                className={`h-7 text-xs rounded-lg transition-all cursor-pointer ${colorMode === 'slice'
+                                    ? 'bg-white text-blue-600 font-semibold shadow-xs ring-1 ring-slate-200/70'
+                                    : 'text-slate-500 hover:text-slate-800 font-medium'
+                                    }`}
                                 onClick={() => setColorMode('slice')}
                             >
                                 Slice Colors
-                            </Button>
-                            <Button
-                                variant={colorMode === 'dataset' ? "default" : "outline"}
-                                size="sm"
-                                className="h-8 text-xs"
+                            </button>
+                            <button
+                                type="button"
+                                className={`h-7 text-xs rounded-lg transition-all cursor-pointer ${colorMode === 'dataset'
+                                    ? 'bg-white text-blue-600 font-semibold shadow-xs ring-1 ring-slate-200/70'
+                                    : 'text-slate-500 hover:text-slate-800 font-medium'
+                                    }`}
                                 onClick={() => setColorMode('dataset')}
                             >
                                 Dataset Colors
-                            </Button>
+                            </button>
                         </div>
                     </div>
 
                     {/* Individual Colors */}
-                    <div className="space-y-2 mt-3">
-                        <Label className="text-xs font-medium text-gray-700">
+                    <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-0.5">
                             {colorMode === 'slice' ? 'Slice Colors' : 'Dataset Colors'}
                         </Label>
-                        <div className="space-y-2 p-3 bg-blue-50 rounded-lg border border-blue-200 max-h-60 overflow-y-auto">
+                        <div className="space-y-1.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/80 max-h-60 overflow-y-auto">
                             {colorMode === 'slice' ? (
                                 <>
                                     {(chartData.labels || []).map((label: any, sliceIndex: number) => {
@@ -222,13 +226,13 @@ export function ColorsTab({
                                             : firstDataset?.backgroundColor || '#3b82f6';
 
                                         return (
-                                            <div key={sliceIndex} className="flex items-center justify-between p-2 bg-white rounded border">
-                                                <span className="text-xs font-medium">
+                                            <div key={sliceIndex} className="flex items-center justify-between gap-2 p-2 bg-white rounded-lg border border-slate-200/75 min-w-0">
+                                                <span className="text-xs font-medium text-slate-700 truncate flex-1 min-w-0">
                                                     {String(label) || `Slice ${sliceIndex + 1}`}
                                                 </span>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 shrink-0">
                                                     <div
-                                                        className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform"
+                                                        className="w-6 h-6 rounded-md border border-slate-200 shadow-2xs cursor-pointer hover:scale-105 transition-transform"
                                                         style={{ backgroundColor: typeof currentColor === 'string' ? currentColor : '#3b82f6' }}
                                                         onClick={() => document.getElementById(`slice-color-${sliceIndex}`)?.click()}
                                                     />
@@ -280,7 +284,7 @@ export function ColorsTab({
                                                                 });
                                                             });
                                                         }}
-                                                        className="w-20 h-6 text-xs font-mono uppercase"
+                                                        className="w-20 h-6 text-[11px] font-mono uppercase border-slate-200"
                                                         placeholder="#3b82f6"
                                                     />
                                                 </div>
@@ -291,13 +295,13 @@ export function ColorsTab({
                             ) : (
                                 <>
                                     {chartData.datasets.map((dataset: any, datasetIndex: number) => (
-                                        <div key={datasetIndex} className="flex items-center justify-between p-2 bg-white rounded border">
-                                            <span className="text-xs font-medium">
+                                        <div key={datasetIndex} className="flex items-center justify-between gap-2 p-2 bg-white rounded-lg border border-slate-200/75 min-w-0">
+                                            <span className="text-xs font-medium text-slate-700 truncate flex-1 min-w-0">
                                                 {dataset.label || `Dataset ${datasetIndex + 1}`}
                                             </span>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 shrink-0">
                                                 <div
-                                                    className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform"
+                                                    className="w-6 h-6 rounded-md border border-slate-200 shadow-2xs cursor-pointer hover:scale-105 transition-transform"
                                                     style={{
                                                         backgroundColor: Array.isArray(dataset.backgroundColor)
                                                             ? dataset.backgroundColor[0]
@@ -335,7 +339,7 @@ export function ColorsTab({
                                                             lastDatasetColor: e.target.value
                                                         })
                                                     }}
-                                                    className="w-20 h-6 text-xs font-mono uppercase"
+                                                    className="w-20 h-6 text-[11px] font-mono uppercase border-slate-200"
                                                     placeholder="#3b82f6"
                                                 />
                                             </div>
@@ -347,15 +351,15 @@ export function ColorsTab({
                     </div>
 
                     {/* Opacity Control for Grouped Mode */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-xs font-medium text-gray-700">Opacity</Label>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-600">{colorOpacity}%</span>
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-0.5">
+                            <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Opacity</Label>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-medium text-slate-700">{colorOpacity}%</span>
                                 <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-6 px-2 text-xs"
+                                    className="h-6 px-2 text-[11px] text-slate-500 hover:text-slate-900"
                                     onClick={() => {
                                         setColorOpacity(100)
                                         chartData.datasets.forEach((_: any, datasetIndex: number) => {
@@ -389,7 +393,7 @@ export function ColorsTab({
                                 </Button>
                             </div>
                         </div>
-                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80">
                             <Slider
                                 value={[colorOpacity]}
                                 onValueChange={(value) => {
@@ -424,12 +428,12 @@ export function ColorsTab({
                                 step={1}
                                 className="w-full"
                             />
-                            <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+                            <div className="flex justify-between mt-2 text-[10px] text-slate-400">
                                 <span>Transparent</span>
                                 <span>Opaque</span>
                             </div>
                         </div>
-                        <p className="text-xs text-gray-500 italic">
+                        <p className="text-[11px] text-slate-400 px-0.5">
                             Adjusts opacity for background colors (borders unchanged)
                         </p>
                     </div>
@@ -438,12 +442,12 @@ export function ColorsTab({
 
             {/* Color Picker for Single Mode */}
             {chartMode === 'single' && (
-                <div className="space-y-3">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-medium text-gray-700">Dataset Color</Label>
-                        <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="flex-1 flex items-center gap-3">
-                                <div className="relative">
+                <div className="space-y-3.5">
+                    <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-0.5">Dataset Color</Label>
+                        <div className="flex items-center gap-3 p-3 bg-slate-50/70 rounded-xl border border-slate-200/80">
+                            <div className="flex-1 flex items-center gap-3 min-w-0">
+                                <div className="relative shrink-0">
                                     <div
                                         className="absolute inset-0 rounded-lg"
                                         style={{
@@ -453,14 +457,14 @@ export function ColorsTab({
                                         }}
                                     />
                                     <div
-                                        className="relative w-12 h-12 rounded-lg border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform"
+                                        className="relative w-10 h-10 rounded-lg border-2 border-white shadow-xs cursor-pointer hover:scale-105 transition-transform"
                                         style={{ backgroundColor: getCurrentColor() }}
                                         onClick={() => document.getElementById('single-mode-color-picker')?.click()}
                                     />
                                 </div>
-                                <div className="flex-1">
-                                    <div className="text-xs font-medium text-gray-700">Current Color</div>
-                                    <div className="text-[10px] text-gray-500 font-mono uppercase">{getCurrentColor()}</div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-semibold text-slate-700">Current Color</div>
+                                    <div className="text-[11px] text-slate-500 font-mono uppercase truncate">{getCurrentColor()}</div>
                                 </div>
                             </div>
                             <input
@@ -474,15 +478,15 @@ export function ColorsTab({
                     </div>
 
                     {/* Opacity/Transparency Control */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-xs font-medium text-gray-700">Opacity</Label>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-600">{colorOpacity}%</span>
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-0.5">
+                            <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Opacity</Label>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-medium text-slate-700">{colorOpacity}%</span>
                                 <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-6 px-2 text-xs"
+                                    className="h-6 px-2 text-[11px] text-slate-500 hover:text-slate-900"
                                     onClick={() => {
                                         setColorOpacity(100)
                                         applyOpacity(100)
@@ -493,7 +497,7 @@ export function ColorsTab({
                                 </Button>
                             </div>
                         </div>
-                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80">
                             <Slider
                                 value={[colorOpacity]}
                                 onValueChange={(value) => {
@@ -505,24 +509,25 @@ export function ColorsTab({
                                 step={1}
                                 className="w-full"
                             />
-                            <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+                            <div className="flex justify-between mt-2 text-[10px] text-slate-400">
                                 <span>Transparent</span>
                                 <span>Opaque</span>
                             </div>
                         </div>
-                        <p className="text-xs text-gray-500 italic">
+                        <p className="text-[11px] text-slate-400 px-0.5">
                             Adjusts opacity of background colors (borders unchanged)
                         </p>
                     </div>
 
                     {/* Quick Color Swatches */}
-                    <div className="space-y-2">
-                        <Label className="text-xs font-medium text-gray-700">Pick Quick Dataset Colors</Label>
-                        <div className="grid grid-cols-8 gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-0.5">Quick Colors</Label>
+                        <div className="grid grid-cols-8 gap-1.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/80">
                             {QUICK_COLORS.map((color, index) => (
                                 <button
                                     key={index}
-                                    className="w-8 h-8 rounded-lg border-2 border-white shadow-sm hover:scale-110 hover:shadow-md transition-all cursor-pointer relative overflow-hidden"
+                                    type="button"
+                                    className="w-7 h-7 rounded-lg border-2 border-white shadow-2xs hover:scale-110 hover:shadow-sm transition-all cursor-pointer relative overflow-hidden"
                                     onClick={() => {
                                         setColorOpacity(100)
                                         applyQuickColor(color, 100)
@@ -549,27 +554,28 @@ export function ColorsTab({
             )}
 
             {/* Preset Palettes */}
-            <div className="space-y-3">
-                <div className="flex items-center gap-2 pb-1 border-b">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    <h3 className="text-xs font-semibold text-gray-900">Preset Palettes</h3>
+            <div className="space-y-2">
+                <div className="flex items-center gap-2 px-0.5">
+                    <span className="w-2 h-2 bg-blue-600 rounded-full shrink-0"></span>
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Preset Palettes</h3>
                 </div>
 
                 <div className="space-y-2">
-                    <div className="grid gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="grid gap-1.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/80">
                         {COLOR_PALETTES.map((palette, index) => (
                             <button
                                 key={index}
-                                className="flex items-center justify-between p-2 bg-white rounded border hover:border-blue-400 hover:shadow-sm transition-all cursor-pointer"
+                                type="button"
+                                className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200/75 hover:border-blue-300 hover:shadow-2xs transition-all cursor-pointer"
                                 onClick={() => applyColorPalette(palette.colors)}
                                 title={`Apply ${palette.name} palette`}
                             >
-                                <span className="text-xs font-medium text-gray-700">{palette.name}</span>
+                                <span className="text-xs font-medium text-slate-700">{palette.name}</span>
                                 <div className="flex gap-1">
                                     {palette.colors.map((color, colorIndex) => (
                                         <div
                                             key={colorIndex}
-                                            className="w-5 h-5 rounded border border-white shadow-sm"
+                                            className="w-4 h-4 rounded border border-white shadow-2xs"
                                             style={{ backgroundColor: color }}
                                         />
                                     ))}
@@ -579,17 +585,15 @@ export function ColorsTab({
                     </div>
 
                     {/* Reset Button */}
-                    <div className="flex justify-center">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs w-full"
-                            onClick={() => applyColorPalette(COLOR_PALETTES[0].colors)}
-                        >
-                            <Palette className="h-3 w-3 mr-1" />
-                            Reset to Default Palette
-                        </Button>
-                    </div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs w-full rounded-xl border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 cursor-pointer"
+                        onClick={() => applyColorPalette(COLOR_PALETTES[0].colors)}
+                    >
+                        <Palette className="h-3.5 w-3.5 mr-1.5" />
+                        Reset to Default Palette
+                    </Button>
                 </div>
             </div>
         </div>

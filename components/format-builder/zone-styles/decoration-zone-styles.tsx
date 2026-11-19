@@ -3,6 +3,7 @@
 import React from 'react'
 import { Input } from '@/components/ui/input'
 import { useFormatBuilder } from '../format-builder-context'
+import { AddImageButton, type AddImageResult } from '@/components/shared/add-image-modal'
 
 // ─── Shape type options matching the editor's decoration system ───
 const SHAPE_TYPES = [
@@ -455,33 +456,21 @@ export function DecorationZoneStyles() {
       {/* ═══ IMAGE ═══ */}
       {subtype === 'image' && (
         <>
-          <div>
-            <label className="text-[10px] text-gray-500 block">Image URL</label>
-            <Input
-              value={s.imageUrl || ''}
-              onChange={e => update({ imageUrl: e.target.value })}
-              placeholder="https://… or paste data URI"
-              className="h-7 text-[10px] bg-gray-900 border-gray-700 text-white"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-500 block mb-1">Upload Image</label>
-            <label className="flex items-center justify-center gap-1 px-3 py-2 rounded-md border border-dashed border-gray-600 text-[10px] text-gray-400 hover:border-gray-500 hover:text-gray-300 cursor-pointer transition-colors">
-              <span>Choose file or drop here</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={e => {
-                  const file = e.target.files?.[0]
-                  if (!file) return
-                  revokeBlob(s.imageUrl || '') // revoke old blob if replacing
-                  const blobUrl = registerBlob(file)
-                  update({ imageUrl: blobUrl })
-                }}
-              />
-            </label>
-          </div>
+          <AddImageButton
+            className="w-full h-7 text-[10px] bg-gray-900 border-gray-700 text-gray-200 hover:bg-gray-800 hover:text-white"
+            onSelectImage={(result: AddImageResult) => {
+              revokeBlob(s.imageUrl || '')
+              if (result.source === 'file' && result.file) {
+                URL.revokeObjectURL(result.url)
+                const blobUrl = registerBlob(result.file)
+                update({ imageUrl: blobUrl })
+                return
+              }
+              if (result.url) {
+                update({ imageUrl: result.url })
+              }
+            }}
+          />
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] text-gray-500 block">Fit</label>

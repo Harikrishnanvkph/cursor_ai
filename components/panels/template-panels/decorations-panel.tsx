@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { FontFamilySelect } from "@/components/ui/font-family-select"
+import { FontSettingSection } from "@/components/ui/font-setting-section"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -15,16 +15,16 @@ import {
   Triangle, Star, Hexagon, Cloud, CloudLightning, GitBranch, ChevronDown, Trash2, Copy,
   Lock, Unlock, Eye, EyeOff, ArrowUpToLine, ArrowDownToLine,
   Pentagon, Diamond, Heart, MousePointer2, SquareDashedMousePointer,
-  Type, Image as ImageIcon, FileCode, Upload, Bold, Italic, Underline, Strikethrough,
+  Type, Image as ImageIcon, FileCode, Upload,
   AlignLeft, AlignCenter, AlignRight, Spline, Octagon, Undo2, Redo2, Blend,
   Sparkles, Paintbrush, Droplets, Highlighter, Search, Globe, Loader2
 } from "lucide-react"
-import { toast } from "sonner"
 import { useDecorationStore, type DecorationShapeType, type DrawingMode } from "@/lib/stores/decoration-store"
 import { decorationFileRegistry } from "@/lib/stores/decoration-file-registry"
 import { isMulticolorSvg, extractSvgColors, replaceSvgColor } from "@/lib/elements/elements-registry"
 import { IconifySearchTab } from "./IconifySearchTab"
 import { PexelsImageTab } from "./PexelsImageTab"
+import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
 
 // ═══════════════════════════════════════════════════════
 // Shape definitions for the picker
@@ -223,65 +223,66 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                   rows={3}
                 />
               </div>
-              <div>
-                <Label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-2">Formatting</Label>
-                <div className="flex gap-1 mb-3">
-                  <Button variant={shape.fontWeight === 'bold' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
-                    onClick={() => onUpdate({ fontWeight: shape.fontWeight === 'bold' ? 'normal' : 'bold' })}>
-                    <Bold className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant={shape.fontStyle === 'italic' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
-                    onClick={() => onUpdate({ fontStyle: shape.fontStyle === 'italic' ? 'normal' : 'italic' })}>
-                    <Italic className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant={shape.textDecoration === 'underline' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
-                    onClick={() => onUpdate({ textDecoration: shape.textDecoration === 'underline' ? 'none' : 'underline' })}>
-                    <Underline className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant={shape.textDecoration === 'line-through' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
-                    onClick={() => onUpdate({ textDecoration: shape.textDecoration === 'line-through' ? 'none' : 'line-through' })}>
-                    <Strikethrough className="h-3.5 w-3.5" />
-                  </Button>
-                  <div className="w-[1px] bg-slate-200 mx-1" />
-                  <Button variant={shape.textAlign === 'left' || !shape.textAlign ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
-                    onClick={() => onUpdate({ textAlign: 'left' })}>
-                    <AlignLeft className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant={shape.textAlign === 'center' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
-                    onClick={() => onUpdate({ textAlign: 'center' })}>
-                    <AlignCenter className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant={shape.textAlign === 'right' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
-                    onClick={() => onUpdate({ textAlign: 'right' })}>
-                    <AlignRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-slate-500">Font Family</Label>
-                    <FontFamilySelect
-                      value={shape.fontFamily || 'Arial'}
-                      onValueChange={v => onUpdate({ fontFamily: v })}
-                    />
-                  </div>
-                  {shape.type === 'textbox' && (
-                    <div>
-                      <Label className="text-[10px] text-slate-500">Font Size</Label>
-                      <Input type="number" value={shape.fontSize || 14} onChange={e => onUpdate({ fontSize: Math.max(6, parseInt(e.target.value) || 14) })} className="h-8 text-xs" />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+              <FontSettingSection
+                idPrefix="deco-textbox"
+                value={{
+                  family: shape.fontFamily,
+                  size: shape.fontSize,
+                  weight: shape.fontWeight || 'normal',
+                  style: shape.fontStyle,
+                  color: shape.textColor,
+                  underline: (shape.textDecoration || '').includes('underline'),
+                  strikethrough: (shape.textDecoration || '').includes('line-through'),
+                  textTransform: shape.textTransform,
+                  letterSpacing: shape.letterSpacing,
+                }}
+                defaultFamily="Arial"
+                defaultSize={14}
+                defaultWeight="400"
+                defaultColor="#1e293b"
+                showSize={shape.type === 'textbox'}
+                weightOutputFormat="named"
+                sizeMin={6}
+                sizeMax={120}
+                onChange={(patch) => {
+                  const updates: Record<string, any> = {}
+                  if (patch.family !== undefined) updates.fontFamily = patch.family
+                  if (patch.size !== undefined) updates.fontSize = patch.size
+                  if (patch.weight !== undefined) updates.fontWeight = patch.weight
+                  if (patch.style !== undefined) updates.fontStyle = patch.style
+                  if (patch.textTransform !== undefined) updates.textTransform = patch.textTransform
+                  if (patch.letterSpacing !== undefined) updates.letterSpacing = patch.letterSpacing
+                  if (patch.color !== undefined) updates.textColor = patch.color
+                  if (patch.underline !== undefined || patch.strikethrough !== undefined) {
+                    const nextU = patch.underline !== undefined ? patch.underline : (shape.textDecoration || '').includes('underline')
+                    const nextS = patch.strikethrough !== undefined ? patch.strikethrough : (shape.textDecoration || '').includes('line-through')
+                    const parts: string[] = []
+                    if (nextU) parts.push('underline')
+                    if (nextS) parts.push('line-through')
+                    updates.textDecoration = parts.length > 0 ? parts.join(' ') : 'none'
+                  }
+                  onUpdate(updates)
+                }}
+              />
+              <div className="flex flex-wrap items-center gap-3">
                 <div>
-                  <Label className="text-[10px] text-slate-500 block mb-1">Text Color</Label>
-                  <div className="relative flex items-center gap-2">
-                    <Input type="color" value={shape.textColor || '#1e293b'} onChange={e => onUpdate({ textColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-                    <div className="h-8 w-8 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.textColor || '#1e293b' }} />
-                    <span className="text-[9px] text-slate-400 font-mono uppercase truncate">{shape.textColor || '#1e293b'}</span>
+                  <Label className="text-[10px] text-slate-500 block mb-1">Alignment</Label>
+                  <div className="inline-flex gap-1">
+                    <Button variant={shape.textAlign === 'left' || !shape.textAlign ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
+                      onClick={() => onUpdate({ textAlign: 'left' })}>
+                      <AlignLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant={shape.textAlign === 'center' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
+                      onClick={() => onUpdate({ textAlign: 'center' })}>
+                      <AlignCenter className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant={shape.textAlign === 'right' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
+                      onClick={() => onUpdate({ textAlign: 'right' })}>
+                      <AlignRight className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
-                <div>
+                <div className="flex-1 min-w-[110px]">
                   <div className="flex justify-between mb-1">
                     <Label className="text-[10px] text-slate-500">Line Height</Label>
                     <span className="text-[10px] text-slate-400">{shape.lineHeight || 1.4}</span>
@@ -618,7 +619,6 @@ export function DecorationsPanel() {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [svgCode, setSvgCode] = useState('')
   const svgFileRef = useRef<HTMLInputElement>(null)
-  const imgFileRef = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<'graphics' | 'shapes' | 'section' | 'images'>('graphics')
   const [shapesSubTab, setShapesSubTab] = useState<'basic' | 'advanced'>('basic')
   const elementsListRef = useRef<HTMLDivElement>(null)
@@ -655,7 +655,6 @@ export function DecorationsPanel() {
     })
     setSelectedShapeId(newId)
     setDrawingMode(null)
-    toast.success(`Added ${preset} to canvas! Double-click to edit text or font.`)
   }
 
   const handleScrollToHistory = () => {
@@ -694,21 +693,40 @@ export function DecorationsPanel() {
   }
 
   // ── Section: Add Image directly ────────────────────
-  const handleAddImageFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const blobUrl = URL.createObjectURL(file)
-    decorationFileRegistry.set(blobUrl, file)
-    addShape({
+  const handleAddImageSelect = (result: AddImageResult) => {
+    if (!result.url.trim()) return
+
+    if (result.source === 'file' && result.file) {
+      decorationFileRegistry.set(result.url, result.file)
+    }
+
+    let width = 150
+    let height = 150
+    if (result.dimensions?.width && result.dimensions?.height) {
+      const aspect = result.dimensions.width / result.dimensions.height
+      width = 200
+      height = Math.round(width / aspect)
+      if (height > 280) {
+        height = 280
+        width = Math.round(height * aspect)
+      } else if (height < 70) {
+        height = 70
+        width = Math.round(height * aspect)
+      }
+    }
+
+    const newShapeId = addShape({
       type: 'deco-image',
-      x: 50, y: 50, width: 150, height: 150,
+      x: 50, y: 50, width, height,
       rotation: 0, fillColor: 'transparent', fillOpacity: 100,
       strokeColor: '#cbd5e1', strokeWidth: 0, strokeStyle: 'solid',
       visible: true, locked: false, zIndex: shapes.length + 1,
-      imageUrl: blobUrl,
+      imageUrl: result.url.trim(),
       imageFit: 'contain', borderRadius: 0,
     })
-    event.target.value = ''
+    if (newShapeId) {
+      setSelectedShapeId(newShapeId)
+    }
   }
 
   // ── Section: Add SVG from file ─────────────────────
@@ -742,19 +760,6 @@ export function DecorationsPanel() {
       svgContent: svgCode.trim(),
     })
     setSvgCode('')
-  }
-
-  const handleAddImageUrl = (url: string) => {
-    if (!url.trim()) return
-    addShape({
-      type: 'deco-image',
-      x: 50, y: 50, width: 150, height: 150,
-      rotation: 0, fillColor: 'transparent', fillOpacity: 100,
-      strokeColor: '#cbd5e1', strokeWidth: 0, strokeStyle: 'solid',
-      visible: true, locked: false, zIndex: shapes.length + 1,
-      imageUrl: url.trim(),
-      imageFit: 'contain', borderRadius: 0,
-    })
   }
 
   const [showSectionClearConfirm, setShowSectionClearConfirm] = useState(false)
@@ -1323,36 +1328,10 @@ export function DecorationsPanel() {
           </div>
 
           {/* ── Add Image ────────────────────────────── */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50/50 border-b border-slate-100">
-              <ImageIcon className="h-4 w-4 text-blue-500" />
-              <span className="text-xs font-bold text-slate-700">Add Image</span>
-            </div>
-            <div className="p-2 space-y-2">
-              <input ref={imgFileRef} type="file" accept="image/*" onChange={handleAddImageFile} className="hidden" />
-              <Button variant="outline" size="sm" className="w-full h-10 text-xs m-0" onClick={() => imgFileRef.current?.click()}>
-                <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload
-              </Button>
-              <div className="flex gap-1.5">
-                <Input
-                  placeholder="Image URL (https://...)"
-                  className="h-8 text-xs flex-1 placeholder:font-normal placeholder:text-slate-400"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddImageUrl(e.currentTarget.value)
-                      e.currentTarget.value = ''
-                    }
-                  }}
-                />
-                <Button variant="outline" size="sm" className="h-8 text-xs px-2"
-                  onClick={() => {
-                    const inp = document.querySelector('input[placeholder="Image URL (https://...)"]') as HTMLInputElement
-                    if (inp?.value) { handleAddImageUrl(inp.value); inp.value = '' }
-                  }}
-                >Add</Button>
-              </div>
-            </div>
-          </div>
+          <AddImageButton
+            onSelectImage={handleAddImageSelect}
+            className="w-full h-9 text-xs border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+          />
 
           {/* ── Add SVG ──────────────────────────────── */}
           <div className="border rounded-lg overflow-hidden">

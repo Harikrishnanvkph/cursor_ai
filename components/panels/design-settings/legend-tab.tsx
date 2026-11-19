@@ -3,7 +3,11 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { FontFamilySelect, FontWeightSelect } from "@/components/ui/font-family-select"
+import {
+    FontSettingSection,
+    mapChartJsFontValue,
+    applyChartJsFontPatch,
+} from "@/components/ui/font-setting-section"
 import { PiePanel } from "../pie-panel"
 
 type ConfigPathUpdate = {
@@ -144,39 +148,42 @@ export function LegendTab({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <Label className="text-xs font-medium">Orientation</Label>
-                            <Select
-                                value={((chartConfig.plugins?.legend as any)?.orientation as string) || "horizontal"}
-                                onValueChange={(value: string) => handleConfigUpdate("plugins.legend.orientation", value)}
-                            >
-                                <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Horizontal" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="horizontal">Horizontal</SelectItem>
-                                    <SelectItem value="vertical">Vertical</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div>
-                            <Label className="text-xs font-medium">Font Size</Label>
-                            <Input
-                                type="number"
-                                value={((chartConfig.plugins?.legend?.labels as any)?.font?.size as number) || 12}
-                                onChange={(e) => {
-                                    const value = Number(e.target.value) || 12;
-                                    handleConfigUpdate("plugins.legend.labels.font.size", value);
-                                }}
-                                min={8}
-                                max={48}
-                                step={1}
-                                className="h-8 text-xs"
-                            />
-                        </div>
+                    <div>
+                        <Label className="text-xs font-medium">Orientation</Label>
+                        <Select
+                            value={((chartConfig.plugins?.legend as any)?.orientation as string) || "horizontal"}
+                            onValueChange={(value: string) => handleConfigUpdate("plugins.legend.orientation", value)}
+                        >
+                            <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Horizontal" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="horizontal">Horizontal</SelectItem>
+                                <SelectItem value="vertical">Vertical</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
+
+                    <FontSettingSection
+                        idPrefix="legend-labels"
+                        value={mapChartJsFontValue(
+                            (chartConfig.plugins?.legend?.labels as any)?.font,
+                            (chartConfig.plugins?.legend?.labels as any)?.color
+                        )}
+                        defaultFamily="Arial"
+                        defaultSize={12}
+                        defaultWeight="400"
+                        defaultColor="#000000"
+                        sizeMin={8}
+                        sizeMax={48}
+                        onChange={(patch) =>
+                            applyChartJsFontPatch(
+                                patch,
+                                (field, val) => handleConfigUpdate(`plugins.legend.labels.font.${field}`, val),
+                                (color) => handleConfigUpdate("plugins.legend.labels.color", color)
+                            )
+                        }
+                    />
 
                     <div className="grid grid-cols-2 gap-3 items-center">
                         <div>
@@ -220,41 +227,6 @@ export function LegendTab({
                                     <SelectItem value="rectRot">Diamond</SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <Label className="text-xs font-medium">Font Color</Label>
-                        <div className="flex gap-2 text-xs">
-                            <input
-                                type="color"
-                                value={(chartConfig.plugins?.legend?.labels as any)?.color || "#000000"}
-                                onChange={(e) => handleConfigUpdate("plugins.legend.labels.color", e.target.value)}
-                                className="w-12 h-8 rounded border"
-                            />
-                            <Input
-                                value={(chartConfig.plugins?.legend?.labels as any)?.color || "#000000"}
-                                onChange={(e) => handleConfigUpdate("plugins.legend.labels.color", e.target.value)}
-                                className="h-8 text-xs"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <Label className="text-xs font-medium">Font Family</Label>
-                            <FontFamilySelect
-                                value={((chartConfig.plugins?.legend?.labels as any)?.font?.family as string) || "Arial"}
-                                onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.font.family", value)}
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs font-medium">Font Weight</Label>
-                            <FontWeightSelect
-                                value={((chartConfig.plugins?.legend?.labels as any)?.font?.weight as string) || "400"}
-                                onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.font.weight", value)}
-                            />
                         </div>
                     </div>
 

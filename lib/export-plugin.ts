@@ -7,6 +7,7 @@ export interface BackgroundImageConfig {
   imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   opacity?: number;
   imageWhiteBase?: boolean;
+  imageBaseColor?: string;
   blur?: number;
 }
 
@@ -26,6 +27,7 @@ export interface BackgroundConfig {
   imageUrl?: string;
   imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   imageWhiteBase?: boolean;
+  imageBaseColor?: string;
   blur?: number;
 }
 
@@ -250,10 +252,11 @@ const exportPlugin = {
         else if (background.type === 'image' && background.imageUrl) {
           console.log('Exporting with background image:', background);
           try {
-            // Draw white base if enabled
-            console.log(background.imageWhiteBase)
+            // Draw base color if enabled (JPEG always needs a solid base because it lacks alpha)
             if (background.imageWhiteBase !== false) {
-              console.log('Drawing white base for image background');
+              tempCtx.fillStyle = background.imageBaseColor || '#ffffff';
+              tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            } else if (exportOptions.format === 'jpeg') {
               tempCtx.fillStyle = '#ffffff';
               tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
             }
@@ -434,6 +437,7 @@ const exportPlugin = {
               fontWeight: string;
               fontStyle: string;
               textDecoration: string;
+              letterSpacing?: string;
               textAlign: string;
               color: string;
               lineHeight: number;
@@ -507,6 +511,7 @@ const exportPlugin = {
                     fontWeight: computed.fontWeight || 'normal',
                     fontStyle: computed.fontStyle || 'normal',
                     textDecoration: computed.textDecorationLine || 'none',
+                    letterSpacing: computed.letterSpacing && computed.letterSpacing !== 'normal' ? computed.letterSpacing : '0px',
                     textAlign: computed.textAlign || 'left',
                     color: computed.color || '#000000',
                     lineHeight: lh,
@@ -634,6 +639,10 @@ const exportPlugin = {
                 const lh = td.lineHeight * scale;
 
                 tempCtx.font = `${td.fontStyle} ${td.fontWeight} ${fSize}px ${td.fontFamily}`;
+                if (td.letterSpacing && td.letterSpacing !== '0px' && 'letterSpacing' in tempCtx) {
+                  const lsNum = parseFloat(td.letterSpacing);
+                  if (!isNaN(lsNum)) (tempCtx as any).letterSpacing = `${lsNum * scale}px`;
+                }
                 tempCtx.fillStyle = td.color;
                 tempCtx.textBaseline = 'top';
                 tempCtx.textAlign = 'left'; // We handle alignment manually for accurate measurement

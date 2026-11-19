@@ -265,8 +265,8 @@ export function PromptTemplate({
                     onClick={() => handleRatioSelect(opt)}
                     className={`flex items-center gap-3 sm:gap-4 p-2 sm:p-2.5 rounded-2xl border text-left transition-all duration-200 h-[72px] sm:h-[80px] group relative flex-shrink-0 w-[160px] sm:w-auto snap-center ${
                       isSelected
-                        ? "border-2 border-indigo-500 ring-4 ring-indigo-500/5 bg-indigo-50/20 text-slate-800 shadow-[0_4px_16px_rgba(99,102,241,0.06)]"
-                        : "border border-slate-200 bg-white/90 hover:border-slate-300 hover:bg-white hover:shadow-[0_4px_16px_rgba(0,0,0,0.05)] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:-translate-y-0.5"
+                        ? "border-2 border-indigo-500 ring-4 ring-indigo-500/5 bg-indigo-50/30 dark:bg-indigo-950/30 text-slate-800 dark:text-slate-100 shadow-[0_4px_16px_rgba(99,102,241,0.06)]"
+                        : "border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.05)] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:-translate-y-0.5"
                     }`}
                   >
                     {/* Visual aspect proportion container (Plain style, scale-adjusted on mobile) */}
@@ -304,7 +304,7 @@ export function PromptTemplate({
           {generateMode === 'chart' ? (
             selectedRatio ? (
               <div className="space-y-4 pt-0.5">
-                <div className="text-xs font-semibold text-slate-700 bg-white/80 border border-slate-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+                <div className="text-xs font-semibold text-slate-700 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse flex-shrink-0"></div>
                   <div>
                     Chart will generate in <span className="font-semibold text-slate-900">{selectedRatio}</span> dimensions ({FAMOUS_ASPECT_RATIOS.find(r => r.value === selectedRatio)?.width} × {FAMOUS_ASPECT_RATIOS.find(r => r.value === selectedRatio)?.height} px).
@@ -324,7 +324,7 @@ export function PromptTemplate({
                   </div>
 
                   {/* Template Name with Settings and Cancel Buttons */}
-                  <div className="flex items-center gap-3 w-full bg-white/90 border border-slate-200 rounded-2xl p-4 shadow-sm">
+                  <div className="flex items-center gap-3 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                     <div className="flex-1 bg-slate-50/30 border border-slate-100 rounded-xl px-5 py-3 flex items-center">
                       <LayoutGrid className="w-4 h-4 text-slate-500 mr-3 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -435,7 +435,7 @@ export function PromptTemplate({
           )}
 
           {/* Advanced Editor Callout Card - Standardized with the section theme font sizes */}
-          <div className="bg-white/80 rounded-2xl p-3 sm:p-3.5 border border-dashed border-slate-200 flex items-start gap-3 mt-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 border border-dashed border-slate-200/90 dark:border-slate-800 flex items-start gap-3 mt-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
             <div className="p-1.5 bg-slate-50 rounded-xl border border-slate-200/50 flex-shrink-0 text-slate-700 shadow-sm">
               <Info className="w-3.5 h-3.5" />
             </div>

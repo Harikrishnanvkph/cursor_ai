@@ -127,8 +127,12 @@ const customLabelPlugin = {
           // Measure exact text bounds to detect boundary overflow
           ctx.save();
           ctx.font = label.font || 'bold 14px Arial';
-          const textWidth = ctx.measureText(label.text || '').width;
-          const textHeight = parseInt(label.font || '14', 10) || 14;
+          const fontUtilsMeasure = typeof window !== 'undefined' ? window.__chartFontUtils : null;
+          const textWidth = (fontUtilsMeasure && fontUtilsMeasure.withCanvasLetterSpacing)
+            ? fontUtilsMeasure.withCanvasLetterSpacing(ctx, label.letterSpacing, () => ctx.measureText(label.text || '').width)
+            : ctx.measureText(label.text || '').width;
+          const fontSizeMatch = typeof label.font === 'string' ? label.font.match(/(\d+(?:\.\d+)?)px/i) : null;
+          const textHeight = (fontSizeMatch && fontSizeMatch[1] ? parseFloat(fontSizeMatch[1]) : 14) || 14;
           ctx.restore();
 
           const rightLimit = (chart.chartArea?.right || chart.width || 800) - 6;
@@ -462,7 +466,23 @@ const customLabelPlugin = {
         ctx.fillStyle = label.color || '#222';
         ctx.textAlign = label.align || 'center';
         ctx.textBaseline = label.textBaseline || 'middle';
-        ctx.fillText(label.text, x, y);
+        const fontUtilsDraw = typeof window !== 'undefined' ? window.__chartFontUtils : null;
+        const drawLabelText = () => {
+          ctx.fillText(label.text, x, y);
+          if ((label.underline || label.strikethrough) && fontUtilsDraw && fontUtilsDraw.drawCanvasTextDecoration) {
+            fontUtilsDraw.drawCanvasTextDecoration(ctx, label.text, x, y, {
+              underline: Boolean(label.underline),
+              strikethrough: Boolean(label.strikethrough),
+              color: label.color || '#222',
+              fontSize: (typeof label.font === 'string' && label.font.match(/(\d+(?:\.\d+)?)px/i)) ? parseFloat(label.font.match(/(\d+(?:\.\d+)?)px/i)[1]) : 14
+            });
+          }
+        };
+        if (fontUtilsDraw && fontUtilsDraw.withCanvasLetterSpacing) {
+          fontUtilsDraw.withCanvasLetterSpacing(ctx, label.letterSpacing, drawLabelText);
+        } else {
+          drawLabelText();
+        }
         ctx.restore();
       });
     });

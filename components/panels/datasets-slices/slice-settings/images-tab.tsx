@@ -8,7 +8,6 @@ import {
     Target,
     ArrowUpRight,
     ImageIcon,
-    Upload,
     Trash2,
     Circle,
     Square,
@@ -20,6 +19,7 @@ import {
     ChevronRight
 } from "lucide-react"
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
+import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
 
 interface ImagesTabProps {
     chartMode: string
@@ -72,7 +72,6 @@ export function ImagesTab({
         }
     }
 
-    // Single mode: simplified UI - select a slice, then edit its image settings only
     const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset)
     const ensureArrays = () => {
         const length = currentDataset?.data?.length || 0
@@ -193,6 +192,18 @@ export function ImagesTab({
         updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
     }
 
+    const handleAddImageSelect = async (pointIndex: number, result: AddImageResult) => {
+        if (result.source === 'file' && result.file) {
+            const file = result.file
+            URL.revokeObjectURL(result.url)
+            await internalHandleImageUpload(pointIndex, file)
+            return
+        }
+        if (result.url.trim()) {
+            internalHandleUrlSubmit(pointIndex, result.url.trim())
+        }
+    }
+
     // Single mode: simplified UI - select a slice, then edit its image settings only
     if (chartMode === 'single') {
         const idx = Math.min(Math.max(0, imageSelectedIndex), Math.max(0, (currentDataset?.data?.length || 1) - 1))
@@ -271,54 +282,28 @@ export function ImagesTab({
                         </div>
                     )}
 
-                    {/* Upload / Clear / URL - Compact */}
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 h-7 text-xs border-blue-300 hover:bg-blue-50"
-                                onClick={() => {
-                                    const input = document.createElement('input')
-                                    input.type = 'file'
-                                    input.accept = 'image/*'
-                                    input.onchange = async (e) => {
-                                        const file = (e.target as HTMLInputElement).files?.[0]
-                                        if (file) await internalHandleImageUpload(idx, file)
-                                    }
-                                    input.click()
-                                }}
-                            >
-                                <Upload className="h-3 w-3 mr-1" /> Upload
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 w-7 p-0 border-blue-300 hover:bg-blue-50"
-                                onClick={() => {
-                                    if (datasetIndex === -1) return
-                                    const { images, configs } = ensureArrays()
-                                    images[idx] = ''
-                                    configs[idx] = getDefaultImageConfig(chartType)
-                                    updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
-                                }}
-                                disabled={!hasImage}
-                            >
-                                <Trash2 className="h-3 w-3" />
-                            </Button>
-                        </div>
-                        <Input
-                            placeholder="Paste image URL and press Enter"
-                            className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400 min-w-0"
-                            defaultValue={hasImage || ''}
-                            key={`input-single-${idx}-${hasImage}`} // Force re-render when image changes or slice changes
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    const value = (e.target as HTMLInputElement).value
-                                    internalHandleUrlSubmit(idx, value)
-                                }
-                            }}
+                    {/* Add / Clear Image - Compact */}
+                    <div className="flex items-center gap-1.5">
+                        <AddImageButton
+                            onSelectImage={(res) => handleAddImageSelect(idx, res)}
+                            className="flex-1 h-7 text-xs border-blue-300 hover:bg-blue-50 bg-white"
                         />
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0 border-blue-300 hover:bg-blue-50 shrink-0"
+                            onClick={() => {
+                                if (datasetIndex === -1) return
+                                const { images, configs } = ensureArrays()
+                                images[idx] = ''
+                                configs[idx] = getDefaultImageConfig(chartType)
+                                updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
+                            }}
+                            disabled={!hasImage}
+                            title="Clear Image"
+                        >
+                            <Trash2 className="h-3 w-3" />
+                        </Button>
                     </div>
 
                     {/* Config for selected slice - Compact */}
@@ -615,53 +600,25 @@ export function ImagesTab({
                                         </div>
                                     )}
 
-                                    {/* Image Upload - Compact */}
-                                    <div className="space-y-1.5 mb-2">
-                                        <div className="flex items-center gap-1.5">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex-1 h-7 text-xs border-blue-300 hover:bg-blue-50"
-                                                onClick={() => {
-                                                    const input = document.createElement('input');
-                                                    input.type = 'file';
-                                                    input.accept = 'image/*';
-                                                    input.onchange = async (e) => {
-                                                        const file = (e.target as HTMLInputElement).files?.[0]
-                                                        if (file) await internalHandleImageUpload(pointIndex, file)
-                                                    };
-                                                    input.click();
-                                                }}
-                                            >
-                                                <Upload className="h-3 w-3 mr-1" />
-                                                Upload
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 w-7 p-0 border-blue-300 hover:bg-blue-50"
-                                                onClick={() => {
-                                                    const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset);
-                                                    updatePointImage(datasetIndex, pointIndex, '', getDefaultImageConfig(chartType));
-                                                }}
-                                                disabled={!hasImage}
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-
-                                        <Input
-                                            placeholder="Paste URL and press Enter"
-                                            className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400 min-w-0"
-                                            defaultValue={hasImage || ''}
-                                            key={`input-grouped-${pointIndex}-${hasImage}`} // force re-render when image changes
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    const value = (e.target as HTMLInputElement).value;
-                                                    internalHandleUrlSubmit(pointIndex, value)
-                                                }
-                                            }}
+                                    {/* Add Image - Compact */}
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                        <AddImageButton
+                                            onSelectImage={(res) => handleAddImageSelect(pointIndex, res)}
+                                            className="flex-1 h-7 text-xs border-blue-300 hover:bg-blue-50 bg-white"
                                         />
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 w-7 p-0 border-blue-300 hover:bg-blue-50 shrink-0"
+                                            onClick={() => {
+                                                const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset);
+                                                updatePointImage(datasetIndex, pointIndex, '', getDefaultImageConfig(chartType));
+                                            }}
+                                            disabled={!hasImage}
+                                            title="Clear Image"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </Button>
                                     </div>
 
                                     {/* Image Configuration - Compact */}

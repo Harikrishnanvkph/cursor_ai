@@ -17,7 +17,6 @@ import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { clearCurrentChart } from "@/lib/storage-utils"
-import { toast } from "sonner"
 
 interface ClearChartDialogProps {
     open: boolean
@@ -69,7 +68,6 @@ export function ClearChartDialog({
         resetChart()
         // - Hide JSON to show welcome screen
         setHasJSON(false)
-        toast.success("Application reset successfully")
 
         onOpenChange(false)
     }

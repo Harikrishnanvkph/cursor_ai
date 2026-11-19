@@ -19,7 +19,7 @@ import { useGroupedSettingsTarget, GroupedSettingsFilter } from "./grouped-setti
 import { SliceSettingsFilter } from "./slice-settings-filter"
 import { StylingTab } from "./design-settings/styling-tab"
 import { useUIStore } from "@/lib/stores/ui-store"
-import { FontFamilySelect, FontWeightSelect } from "@/components/ui/font-family-select"
+import { FontSettingSection } from "@/components/ui/font-setting-section"
 
 type ConfigPathUpdate = {
     path: string;
@@ -333,82 +333,56 @@ export function LabelsPanel({ mode = 'labels' }: LabelsPanelProps) {
                             )}
 
 
-                            {/* Shape and Font Family */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium">Shape</Label>
-                                    <Select
-                                        value={customLabelsConfig.shape || 'none'}
-                                        onValueChange={(value) => handleCustomLabelConfigUpdate("shape", value)}
-                                    >
-                                        <SelectTrigger className="h-8 text-xs">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="rectangle">Rectangle</SelectItem>
-                                            <SelectItem value="circle">Circle</SelectItem>
-                                            <SelectItem value="star">Star</SelectItem>
-                                            <SelectItem value="none">None</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium">Font Family</Label>
-                                    <FontFamilySelect
-                                        value={customLabelsConfig.fontFamily || "Arial"}
-                                        onValueChange={(value) => handleCustomLabelConfigUpdate("fontFamily", value)}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Font Size and Weight */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium">Font Size</Label>
-                                    <Input
-                                        type="number"
-                                        value={customLabelsConfig.fontSize || ''}
-                                        onChange={(e) => handleCustomLabelConfigUpdate("fontSize", e.target.value ? Number(e.target.value) : undefined)}
-                                        placeholder="14"
-                                        className="h-8 text-xs"
-                                        min={8}
-                                        max={24}
-                                    />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium">Weight</Label>
-                                    <FontWeightSelect
-                                        value={String(customLabelsConfig.fontWeight || "bold")}
-                                        onValueChange={(value) => handleCustomLabelConfigUpdate("fontWeight", value)}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Label Color */}
+                            {/* Shape */}
                             <div className="space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-medium">Color</Label>
-                                    <div className="flex items-center gap-2">
-                                        <div className="relative w-6 h-6 rounded-md border-2 border-white shadow-md hover:scale-110 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: customLabelsConfig.color || '#000000' }}>
-                                            <input
-                                                id="label-color"
-                                                type="color"
-                                                value={customLabelsConfig.color || '#000000'}
-                                                onChange={(e) => handleCustomLabelConfigUpdate("color", e.target.value)}
-                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
-                                            />
-                                        </div>
-                                        <Input
-                                            value={customLabelsConfig.color || '#000000'}
-                                            onChange={(e) => handleCustomLabelConfigUpdate("color", e.target.value)}
-                                            className="w-24 h-8 text-xs font-mono uppercase"
-                                            placeholder="#000000"
-                                        />
-                                    </div>
-                                </div>
+                                <Label className="text-xs font-medium">Shape</Label>
+                                <Select
+                                    value={customLabelsConfig.shape || 'none'}
+                                    onValueChange={(value) => handleCustomLabelConfigUpdate("shape", value)}
+                                >
+                                    <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="rectangle">Rectangle</SelectItem>
+                                        <SelectItem value="circle">Circle</SelectItem>
+                                        <SelectItem value="star">Star</SelectItem>
+                                        <SelectItem value="none">None</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
+
+                            <FontSettingSection
+                                idPrefix="custom-labels"
+                                value={{
+                                    family: customLabelsConfig.fontFamily,
+                                    size: customLabelsConfig.fontSize,
+                                    weight: customLabelsConfig.fontWeight,
+                                    style: customLabelsConfig.fontStyle,
+                                    color: customLabelsConfig.color,
+                                    underline: customLabelsConfig.underline,
+                                    strikethrough: customLabelsConfig.strikethrough,
+                                    textTransform: customLabelsConfig.textTransform,
+                                    letterSpacing: customLabelsConfig.letterSpacing,
+                                }}
+                                defaultFamily="Arial"
+                                defaultSize={14}
+                                defaultWeight="bold"
+                                defaultColor="#000000"
+                                sizeMin={6}
+                                sizeMax={48}
+                                onChange={(patch) => {
+                                    if (patch.family !== undefined) handleCustomLabelConfigUpdate("fontFamily", patch.family)
+                                    if (patch.size !== undefined) handleCustomLabelConfigUpdate("fontSize", patch.size)
+                                    if (patch.weight !== undefined) handleCustomLabelConfigUpdate("fontWeight", patch.weight)
+                                    if (patch.style !== undefined) handleCustomLabelConfigUpdate("fontStyle", patch.style)
+                                    if (patch.underline !== undefined) handleCustomLabelConfigUpdate("underline", patch.underline)
+                                    if (patch.strikethrough !== undefined) handleCustomLabelConfigUpdate("strikethrough", patch.strikethrough)
+                                    if (patch.textTransform !== undefined) handleCustomLabelConfigUpdate("textTransform", patch.textTransform)
+                                    if (patch.letterSpacing !== undefined) handleCustomLabelConfigUpdate("letterSpacing", patch.letterSpacing)
+                                    if (patch.color !== undefined) handleCustomLabelConfigUpdate("color", patch.color)
+                                }}
+                            />
 
                             {/* Background and Border Colors (only when shape is not none) */}
                             {customLabelsConfig.shape !== 'none' && (

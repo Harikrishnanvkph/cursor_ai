@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo, type SetStateAction } from "react"
 
 /**
  * Calculate the distance between two touch points.
@@ -48,6 +48,32 @@ export function useZoomPan() {
     const panRafIdRef = useRef<number | null>(null);
     const pendingZoomRef = useRef(1);
     const zoomRafIdRef = useRef<number | null>(null);
+    const isDraggingRef = useRef(false);
+    isDraggingRef.current = isDragging;
+
+    const setPanOffsetSynced = useCallback((value: SetStateAction<{ x: number; y: number }>) => {
+        if (panRafIdRef.current !== null) {
+            cancelAnimationFrame(panRafIdRef.current);
+            panRafIdRef.current = null;
+        }
+        setPanOffset((prev) => {
+            const next = typeof value === 'function' ? value(prev) : value;
+            pendingPanRef.current = next;
+            return next;
+        });
+    }, []);
+
+    const setZoomSynced = useCallback((value: SetStateAction<number>) => {
+        if (zoomRafIdRef.current !== null) {
+            cancelAnimationFrame(zoomRafIdRef.current);
+            zoomRafIdRef.current = null;
+        }
+        setZoom((prev) => {
+            const next = typeof value === 'function' ? value(prev) : value;
+            pendingZoomRef.current = next;
+            return next;
+        });
+    }, []);
 
     const schedulePanUpdate = useCallback((newOffset: { x: number; y: number }) => {
         pendingPanRef.current = newOffset;
@@ -102,20 +128,13 @@ export function useZoomPan() {
     }, []);
 
     const handleResetZoom = useCallback(() => {
-        if (panRafIdRef.current !== null) {
-            cancelAnimationFrame(panRafIdRef.current);
-            panRafIdRef.current = null;
-        }
-        if (zoomRafIdRef.current !== null) {
-            cancelAnimationFrame(zoomRafIdRef.current);
-            zoomRafIdRef.current = null;
-        }
-        setZoom(1);
-        setPanOffset({ x: 0, y: 0 });
-    }, []);
+        setZoomSynced(1);
+        setPanOffsetSynced({ x: 0, y: 0 });
+    }, [setZoomSynced, setPanOffsetSynced]);
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (!panMode) return;
+        isDraggingRef.current = true;
         setIsDragging(true);
         setDragStart({
             x: e.clientX - panOffset.x,
@@ -126,16 +145,18 @@ export function useZoomPan() {
     }, [panMode, panOffset]);
 
     const handleMouseMove = useCallback((e: React.MouseEvent) => {
-        if (isDragging) {
+        if (isDraggingRef.current) {
             schedulePanUpdate({
                 x: e.clientX - dragStart.x,
                 y: e.clientY - dragStart.y
             });
             e.preventDefault();
         }
-    }, [isDragging, dragStart, schedulePanUpdate]);
+    }, [dragStart, schedulePanUpdate]);
 
     const handleMouseUp = useCallback(() => {
+        if (!isDraggingRef.current) return;
+        isDraggingRef.current = false;
         flushPanUpdate();
         setIsDragging(false);
     }, [flushPanUpdate]);
@@ -152,6 +173,8 @@ export function useZoomPan() {
         };
 
         const handleGlobalMouseUp = () => {
+            if (!isDraggingRef.current) return;
+            isDraggingRef.current = false;
             flushPanUpdate();
             setIsDragging(false);
         };
@@ -257,9 +280,9 @@ export function useZoomPan() {
         isDragging,
         panOffset,
         dragStart,
-        setZoom,
+        setZoom: setZoomSynced,
         setPanMode,
-        setPanOffset,
+        setPanOffset: setPanOffsetSynced,
         handleZoomIn,
         handleZoomOut,
         handleResetZoom,
@@ -273,6 +296,8 @@ export function useZoomPan() {
         isDragging,
         panOffset,
         dragStart,
+        setZoomSynced,
+        setPanOffsetSynced,
         handleZoomIn,
         handleZoomOut,
         handleResetZoom,

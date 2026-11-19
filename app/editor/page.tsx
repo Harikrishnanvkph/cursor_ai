@@ -184,7 +184,6 @@ function EditorPageContent() {
     setPresetMetadata(null)
     setIsBuiltInPreset(false)
     router.replace("/editor")
-    toast.info("Exited preset editing mode")
   }
 
   const handlePresetUpdateSuccess = (newDbId?: string) => {
@@ -545,7 +544,7 @@ function EditorPageContent() {
       }
       const shareUrl = `${window.location.origin}/share/${response.data.share_id}`;
       newWindow.location.href = shareUrl;
-      toast.success("Opened share link!", { id: "share-link" });
+      toast.dismiss("share-link");
     } catch (err: any) {
       newWindow.close();
       toast.error(err.message || "Failed to generate share link.", { id: "share-link" });
@@ -658,7 +657,6 @@ function EditorPageContent() {
         useChartStore.getState().setChartMode('grouped');
       }
       useChartStore.getState().setActiveGroupId(newGroupId);
-      toast.success(`Created group "${groupName || `Group ${(useChartStore.getState().groups || []).length + 1}`}"`);
     } else {
       // Ensure mode is updated to 'single' if user was in 'grouped' mode
       const chartStore = useChartStore.getState();
@@ -701,7 +699,6 @@ function EditorPageContent() {
         });
       }
       useChartStore.getState().updateChartConfig(freshSingleConfig);
-      toast.success(`Single chart created successfully.`);
     }
 
     if (useTemplateStore.getState().editorMode === 'template') {
@@ -824,7 +821,6 @@ function EditorPageContent() {
     setDimensionMismatchInfo(null)
     setEditorMode('template')
     setActiveTab('tpl_templates')
-    toast.info("Switched to Template Mode. You can now save with correct dimensions.")
   }
 
   // Handle "Save as Chart Only" - creates NEW standalone chart copy
@@ -1115,8 +1111,6 @@ function EditorPageContent() {
 
     // Go to datasets tab
     setActiveTab('datasets_slices')
-    const sizeLabel = dims.isResponsive ? 'Responsive' : `${dims.width}×${dims.height} px`
-    toast.success(`Chart created (${sizeLabel}). Navigate to Datasets to add your data.`)
   };
 
   const renderCenterAreaLoader = () => (

@@ -4,7 +4,8 @@ import React from 'react'
 import { Input } from '@/components/ui/input'
 import { useFormatBuilder } from '../format-builder-context'
 import type { ImageZone, ImageZoneStyle } from '@/lib/format-types'
-import { Link, UploadCloud, Trash2, ChevronDown, Sliders } from 'lucide-react'
+import { Trash2, ChevronDown, Sliders } from 'lucide-react'
+import { AddImageButton, type AddImageResult } from '@/components/shared/add-image-modal'
 
 export function ImageZoneStyles({ showContentControls = true }: { showContentControls?: boolean }) {
   const { selectedZone, updateZone, updateZoneStyle, registerBlob, revokeBlob } = useFormatBuilder()
@@ -13,7 +14,6 @@ export function ImageZoneStyles({ showContentControls = true }: { showContentCon
   const zone = selectedZone as ImageZone
   const s = zone.style || {}
   const imageUrl = zone.imageUrl || ''
-  const isLocalImage = imageUrl.startsWith('data:') || imageUrl.startsWith('blob:')
  
   const updateStyle = (u: Partial<ImageZoneStyle>) => updateZoneStyle(zone.id, u)
 
@@ -28,65 +28,34 @@ export function ImageZoneStyles({ showContentControls = true }: { showContentCon
         Image Properties
       </label>
  
-      {/* ── Image URL Input & Upload ── */}
+      {/* ── Image Add / Remove ── */}
       {showContentControls ? (
-        <div className="space-y-3 bg-[#0e0e1a]/20 p-2.5 rounded-lg border border-gray-800">
-          <div>
-            <label className="text-[10px] text-gray-500 block mb-1">Image URL</label>
-            {isLocalImage ? (
-              <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border border-gray-800 bg-gray-950 text-xs">
-                <div className="flex items-center gap-2 text-gray-400 truncate">
-                  <UploadCloud className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                  <span className="text-[10px] font-semibold text-gray-300 truncate">Local Image Uploaded</span>
-                </div>
-                <button
-                  onClick={handleRemoveImage}
-                  className="p-1 hover:bg-gray-800 hover:text-red-400 text-gray-500 rounded transition-colors shrink-0"
-                  title="Remove Image"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <div className="relative flex items-center">
-                <Link className="absolute left-2.5 w-3.5 h-3.5 text-gray-600" />
-                <Input
-                  value={imageUrl}
-                  onChange={e => updateZone(zone.id, { imageUrl: e.target.value } as any)}
-                  placeholder="https://... or paste image URL"
-                  className="pl-8 pr-8 h-8 text-[11px] bg-gray-950 border-gray-800 text-white placeholder:text-gray-650 focus:outline-none focus:border-orange-500/40 rounded-md transition-all"
-                />
-                {imageUrl && (
-                  <button
-                    onClick={handleRemoveImage}
-                    className="absolute right-2 text-gray-500 hover:text-gray-300 p-0.5"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
- 
-          <div>
-            <label className="text-[10px] text-gray-500 block mb-1">Upload Image</label>
-            <label className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 rounded-lg border border-dashed border-gray-800 bg-gray-950/20 text-[10px] text-gray-400 hover:border-orange-500/40 hover:text-gray-300 hover:bg-orange-500/5 cursor-pointer transition-all group">
-              <UploadCloud className="w-5 h-5 text-gray-500 group-hover:text-orange-400 transition-colors" />
-              <span className="font-semibold">Choose image file or drag here</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={e => {
-                  const file = e.target.files?.[0]
-                  if (!file) return
-                  revokeBlob(imageUrl) // revoke old blob if replacing
-                  const blobUrl = registerBlob(file)
-                  updateZone(zone.id, { imageUrl: blobUrl } as any)
-                }}
-              />
-            </label>
-          </div>
+        <div className="flex items-center gap-1.5 bg-[#0e0e1a]/20 p-2 rounded-lg border border-gray-800">
+          <AddImageButton
+            className="flex-1 h-7 text-[11px] bg-gray-900 border-gray-700 text-gray-200 hover:bg-gray-800 hover:text-white"
+            onSelectImage={(result: AddImageResult) => {
+              revokeBlob(imageUrl)
+              if (result.source === 'file' && result.file) {
+                URL.revokeObjectURL(result.url)
+                const blobUrl = registerBlob(result.file)
+                updateZone(zone.id, { imageUrl: blobUrl } as any)
+                return
+              }
+              if (result.url) {
+                updateZone(zone.id, { imageUrl: result.url } as any)
+              }
+            }}
+          />
+          {imageUrl && (
+            <button
+              type="button"
+              onClick={handleRemoveImage}
+              className="h-7 w-7 flex items-center justify-center hover:bg-gray-800 hover:text-red-400 text-gray-500 rounded border border-gray-700 shrink-0"
+              title="Remove Image"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       ) : (
         <div className="p-2.5 rounded border border-orange-500/10 bg-orange-500/5 text-center">

@@ -2,10 +2,14 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FontWeightSelect } from "@/components/ui/font-family-select"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { ChevronDown } from "lucide-react"
+import {
+    FontSettingSection,
+    mapChartJsFontValue,
+    applyChartJsFontPatch,
+} from "@/components/ui/font-setting-section"
 
 interface TicksTabProps {
     axis: 'x' | 'y' | 'y1'
@@ -323,76 +327,32 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
 
                     {/* Major Ticks Dropdown Content */}
                     {majorTicksDropdownOpen && (
-                        <div className="p-3.5 space-y-3.5 bg-white">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Major Tick Color</Label>
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className="w-7 h-7 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
-                                            style={{ backgroundColor: config?.ticks?.major?.color || '#000000' }}
-                                            onClick={() => document.getElementById(`major-tick-color-${axis}`)?.click()}
-                                        />
-                                        <input
-                                            id={`major-tick-color-${axis}`}
-                                            type="color"
-                                            value={config?.ticks?.major?.color || '#000000'}
-                                            onChange={(e) => updateNestedConfig('ticks.major', 'color', e.target.value)}
-                                            className="sr-only"
-                                        />
-                                        <Input
-                                            value={config?.ticks?.major?.color || '#000000'}
-                                            onChange={(e) => updateNestedConfig('ticks.major', 'color', e.target.value)}
-                                            className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
-                                            placeholder="#000000"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Font Size</Label>
-                                    <div className="flex items-center gap-1.5">
-                                        <Input
-                                            type="number"
-                                            value={config?.ticks?.major?.font?.size || ''}
-                                            onChange={(e) => updateNestedConfig('ticks.major.font', 'size', e.target.value ? Number(e.target.value) : undefined)}
-                                            placeholder="14"
-                                            className="h-8 text-xs bg-white flex-1 min-w-0"
-                                            min={8}
-                                            max={24}
-                                            step={1}
-                                        />
-                                        <span className="text-xs text-slate-400 shrink-0">px</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Font Weight</Label>
-                                    <FontWeightSelect
-                                        value={config?.ticks?.major?.font?.weight || 'bold'}
-                                        onValueChange={(value) => updateNestedConfig('ticks.major.font', 'weight', value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium text-slate-700">Font Style</Label>
-                                    <Select
-                                        value={config?.ticks?.major?.font?.style || (config?.ticks?.major?.fontStyle === 'italic' ? 'italic' : 'normal')}
-                                        onValueChange={(value) => updateNestedConfig('ticks.major.font', 'style', value)}
-                                    >
-                                        <SelectTrigger className="h-8 text-xs bg-white">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="normal">Normal</SelectItem>
-                                            <SelectItem value="italic">Italic</SelectItem>
-                                            <SelectItem value="oblique">Oblique</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                        <div className="p-3.5 bg-white">
+                            <FontSettingSection
+                                idPrefix={`major-ticks-${axis}`}
+                                value={{
+                                    ...mapChartJsFontValue(
+                                        config?.ticks?.major?.font,
+                                        config?.ticks?.major?.color
+                                    ),
+                                    style:
+                                        config?.ticks?.major?.font?.style ||
+                                        (config?.ticks?.major?.fontStyle === 'italic' ? 'italic' : 'normal'),
+                                }}
+                                defaultFamily={config?.ticks?.font?.family || 'Arial'}
+                                defaultSize={14}
+                                defaultWeight="700"
+                                defaultColor="#000000"
+                                sizeMin={8}
+                                sizeMax={24}
+                                onChange={(patch) =>
+                                    applyChartJsFontPatch(
+                                        patch,
+                                        (field, val) => updateNestedConfig('ticks.major.font', field, val),
+                                        (color) => updateNestedConfig('ticks.major', 'color', color)
+                                    )
+                                }
+                            />
                         </div>
                     )}
                 </div>

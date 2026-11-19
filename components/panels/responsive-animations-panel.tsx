@@ -9,7 +9,6 @@ import { useTemplateStore } from "@/lib/template-store";
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store";
 import React, { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff, ArrowUpNarrowWide, ArrowDownWideNarrow, ArrowUpAZ, ArrowDownZA, ArrowUpDown, Trophy, TrendingUp, TrendingDown, BarChart3, Percent, Hash, X, Divide, Undo2 } from "lucide-react";
-import { toast } from "sonner";
 import { type DimensionUnit, convertFromPixels, convertToPixels } from "@/lib/utils/dimension-utils";
 
 export function ResponsiveAnimationsPanel() {
@@ -219,7 +218,6 @@ export function ResponsiveAnimationsPanel() {
 
   const handleResetOperations = () => {
     resetDatasetOperations(currentDatasetIndex);
-    toast.success('Reset to original state', { duration: 2000 });
   };
 
   // Check if template mode is active

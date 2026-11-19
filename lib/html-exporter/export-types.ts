@@ -20,4 +20,11 @@ export interface HTMLExportOptions {
     fillArea?: boolean;
     showBorder?: boolean;
     originalChartType?: string;
+    // Optional explicit state overrides for isolated contexts (e.g. /share/[id])
+    chartTypeOverride?: string;
+    chartDataOverride?: any;
+    chartConfigOverride?: any;
+    chartModeOverride?: 'single' | 'grouped';
+    decorationShapesOverride?: any[];
+    contentPackageOverride?: any;
 }

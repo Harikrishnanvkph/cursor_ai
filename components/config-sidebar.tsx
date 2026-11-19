@@ -25,7 +25,6 @@ import { HistoryDropdown } from "@/components/history-dropdown"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
 
 
 
@@ -63,6 +62,16 @@ export function ConfigSidebar() {
   } = useTemplateStore()
 
   const { activeSidebarTab, setActiveSidebarTab } = useUIStore()
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set([activeSidebarTab]))
+
+  useEffect(() => {
+    setVisitedTabs((prev) => {
+      if (prev.has(activeSidebarTab)) return prev
+      const next = new Set(prev)
+      next.add(activeSidebarTab)
+      return next
+    })
+  }, [activeSidebarTab])
   const contentPackage = useFormatGalleryStore(s => s.contentPackage)
   const openGallery = useFormatGalleryStore(s => s.openGallery)
   const openStyleGallery = useChartStyleStore(s => s.openGallery)
@@ -71,10 +80,6 @@ export function ConfigSidebar() {
   const currentCloudTemplate = originalCloudTemplateContent?.id === "current-cloud-template"
     ? originalCloudTemplateContent
     : null
-
-  const handleApplyTemplate = () => {
-    toast.success("Design Applied Successfully!")
-  }
 
 
 
@@ -143,6 +148,7 @@ export function ConfigSidebar() {
             >Templates</button>
           </div>
 
+          {visitedTabs.has('general') && (
           <div className={`mt-4 space-y-4 ${activeSidebarTab === 'general' ? 'block' : 'hidden'}`}>
             {/* Mode Toggle + Chart Type (inline) */}
             <div className="flex items-center gap-2">
@@ -232,16 +238,21 @@ export function ConfigSidebar() {
             {/* Responsive Animations Panel */}
             <ResponsiveAnimationsPanel />
           </div>
+          )}
 
+          {visitedTabs.has('datasets') && (
           <div className={`mt-3 ${activeSidebarTab === 'datasets' ? 'block' : 'hidden'}`}>
             <DatasetsSlicesPanel />
           </div>
+          )}
 
 
 
+          {visitedTabs.has('templates') && (
           <div className={`mt-3 ${activeSidebarTab === 'templates' ? 'block' : 'hidden'}`}>
             <TemplateListTab mode="landing" />
           </div>
+          )}
         </div>
       </div>
     </div>

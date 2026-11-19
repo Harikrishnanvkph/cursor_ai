@@ -412,8 +412,8 @@ export const plainTemplate: HTMLTemplate = {
         ? background.imageUrl
         : JSON.stringify(background.imageUrl);
       const blur = background.blur ? `; filter: blur(${background.blur}px)` : '';
-      const whiteBase = background.imageWhiteBase !== false ? '#ffffff' : 'transparent';
-      chartContainerStyle = `background-color: ${whiteBase}; overflow: hidden;`;
+      const baseColor = background.imageWhiteBase !== false ? (background.imageBaseColor || '#ffffff') : 'transparent';
+      chartContainerStyle = `background-color: ${baseColor}; overflow: hidden;`;
       backgroundLayerHTML = `<div class="chart-background" style="position: absolute; inset: 0; z-index: 0; background-image: url(${imageUrl}); background-size: ${backgroundSize}; background-position: center; background-repeat: no-repeat; opacity: ${opacity / 100}; pointer-events: none${blur};"></div>`;
     } else if (background.type === "gradient") {
       const color1 = background.gradientColor1 || '#ffffff';

@@ -1,4 +1,10 @@
 import type { Plugin } from 'chart.js';
+import {
+  applyTextTransform,
+  buildCanvasFont,
+  drawCanvasTextDecoration,
+  withCanvasLetterSpacing,
+} from '@/lib/utils/font-decoration';
 
 /**
  * Gauge Plugin — Renders a gauge/meter overlay on a doughnut chart.
@@ -24,6 +30,11 @@ export interface GaugePluginOptions {
   valueColor: string
   valueFontFamily: string
   valueFontWeight: string
+  valueFontStyle?: string
+  valueUnderline?: boolean
+  valueStrikethrough?: boolean
+  valueTextTransform?: string
+  valueLetterSpacing?: number
   valuePrefix: string
   valueSuffix: string
   showMinMax: boolean
@@ -31,6 +42,13 @@ export interface GaugePluginOptions {
   maxLabel: string
   minMaxColor: string
   minMaxFontSize: number
+  minMaxFontFamily?: string
+  minMaxFontWeight?: string
+  minMaxFontStyle?: string
+  minMaxUnderline?: boolean
+  minMaxStrikethrough?: boolean
+  minMaxTextTransform?: string
+  minMaxLetterSpacing?: number
   centerOffsetY: number
   // Slice label options
   showSliceLabels: boolean
@@ -222,6 +240,11 @@ export const gaugePlugin: Plugin = {
         const sliceLabelFontSize = sliceLabelsConfig.fontSize ?? 14;
         const sliceLabelFontFamily = sliceLabelsConfig.fontFamily || valueFontFamily;
         const sliceLabelFontWeight = sliceLabelsConfig.fontWeight || '600';
+        const sliceLabelFontStyle = sliceLabelsConfig.fontStyle || 'normal';
+        const sliceLabelUnderline = Boolean(sliceLabelsConfig.underline);
+        const sliceLabelStrikethrough = Boolean(sliceLabelsConfig.strikethrough);
+        const sliceLabelTextTransform = sliceLabelsConfig.textTransform;
+        const sliceLabelLetterSpacing = typeof sliceLabelsConfig.letterSpacing === 'number' ? sliceLabelsConfig.letterSpacing : 0;
         const sliceLabelContent = sliceLabelsConfig.labelContent || 'value';
 
         // Determine radius based on anchor setting
@@ -234,7 +257,12 @@ export const gaugePlugin: Plugin = {
           labelRadius = outerRadius + 15; // outside the gauge
         }
 
-        ctx.font = `${sliceLabelFontWeight} ${sliceLabelFontSize}px ${sliceLabelFontFamily}`;
+        ctx.font = buildCanvasFont({
+          style: sliceLabelFontStyle,
+          weight: sliceLabelFontWeight,
+          size: sliceLabelFontSize,
+          family: sliceLabelFontFamily,
+        });
         ctx.fillStyle = sliceLabelColor;
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
@@ -261,9 +289,10 @@ export const gaugePlugin: Plugin = {
             labelText = formatSliceVal(rawSliceValue);
             break;
         }
+        labelText = applyTextTransform(labelText, sliceLabelTextTransform);
 
         // Measure text to decide: curved per-character or straight
-        const textMetrics = ctx.measureText(labelText);
+        const textMetrics = withCanvasLetterSpacing(ctx, sliceLabelLetterSpacing, () => ctx.measureText(labelText));
         const arcLength = sliceAngle * labelRadius;
 
         if (textMetrics.width > arcLength * 0.9 || labelText.length <= 4) {
@@ -274,11 +303,31 @@ export const gaugePlugin: Plugin = {
           ctx.translate(lx, ly);
           // Rotate so text is tangent to the arc
           ctx.rotate(midAngle + Math.PI / 2);
-          ctx.fillText(labelText, 0, 0);
+          withCanvasLetterSpacing(ctx, sliceLabelLetterSpacing, () => {
+            ctx.fillText(labelText, 0, 0);
+            drawCanvasTextDecoration(ctx, labelText, 0, 0, {
+              underline: sliceLabelUnderline,
+              strikethrough: sliceLabelStrikethrough,
+              color: sliceLabelColor,
+              fontSize: sliceLabelFontSize,
+            });
+          });
           ctx.restore();
         } else {
           // Longer text: draw each character along the curved path
-          drawCurvedText(ctx, labelText, centerX, centerY, labelRadius, midAngle, sliceLabelFontSize);
+          drawCurvedText(
+            ctx,
+            labelText,
+            centerX,
+            centerY,
+            labelRadius,
+            midAngle,
+            sliceLabelFontSize,
+            sliceLabelUnderline,
+            sliceLabelStrikethrough,
+            sliceLabelColor,
+            sliceLabelLetterSpacing
+          );
         }
 
         cumulativeAngle += sliceAngle;
@@ -400,7 +449,13 @@ export const gaugePlugin: Plugin = {
         gaugeValueText = `${valuePrefix}${formattedDisplay}${valueSuffix}`;
       }
 
-      ctx.font = `${valueFontWeight} ${valueFontSize}px ${valueFontFamily}`;
+      gaugeValueText = applyTextTransform(gaugeValueText, pluginOptions.valueTextTransform);
+      ctx.font = buildCanvasFont({
+        style: pluginOptions.valueFontStyle,
+        weight: valueFontWeight,
+        size: valueFontSize,
+        family: valueFontFamily,
+      });
       ctx.fillStyle = valueColor;
       ctx.textBaseline = 'middle';
 
@@ -432,12 +487,33 @@ export const gaugePlugin: Plugin = {
           break;
       }
 
-      ctx.fillText(gaugeValueText, valX, valY);
+      withCanvasLetterSpacing(ctx, pluginOptions.valueLetterSpacing, () => {
+        ctx.fillText(gaugeValueText, valX, valY);
+        drawCanvasTextDecoration(ctx, gaugeValueText, valX, valY, {
+          underline: Boolean(pluginOptions.valueUnderline),
+          strikethrough: Boolean(pluginOptions.valueStrikethrough),
+          color: valueColor,
+          fontSize: valueFontSize,
+        });
+      });
     }
 
     // ── 4. Draw min/max labels ────────────────────────────
     if (showMinMax) {
-      ctx.font = `400 ${minMaxFontSize}px ${valueFontFamily}`;
+      const mmFontFamily = pluginOptions.minMaxFontFamily || valueFontFamily;
+      const mmFontWeight = pluginOptions.minMaxFontWeight || '400';
+      const mmFontStyle = pluginOptions.minMaxFontStyle || 'normal';
+      const mmUnderline = Boolean(pluginOptions.minMaxUnderline);
+      const mmStrikethrough = Boolean(pluginOptions.minMaxStrikethrough);
+      const mmTransform = pluginOptions.minMaxTextTransform;
+      const mmLetterSpacing = pluginOptions.minMaxLetterSpacing;
+
+      ctx.font = buildCanvasFont({
+        style: mmFontStyle,
+        weight: mmFontWeight,
+        size: minMaxFontSize,
+        family: mmFontFamily,
+      });
       ctx.fillStyle = minMaxColor;
 
       // Min label — bottom-left of the gauge arc
@@ -445,10 +521,26 @@ export const gaugePlugin: Plugin = {
       ctx.textBaseline = 'top';
       const labelY = centerY + 8;
       const labelSpread = outerRadius * 0.85;
-      ctx.fillText(String(minLabel), centerX - labelSpread, labelY);
+      const minText = applyTextTransform(String(minLabel), mmTransform);
+      const maxText = applyTextTransform(String(maxLabel), mmTransform);
+      withCanvasLetterSpacing(ctx, mmLetterSpacing, () => {
+        ctx.fillText(minText, centerX - labelSpread, labelY);
+        drawCanvasTextDecoration(ctx, minText, centerX - labelSpread, labelY, {
+          underline: mmUnderline,
+          strikethrough: mmStrikethrough,
+          color: minMaxColor,
+          fontSize: minMaxFontSize,
+        });
 
-      // Max label — bottom-right of the gauge arc
-      ctx.fillText(String(maxLabel), centerX + labelSpread, labelY);
+        // Max label — bottom-right of the gauge arc
+        ctx.fillText(maxText, centerX + labelSpread, labelY);
+        drawCanvasTextDecoration(ctx, maxText, centerX + labelSpread, labelY, {
+          underline: mmUnderline,
+          strikethrough: mmStrikethrough,
+          color: minMaxColor,
+          fontSize: minMaxFontSize,
+        });
+      });
 
       // ── Zero Reference Marker ──
       const showZeroMarker = pluginOptions.showZeroMarker !== false;
@@ -518,14 +610,18 @@ function drawCurvedText(
   cy: number,
   radius: number,
   midAngle: number,
-  fontSize: number
+  fontSize: number,
+  underline: boolean = false,
+  strikethrough: boolean = false,
+  color?: string,
+  letterSpacing: number = 0
 ) {
   const charWidths: number[] = [];
   let totalWidth = 0;
 
   // Measure each character
   for (let i = 0; i < text.length; i++) {
-    const w = ctx.measureText(text[i]).width;
+    const w = ctx.measureText(text[i]).width + (i < text.length - 1 ? letterSpacing : 0);
     charWidths.push(w);
     totalWidth += w;
   }
@@ -549,6 +645,14 @@ function drawCurvedText(
     // +π/2 because the arc text should be upright relative to the curve
     ctx.rotate(drawAngle + Math.PI / 2);
     ctx.fillText(text[i], 0, 0);
+    if (underline || strikethrough) {
+      drawCanvasTextDecoration(ctx, text[i], 0, 0, {
+        underline,
+        strikethrough,
+        color,
+        fontSize,
+      });
+    }
     ctx.restore();
 
     currentAngle += charAngle;

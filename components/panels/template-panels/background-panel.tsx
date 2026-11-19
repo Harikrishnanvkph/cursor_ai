@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { Palette, FileText, MousePointerClick, Layers } from "lucide-react"
+import { Palette, FileText, MousePointerClick, Layers, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
 import { toast } from "sonner"
 import type { FormatBlueprintRow } from "@/lib/format-types"
 
@@ -259,33 +261,37 @@ function FormatBackgroundEditor({ format }: { format: FormatBlueprintRow }) {
           {/* Image */}
           {currentType === 'image' && (
             <>
-              <div>
-                <Label className="text-xs">Image URL</Label>
-                <Input
-                  type="text"
-                  value={bgStyle.imageUrl || ''}
-                  onChange={(e) => updateBgStyle({ imageUrl: e.target.value })}
-                  placeholder="https://example.com/image.jpg"
-                  className="h-7 text-xs mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Upload Image</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
+              <div className="flex items-center gap-1.5">
+                <AddImageButton
+                  className="flex-1 h-8 text-xs"
+                  onSelectImage={(result: AddImageResult) => {
+                    if (result.source === 'file' && result.file) {
+                      const file = result.file
+                      URL.revokeObjectURL(result.url)
                       const reader = new FileReader()
                       reader.onload = (event) => {
                         updateBgStyle({ imageUrl: event.target?.result as string })
                       }
                       reader.readAsDataURL(file)
+                      return
+                    }
+                    if (result.url) {
+                      updateBgStyle({ imageUrl: result.url })
                     }
                   }}
-                  className="h-7 text-xs mt-1"
                 />
+                {bgStyle.imageUrl && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 p-0 shrink-0 text-slate-500 hover:text-red-600"
+                    onClick={() => updateBgStyle({ imageUrl: '' })}
+                    title="Clear Image"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Image Fit</Label>
@@ -507,37 +513,38 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
         {/* Image */}
         {zoneBgType === 'image' && (
           <>
-            <div>
-              <Label className="text-xs">Image URL</Label>
-              <Input
-                type="text"
-                value={zoneStyle.bgImageUrl || ''}
-                onChange={(e) => handleUpdateZoneStyle({ bgImageUrl: e.target.value })}
-                placeholder="https://example.com/image.jpg"
-                className="h-7 text-xs mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Upload Image</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
+            <div className="flex items-center gap-1.5">
+              <AddImageButton
+                className="flex-1 h-8 text-xs"
+                onSelectImage={async (result: AddImageResult) => {
+                  if (result.source === 'file' && result.file) {
+                    const file = result.file
+                    URL.revokeObjectURL(result.url)
                     try {
-                      toast.info('Compressing image...', { duration: 1000 })
                       const compressed = await compressImage(file, 800, 0.85)
                       handleUpdateZoneStyle({ bgImageUrl: compressed })
-                      toast.success('Image uploaded!')
                     } catch (err: any) {
                       toast.error(err.message || 'Failed to process image')
-                      e.target.value = ''
                     }
+                    return
+                  }
+                  if (result.url) {
+                    handleUpdateZoneStyle({ bgImageUrl: result.url })
                   }
                 }}
-                className="h-7 text-xs mt-1"
               />
+              {zoneStyle.bgImageUrl && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0 shrink-0 text-slate-500 hover:text-red-600"
+                  onClick={() => handleUpdateZoneStyle({ bgImageUrl: '' })}
+                  title="Clear Image"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
             <div>
               <Label className="text-xs">Image Fit</Label>

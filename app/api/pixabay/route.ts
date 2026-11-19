@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     const url = `https://pixabay.com/api/?${params.toString()}`;
 
     const res = await fetch(url, {
-      next: { revalidate: 3600 }, // Respect Pixabay caching guidelines (cache up to 24h)
+      next: { revalidate: 86400 }, // Respect Pixabay caching guidelines (minimum 24h)
     });
 
     if (!res.ok) {

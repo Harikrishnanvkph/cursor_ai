@@ -5,11 +5,14 @@ import { useChartActions } from "@/lib/hooks/use-chart-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FontWeightSelect } from "@/components/ui/font-family-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Added import for Tabs components
 import { PieChartIcon } from "lucide-react";
+import {
+  FontSettingSection,
+  mapChartJsFontValue,
+  applyChartJsFontPatch,
+} from "@/components/ui/font-setting-section";
 
 // Assuming PiePanelProps is defined elsewhere or will be defined.
 // For the purpose of this edit, we'll assume it's a type that includes `className`.
@@ -117,33 +120,28 @@ export function PiePanel({ className }: PiePanelProps) {
 
                 {dataLabelsConfig?.display && (
                   <>
-                    <div>
-                      <Label htmlFor="labelColor">Label Color</Label>
-                      <Input
-                        id="labelColor"
-                        type="color"
-                        value={dataLabelsConfig?.color as string || "#000000"}
-                        onChange={(e) => handleDatalabelsUpdate("color", e.target.value)}
-                        className="h-8"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="labelFontSize">Font Size (px)</Label>
-                      <Input
-                        id="labelFontSize"
-                        type="number"
-                        value={(dataLabelsConfig?.font as any)?.size || 14}
-                        onChange={(e) => handleFontUpdate("size", parseInt(e.target.value, 10))}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="labelFontWeight" className="text-xs font-medium">Font Weight</Label>
-                      <FontWeightSelect
-                        id="labelFontWeight"
-                        value={(dataLabelsConfig?.font as any)?.weight || "bold"}
-                        onValueChange={(value) => handleFontUpdate("weight", value)}
-                      />
-                    </div>
+                    <FontSettingSection
+                      idPrefix="pie-datalabels"
+                      value={mapChartJsFontValue(dataLabelsConfig?.font, dataLabelsConfig?.color as string)}
+                      defaultFamily="Arial"
+                      defaultSize={14}
+                      defaultWeight="bold"
+                      defaultColor="#000000"
+                      weightOutputFormat="named"
+                      sizeMin={6}
+                      sizeMax={48}
+                      showStyle={true}
+                      showDecoration={false}
+                      showTextCase={false}
+                      showLetterSpacing={false}
+                      onChange={(patch) =>
+                        applyChartJsFontPatch(
+                          patch,
+                          (field, val) => handleFontUpdate(field, val),
+                          (color) => handleDatalabelsUpdate("color", color)
+                        )
+                      }
+                    />
                     <div className="flex items-center space-x-2">
                       <Switch
                         id="labelFormat"

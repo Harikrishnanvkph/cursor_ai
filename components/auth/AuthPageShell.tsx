@@ -34,10 +34,8 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
     <div
       className={`home-new-container ${GeistSans.variable} ${GeistSans.className} font-sans min-h-screen flex flex-col bg-white dark:bg-slate-950 transition-colors duration-300 relative overflow-x-clip`}
     >
-      {/* Ambient background glows & subtle grid matching / */}
+      {/* Subtle crisp grid matching / */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="animate-float-slow absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/20 blur-[100px]" />
-        <div className="animate-float-medium absolute top-1/3 right-0 w-[350px] h-[350px] rounded-full bg-purple-500/10 dark:bg-purple-600/20 blur-[100px]" />
         <div
           className="absolute inset-0 opacity-40"
           style={{

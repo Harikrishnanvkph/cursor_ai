@@ -423,9 +423,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     // ─── Render ───
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
             {/* Tab Navigation */}
-            <div className="flex border-b border-gray-200 overflow-x-auto whitespace-nowrap max-w-full px-2">
+            <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/60">
                 {[
                     { id: 'general' as const, label: 'General' },
                     { id: 'colors' as const, label: 'Colors' },
@@ -433,10 +433,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 ].filter(tab => chartType !== 'timeline' || tab.id !== 'images').map((tab) => (
                     <button
                         key={tab.id}
+                        type="button"
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === tab.id
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                        className={`px-2 py-1.5 text-[11px] font-medium rounded-lg transition-all cursor-pointer ${activeTab === tab.id
+                            ? 'bg-white text-blue-600 shadow-xs ring-1 ring-slate-200/70'
+                            : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                             }`}
                     >
                         {tab.label}

@@ -20,17 +20,17 @@ export function DatasetsSlicesPanel() {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+      <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1 bg-slate-100/90 rounded-xl border border-slate-200/70">
         <TabsTrigger
           value="datasets"
-          className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+          className="text-xs font-medium py-1.5 rounded-lg transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs text-slate-500 hover:text-slate-800"
         >
           Datasets
         </TabsTrigger>
         {!isTimeline ? (
           <TabsTrigger
             value="slices"
-            className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            className="text-xs font-medium py-1.5 rounded-lg transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs text-slate-500 hover:text-slate-800"
           >
             Slices
           </TabsTrigger>
@@ -38,7 +38,7 @@ export function DatasetsSlicesPanel() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-xs py-2 rounded-md text-gray-400 bg-gray-50/70 text-center cursor-not-allowed select-none opacity-60">
+                <div className="text-xs font-medium py-1.5 rounded-lg text-slate-400 bg-slate-50/70 text-center cursor-not-allowed select-none opacity-70">
                   Slices (N/A)
                 </div>
               </TooltipTrigger>
@@ -50,12 +50,12 @@ export function DatasetsSlicesPanel() {
         )}
       </TabsList>
 
-      <TabsContent value="datasets" className="mt-2.5">
+      <TabsContent value="datasets" className="mt-3">
         <DatasetSettings />
       </TabsContent>
 
       {!isTimeline && (
-        <TabsContent value="slices" className="mt-2.5">
+        <TabsContent value="slices" className="mt-3">
           <SliceSettings />
         </TabsContent>
       )}

@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { BarChart3, BarChart2, Link2, Link2Off, ArrowRight, SlidersHorizontal, Sparkles } from "lucide-react"
-import { toast } from "sonner"
 
 interface TemplateChartZonePanelProps {
   onTabChange?: (tab: string) => void
@@ -123,7 +122,6 @@ export function TemplateChartZonePanel({ onTabChange }: TemplateChartZonePanelPr
     }
 
     window.dispatchEvent(new CustomEvent('changeActiveTab', { detail: { tab: targetTab } }))
-    toast.success("Switched to Chart Editor")
   }
 
   return (

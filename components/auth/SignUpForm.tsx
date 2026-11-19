@@ -14,6 +14,8 @@ import {
   authPrimaryButtonClassName,
 } from '@/components/auth/AuthPageShell'
 
+import { toast } from 'sonner'
+
 const USER_NAME_EMPTY_ERROR = 'User name cannot be empty'
 
 /** Returns the part before "@" once the user has typed "@", otherwise an empty string. */
@@ -164,6 +166,7 @@ export function SignUpForm() {
       const ok = await sendOtp(email.trim(), 'signup', finalName)
       if (ok) {
         setResendCooldown(30)
+        toast.success('Verification code resent to your email.')
       }
     } finally {
       setIsPending(false)

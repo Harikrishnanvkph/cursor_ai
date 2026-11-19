@@ -30,6 +30,10 @@ export interface BackgroundConfig {
     gradientEnd?: string;
     opacity?: number;
     blur?: number;
+    imageUrl?: string;
+    imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
+    imageWhiteBase?: boolean;
+    imageBaseColor?: string;
     [key: string]: any;
 }
 

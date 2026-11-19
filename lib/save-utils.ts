@@ -453,6 +453,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                 // Manually replicate updateDataset action logic using Service + setState
                 const updates = {
                     sourceId: currentState.chartData.datasets[activeDatasetIndex]?.sourceId || conversationId,
+                    sourceSnapshotId: snapshotId || currentState.chartData.datasets[activeDatasetIndex]?.sourceSnapshotId,
                     sourceTitle: savedTitle
                 };
 
@@ -478,6 +479,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                 const updates = {
                     name: savedTitle,
                     sourceId: activeGroup.sourceId || conversationId,
+                    sourceSnapshotId: snapshotId || activeGroup.sourceSnapshotId,
                     sourceTitle: savedTitle
                 };
 

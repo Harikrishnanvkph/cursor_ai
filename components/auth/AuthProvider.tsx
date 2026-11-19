@@ -396,7 +396,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return false
       }
-      toast.success('Verification code sent to your email.')
       return true
     } catch (e: any) {
       toast.error(e?.message || 'Failed to send verification code')

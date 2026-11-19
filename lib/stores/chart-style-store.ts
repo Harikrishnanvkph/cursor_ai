@@ -11,7 +11,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { ChartStylePreset, PresetCategory } from '../chart-style-types'
+import type { ChartStylePreset, PresetCategory, PresetDimensions } from '../chart-style-types'
 import { getOfficialPresets } from '../chart-style-defaults'
 import { applyPresetToChart, checkPresetCompatibility } from '../chart-style-engine'
 import type { SupportedChartType } from '../chart-defaults'
@@ -75,7 +75,7 @@ interface ChartStyleStore {
    * @param applyDimensions - Whether to also adopt the preset's dimensions
    * @returns true if applied successfully, false if preset not found
    */
-  applyPreset: (presetId: string, applyDimensions?: boolean) => boolean
+  applyPreset: (presetId: string, applyDimensions?: boolean, targetDimensions?: PresetDimensions | null) => boolean
 
   // ── Ephemeral Preset Editor State ─────
   editPresetId: string | null
@@ -320,7 +320,7 @@ export const useChartStyleStore = create<ChartStyleStore>()(
     await get().loadPresets(true)
   },
 
-  applyPreset: (presetId: string, applyDimensions?: boolean) => {
+  applyPreset: (presetId: string, applyDimensions?: boolean, targetDimensions?: PresetDimensions | null) => {
     // Search the store's live state (hardcoded + DB-backed presets)
     const { officialPresets, userPresets } = get()
     const allPresets = [...officialPresets, ...userPresets]
@@ -343,14 +343,18 @@ export const useChartStyleStore = create<ChartStyleStore>()(
       // Get the active config (resolves per-dataset or per-group overrides)
       const activeConfig = chartState.getActiveChartConfig ? chartState.getActiveChartConfig() : chartState.chartConfig
 
-      // If applyDimensions is not explicitly passed as false, and the preset defines dimensions, apply them!
-      const shouldApplyDimensions = applyDimensions !== undefined
-        ? applyDimensions
-        : !!(preset.dimensions?.width && preset.dimensions?.height)
+      // If applyDimensions is not explicitly passed as false, and target or preset dimensions exist, apply them!
+      const shouldApplyDimensions = targetDimensions
+        ? true
+        : applyDimensions !== undefined
+          ? applyDimensions
+          : !!(preset.dimensions?.width && preset.dimensions?.height)
 
-      // Apply the preset
+      // Apply the preset (dynamically translated if targetDimensions differs or chart dimensions are kept)
       const result = applyPresetToChart(preset, chartState.chartData, activeConfig, {
         applyDimensions: shouldApplyDimensions,
+        targetDimensions: targetDimensions ?? undefined,
+        translateToTarget: true,
       })
 
       // Undo is handled automatically by zundo when setFullChart updates the store

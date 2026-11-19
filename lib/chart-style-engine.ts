@@ -21,6 +21,7 @@ import type {
 import { getDefaultConfigForType } from './chart-defaults'
 import { darkenColor, generateColorPalette, applyOpacityToColor } from './utils/color-utils'
 import { parseDimension } from './utils/dimension-utils'
+import { translatePresetToDimensions } from './preset-scaling-engine'
 import type {
   ChartStylePreset,
   ColorStrategy,
@@ -294,7 +295,7 @@ export function extractPresetFromCurrentChart(
  * @returns New chartType, chartData, and chartConfig ready for setFullChart()
  */
 export function applyPresetToChart(
-  preset: ChartStylePreset,
+  rawPreset: ChartStylePreset,
   currentData: ExtendedChartData,
   currentConfig: ExtendedChartOptions,
   options: PresetApplyOptions = {}
@@ -303,8 +304,25 @@ export function applyPresetToChart(
   chartData: ExtendedChartData
   chartConfig: ExtendedChartOptions
 } {
+  const rawDataLength = currentData.labels?.length || 0
+
+  // Resolve target dimensions and dynamically translate preset fonts, axes, layout & styling when needed
+  const resolvedTargetDims = options.targetDimensions?.width && options.targetDimensions?.height
+    ? options.targetDimensions
+    : options.applyDimensions === false && currentConfig?.width && currentConfig?.height
+      ? { width: String(currentConfig.width), height: String(currentConfig.height) }
+      : null
+
+  const preset = resolvedTargetDims && options.translateToTarget !== false
+    ? translatePresetToDimensions(rawPreset, resolvedTargetDims, {
+        dataCount: rawDataLength || 8,
+        fontScaleMode: 'normalized',
+        activeScalesOverride: (currentConfig as any)?.scales,
+      }).preset
+    : rawPreset
+
   const newChartType = preset.chartType
-  const dataLength = currentData.labels?.length || 0
+  const dataLength = rawDataLength
   const datasetCount = currentData.datasets.length
   const isGrouped = datasetCount > 1
 
@@ -676,7 +694,7 @@ export function applyPresetToChart(
   }
 
   // ── 4. Handle dimensions ────────────────────────────────
-  if (options.applyDimensions && preset.dimensions) {
+  if ((options.applyDimensions || options.targetDimensions) && preset.dimensions) {
     const wNum = parseDimension(preset.dimensions.width, 800)
     const hNum = parseDimension(preset.dimensions.height, 600)
     mergedConfig.width = `${wNum}px`

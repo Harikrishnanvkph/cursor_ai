@@ -55,6 +55,11 @@ import annotationPlugin from 'chartjs-plugin-annotation'
 
 import { parseDimension } from "@/lib/utils/dimension-utils"
 import { darkenColor, getHexFromColor } from "@/lib/utils/color-utils"
+import {
+  applyTextTransform,
+  buildCanvasFont,
+  installChartJsFontPatches,
+} from "@/lib/utils/font-decoration"
 // Date adapter for time scales - auto-registers with Chart.js
 import 'chartjs-adapter-date-fns'
 
@@ -199,6 +204,15 @@ if (Scale && !(Scale.prototype as any)._fitCustomPaddingPatched) {
   };
   (Scale.prototype as any)._fitCustomPaddingPatched = true;
 }
+
+// Install Chart.js native font underline, strikethrough, and textTransform patches
+installChartJsFontPatches({
+  Scale,
+  RadialLinearScale,
+  Title,
+  Legend,
+  Tooltip,
+});
 
 // Plugin registration verified
 
@@ -498,6 +512,8 @@ export interface ChartGeneratorProps {
   typeOverride?: string;
   /** When true, disables interactive features (context menus, resize handlers, hydration gate, etc.) */
   readOnly?: boolean;
+  /** When true, isolates rendering from global Zustand/localStorage stores while keeping tooltips & animations */
+  isolated?: boolean;
   /** Optional override for chart mode in readOnly preview */
   chartModeOverride?: 'single' | 'grouped';
   /** When true, forces templates/formats layout behavior (responsive canvas inside scaled zone) */
@@ -515,6 +531,7 @@ export const ChartGenerator = memo(function ChartGenerator({
   configOverride,
   typeOverride,
   readOnly = false,
+  isolated = false,
   chartModeOverride,
   isTemplateOrFormat = false,
   responsiveWidth,
@@ -540,32 +557,34 @@ export const ChartGenerator = memo(function ChartGenerator({
   const activeGroupId = useActiveGroupId();
   const groups = useChartGroups();
 
-  // Use local overrides in readOnly mode to prevent state leakage from the active editor store
-  const legendFilter = readOnly || configOverride
+  // Use local overrides in readOnly or isolated mode to prevent state leakage from the active editor store
+  const isStoreIsolated = readOnly || isolated;
+
+  const legendFilter = isStoreIsolated || configOverride
     ? { datasets: {}, slices: {} }
     : storeLegendFilter;
 
-  const fillArea = readOnly || configOverride
+  const fillArea = isStoreIsolated || configOverride
     ? (chartConfig?.visualSettings?.fillArea ?? true)
     : storeFillArea;
 
-  const fillPoints = readOnly || configOverride
+  const fillPoints = isStoreIsolated || configOverride
     ? (chartConfig?.visualSettings?.fillPoints !== false)
     : storeFillPoints;
 
-  const showBorder = readOnly || configOverride
+  const showBorder = isStoreIsolated || configOverride
     ? (chartConfig?.visualSettings?.showBorder ?? true)
     : storeShowBorder;
 
-  const showImages = readOnly || configOverride
+  const showImages = isStoreIsolated || configOverride
     ? (chartConfig?.visualSettings?.showImages ?? true)
     : storeShowImages;
 
-  const chartMode = readOnly || configOverride
+  const chartMode = isStoreIsolated || configOverride
     ? (chartModeOverride ?? chartConfig?.mode ?? (chartData?.datasets?.length > 1 ? 'grouped' : 'single'))
     : storeChartMode;
 
-  const uniformityMode = readOnly || configOverride
+  const uniformityMode = isStoreIsolated || configOverride
     ? (chartConfig?.visualSettings?.uniformityMode ?? 'uniform')
     : storeUniformityMode;
 
@@ -573,7 +592,7 @@ export const ChartGenerator = memo(function ChartGenerator({
   // so the chart always fills its container zone regardless of its own fixed dimensions.
   const editorMode = useTemplateStore(s => s.editorMode);
   // template/format mode is active when specified by prop or in template editor mode
-  const isInsideTemplateOrFormat = isTemplateOrFormat || editorMode === 'template';
+  const isInsideTemplateOrFormat = isTemplateOrFormat || (!isolated && editorMode === 'template');
 
   // When inside a template or format, always force responsive — the chart zone container
   // already defines the correct size. Fixed dimensions must not overflow the zone.
@@ -719,10 +738,10 @@ export const ChartGenerator = memo(function ChartGenerator({
   // from localStorage. Without this, the component renders first with empty/default
   // state, then re-renders with hydrated data — causing a visible double-load flicker.
   // In readOnly mode, data is provided via props so hydration isn't needed.
-  const [storeHydrated, setStoreHydrated] = useState(readOnly ? true : false);
-  const initialRenderRef = useRef(!readOnly);
+  const [storeHydrated, setStoreHydrated] = useState(isStoreIsolated ? true : false);
+  const initialRenderRef = useRef(!isStoreIsolated);
   useEffect(() => {
-    if (readOnly) return; // Skip hydration gate when data is provided directly
+    if (isStoreIsolated) return; // Skip hydration gate when data is provided directly
     // Check if already hydrated (can happen if persist completes synchronously)
     const alreadyHydrated = (useChartStore.persist as any)?.hasHydrated?.();
     if (alreadyHydrated) {
@@ -769,9 +788,9 @@ export const ChartGenerator = memo(function ChartGenerator({
     currentValue: 0
   });
 
-  // Mobile detection — skip in readOnly mode to avoid unnecessary listeners
+  // Mobile detection — skip in readOnly/isolated mode to avoid unnecessary listeners
   useEffect(() => {
-    if (readOnly) return;
+    if (isStoreIsolated) return;
     const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
     check();
     console.log('Adding Resize event listener')
@@ -780,7 +799,7 @@ export const ChartGenerator = memo(function ChartGenerator({
       console.log('Removing Resize event listener')
       window.removeEventListener('resize', check);
     }
-  }, [readOnly]);
+  }, [isStoreIsolated]);
 
   // Keep refs in sync with latest values (runs every render but does no real work)
   useEffect(() => {
@@ -789,11 +808,11 @@ export const ChartGenerator = memo(function ChartGenerator({
     stateRef.current = { chartData } as any;
   });
 
-  // Register chart ref globally — skip in readOnly mode to avoid overwriting editor's chart ref
+  // Register chart ref globally — skip in readOnly/isolated mode to avoid overwriting editor's chart ref
   useEffect(() => {
-    if (readOnly) return;
+    if (isStoreIsolated) return;
     setGlobalChartRef(chartRef);
-  }, [setGlobalChartRef, readOnly]);
+  }, [setGlobalChartRef, isStoreIsolated]);
 
   // Resize the canvas when DPR (zoom) OR chart dimensions change.
   // Only resize() is called here — update() is intentionally omitted for
@@ -842,15 +861,26 @@ export const ChartGenerator = memo(function ChartGenerator({
     };
   }, []);
 
-  // Preload any web fonts configured in chart titles, subtitles, axes, or custom labels
+  // Preload any web fonts configured in chart titles, subtitles, legend, tooltips, axes, gauge, or custom labels
   useEffect(() => {
     const fontsToLoad = [
       (chartConfig?.plugins?.title?.font as any)?.family,
       (chartConfig?.plugins?.subtitle?.font as any)?.family,
+      (chartConfig?.plugins?.legend?.labels as any)?.font?.family,
+      (chartConfig?.plugins?.tooltip as any)?.titleFont?.family,
+      (chartConfig?.plugins?.tooltip as any)?.bodyFont?.family,
       (chartConfig?.scales?.x?.title?.font as any)?.family,
       (chartConfig?.scales?.y?.title?.font as any)?.family,
+      (chartConfig?.scales?.y1?.title?.font as any)?.family,
       (chartConfig?.scales?.x?.ticks?.font as any)?.family,
       (chartConfig?.scales?.y?.ticks?.font as any)?.family,
+      (chartConfig?.scales?.y1?.ticks?.font as any)?.family,
+      (chartConfig?.scales as any)?.r?.pointLabels?.font?.family,
+      (chartConfig?.scales as any)?.r?.ticks?.font?.family,
+      (chartConfig?.scales as any)?.r?.ticks?.major?.font?.family,
+      (chartConfig?.plugins as any)?.gauge?.valueFontFamily,
+      (chartConfig?.plugins as any)?.gauge?.minMaxFontFamily,
+      (chartConfig?.plugins as any)?.customLabelsConfig?.fontFamily,
     ].filter(Boolean);
 
     if (fontsToLoad.length > 0) {
@@ -862,8 +892,8 @@ export const ChartGenerator = memo(function ChartGenerator({
 
 
   // Get enabled datasets (respect single/grouped mode and legendFilter)
-  // In readOnly mode (tile preview), skip all filtering and use data as-is
-  const enabledDatasets = readOnly
+  // In readOnly/isolated mode, skip store filtering and use override data as-is
+  const enabledDatasets = isStoreIsolated
     ? chartData.datasets
     : chartMode === 'single'
       ? chartData.datasets.filter((_, i) => i === activeDatasetIndex)
@@ -872,8 +902,8 @@ export const ChartGenerator = memo(function ChartGenerator({
         .filter((ds): ds is typeof chartData.datasets[number] => ds !== null);
 
   // Filter datasets based on mode and active group
-  // In readOnly mode, skip mode/group filtering
-  const modeFilteredDatasets = readOnly
+  // In readOnly/isolated mode, skip mode/group filtering
+  const modeFilteredDatasets = isStoreIsolated
     ? enabledDatasets
     : enabledDatasets.filter(dataset => {
         if (dataset.mode) {
@@ -889,9 +919,9 @@ export const ChartGenerator = memo(function ChartGenerator({
       });
 
   // Slice-level visibility (for pie/doughnut/polarArea) - respect legendFilter
-  // In readOnly mode, all slices are visible
+  // In readOnly/isolated mode, all slices are visible
   const isSliceVisible = (index: number): boolean => {
-    if (readOnly) return true;
+    if (isStoreIsolated) return true;
     return (legendFilter.slices[index] !== false);
   };
 
@@ -1309,7 +1339,7 @@ export const ChartGenerator = memo(function ChartGenerator({
   const UNSAFE_CALLBACK_TOKENS = /\b(window|document|globalThis|self|top|parent|frames|fetch|XMLHttpRequest|WebSocket|Worker|EventSource|navigator|location|history|localStorage|sessionStorage|indexedDB|caches|cookie|eval|Function|constructor|__proto__|prototype|import|require|process|alert|prompt|confirm)\b/;
 
   const isSafeUserCallback = (code: string): boolean => {
-    if (readOnly) return false;
+    if (isStoreIsolated) return false;
     if (!code || code.length > 2000) return false;
     return !UNSAFE_CALLBACK_TOKENS.test(code);
   };
@@ -1479,6 +1509,8 @@ export const ChartGenerator = memo(function ChartGenerator({
       const fontSize = conditionalFontSize || customLabelsConfig.fontSize || 14;
       const fontWeight = conditionalFontWeight || customLabelsConfig.fontWeight || 'bold';
       const fontFamily = customLabelsConfig.fontFamily || 'Arial';
+      const fontStyle = customLabelsConfig.fontStyle || 'normal';
+      text = applyTextTransform(text, customLabelsConfig.textTransform);
 
       let color = conditionalColor || customLabelsConfig.color || '#222';
       let backgroundColor = conditionalBgColor || (customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.backgroundColor || '#fff'));
@@ -1507,7 +1539,10 @@ export const ChartGenerator = memo(function ChartGenerator({
         borderWidth: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.borderWidth ?? 2),
         borderRadius: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.borderRadius ?? 6),
         padding: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.padding ?? 6),
-        font: `${fontWeight} ${fontSize}px ${fontFamily}`,
+        font: buildCanvasFont({ style: fontStyle, weight: fontWeight, size: fontSize, family: fontFamily }),
+        underline: Boolean(customLabelsConfig.underline),
+        strikethrough: Boolean(customLabelsConfig.strikethrough),
+        letterSpacing: typeof customLabelsConfig.letterSpacing === 'number' ? customLabelsConfig.letterSpacing : undefined,
         callout: customLabelsConfig.anchor === 'callout',
         calloutColor: customLabelsConfig.calloutColor || '#333',
         draggable: customLabelsConfig.anchor === 'callout',
@@ -1803,14 +1838,15 @@ export const ChartGenerator = memo(function ChartGenerator({
     const background = (chartConfig as any)?.background || { type: 'color', color: '#ffffff' };
     if (background.type === "image" && background.imageUrl) {
       const opacity = typeof background.opacity === 'number' ? background.opacity : 100;
-      const showWhiteBase = background.imageWhiteBase !== false;
+      const showBaseColor = background.imageWhiteBase !== false;
+      const baseColor = background.imageBaseColor || '#ffffff';
       return (
         <div
           style={{
             position: 'absolute',
             inset: 0,
             zIndex: 0,
-            backgroundColor: showWhiteBase ? '#ffffff' : 'transparent',
+            backgroundColor: showBaseColor ? baseColor : 'transparent',
             overflow: 'hidden',
             pointerEvents: 'none',
           }}
@@ -2675,7 +2711,7 @@ export const ChartGenerator = memo(function ChartGenerator({
         <div
           className={`h-full w-full ${isResponsive ? '' : 'flex items-start justify-center'} relative`}
           style={{
-            ...(!isMobile && isResponsive && !readOnly ? { minHeight: 300, minWidth: 400, height: '100%', width: '100%' } : { height: '100%', width: '100%' }),
+            ...(!isMobile && !isStoreIsolated && isResponsive && !readOnly ? { minHeight: 300, minWidth: 400, height: '100%', width: '100%' } : { height: '100%', width: '100%' }),
             ...chartBorderStyles,
             ...(readOnly ? { pointerEvents: 'none' as const } : {})
           }}
@@ -2698,8 +2734,8 @@ export const ChartGenerator = memo(function ChartGenerator({
               maxWidth: '100%',
               maxHeight: '100%',
             }}
-            onMouseLeave={() => !readOnly && setHoveredDatasetIndex(null)}
-            onContextMenu={(e) => !readOnly && handleNativeContextMenu(e.nativeEvent as MouseEvent)}
+            onMouseLeave={() => !isStoreIsolated && setHoveredDatasetIndex(null)}
+            onContextMenu={(e) => !isStoreIsolated && handleNativeContextMenu(e.nativeEvent as MouseEvent)}
           >
             
               <div
@@ -2740,6 +2776,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                             type="button"
                             onClick={() => {
                               setTimelineRange(range);
+                              if (isStoreIsolated) return;
                               const currentConfig = useChartStore.getState().chartConfig;
                               useChartStore.getState().updateChartConfig({
                                 ...currentConfig,
@@ -2829,7 +2866,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                     },
                     onHover: (event: any, elements: any[]) => {
                       // Only track hovered dataset index in interactive grouped mode when hoverFadeEffect is enabled
-                      if (readOnly || chartMode !== 'grouped' || chartConfig.hoverFadeEffect === false || !appliedOptions.interaction?.mode) {
+                      if (isStoreIsolated || chartMode !== 'grouped' || chartConfig.hoverFadeEffect === false || !appliedOptions.interaction?.mode) {
                         setHoveredDatasetIndex((prev) => (prev === null ? prev : null));
                         return;
                       }
@@ -2892,16 +2929,15 @@ export const ChartGenerator = memo(function ChartGenerator({
                             const usePointStyle = (appliedOptions.plugins?.legend as any)?.labels?.usePointStyle || false;
                             const pointStyle = (appliedOptions.plugins?.legend as any)?.labels?.pointStyle || 'rect';
                             const fontColor = (appliedOptions.plugins?.legend?.labels as any)?.color || '#000000';
+                            const legendTextTransform = (appliedOptions.plugins?.legend?.labels as any)?.font?.textTransform;
 
                             const createItem = (props: any, isHidden: boolean) => {
-                              const text = props.text as string | undefined;
-                              const decoratedText =
-                                isHidden && text ? `${text}` : text;
-
+                              const rawText = props.text as string | undefined;
+                              const transformedText = rawText ? applyTextTransform(rawText, legendTextTransform) : rawText;
 
                               return {
                                 ...props,
-                                text: decoratedText,
+                                text: transformedText,
                                 pointStyle: usePointStyle ? pointStyle : undefined,
                                 fontColor: isHidden ? '#999999' : fontColor,
                                 hidden: isHidden,
@@ -3143,8 +3179,8 @@ export const ChartGenerator = memo(function ChartGenerator({
 
 
 
-      {/* Slice Color Context Menu — skip in readOnly mode */}
-      {!readOnly && <SliceColorPickerPopover
+      {/* Slice Color Context Menu — skip in readOnly/isolated mode */}
+      {!isStoreIsolated && <SliceColorPickerPopover
         isOpen={sliceContextMenu.isOpen}
         x={sliceContextMenu.x}
         y={sliceContextMenu.y}

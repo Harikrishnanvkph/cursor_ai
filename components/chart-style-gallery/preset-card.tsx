@@ -159,7 +159,7 @@ export function PresetCard({
               flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold shadow-lg transition-colors cursor-pointer
               ${!hasChartData
                 ? 'bg-slate-800 text-slate-400 cursor-not-allowed border-slate-700'
-                : 'bg-violet-600 text-white hover:bg-violet-750'
+                : 'bg-violet-600 text-white hover:bg-violet-700'
               }
             `}
           >

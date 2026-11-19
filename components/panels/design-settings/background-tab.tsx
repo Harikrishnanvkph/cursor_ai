@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Layers, Info, Upload } from "lucide-react"
+import { Layers, Info } from "lucide-react"
+import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
 
 interface BackgroundTabProps {
     chartConfig: any
@@ -96,34 +97,25 @@ export function BackgroundTab({ chartConfig, handleConfigUpdate }: BackgroundTab
                         </>
                     )}
 
-                    {/* Upload Image Button (visible when type is image) */}
+                    {/* Add Image Button (visible when type is image) */}
                     {(chartConfig as any)?.background?.type === "image" && (
                         <div className="flex flex-col justify-end">
-                            <Label className="text-xs font-medium mb-1.5 opacity-0 select-none">Upload</Label>
-                            <Button
-                                variant="outline"
-                                className="h-8 text-xs w-full bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:text-blue-800 flex items-center justify-center gap-2"
-                                onClick={() => {
-                                    const input = document.getElementById('bg-image-upload');
-                                    if (input) input.click();
-                                }}
-                            >
-                                <Upload className="h-3.5 w-3.5" />
-                                Upload Image
-                            </Button>
-                            <input
-                                id="bg-image-upload"
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
+                            <Label className="text-xs font-medium mb-1.5 opacity-0 select-none">Image</Label>
+                            <AddImageButton
+                                className="h-8 text-xs w-full bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+                                onSelectImage={(result: AddImageResult) => {
+                                    if (result.source === 'file' && result.file) {
+                                        const file = result.file;
+                                        URL.revokeObjectURL(result.url);
                                         const reader = new FileReader();
                                         reader.onload = (event) => {
                                             handleConfigUpdate("background.imageUrl", event.target?.result as string);
                                         };
                                         reader.readAsDataURL(file);
+                                        return;
+                                    }
+                                    if (result.url) {
+                                        handleConfigUpdate("background.imageUrl", result.url);
                                     }
                                 }}
                             />
@@ -238,13 +230,43 @@ export function BackgroundTab({ chartConfig, handleConfigUpdate }: BackgroundTab
                                 className="h-8 text-xs"
                             />
                         </div>
-                        <div className="col-span-2 flex items-center justify-between">
-                            <Label className="text-xs font-medium">White background under image</Label>
-                            <Switch
-                                checked={((chartConfig as any)?.background?.imageWhiteBase ?? true)}
-                                onCheckedChange={(checked) => handleConfigUpdate("background.imageWhiteBase", checked)}
-                                className="data-[state=checked]:bg-blue-600"
-                            />
+                        <div className="col-span-2 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-medium">Background color blend</Label>
+                                <Switch
+                                    checked={((chartConfig as any)?.background?.imageWhiteBase ?? true)}
+                                    onCheckedChange={(checked) => handleConfigUpdate("background.imageWhiteBase", checked)}
+                                    className="data-[state=checked]:bg-blue-600"
+                                />
+                            </div>
+                            {((chartConfig as any)?.background?.imageWhiteBase ?? true) && (
+                                <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50/80 border border-slate-200/80">
+                                    <Label className="text-[11px] font-medium text-slate-600 shrink-0">Blend Color</Label>
+                                    <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                                        <div
+                                            className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform shrink-0"
+                                            style={{ backgroundColor: ((chartConfig as any)?.background?.imageBaseColor as string) || "#ffffff" }}
+                                            onClick={() => {
+                                                const input = document.getElementById('bg-image-base-color-picker');
+                                                if (input) input.click();
+                                            }}
+                                        />
+                                        <input
+                                            id="bg-image-base-color-picker"
+                                            type="color"
+                                            value={((chartConfig as any)?.background?.imageBaseColor as string) || "#ffffff"}
+                                            onChange={(e) => handleConfigUpdate("background.imageBaseColor", e.target.value)}
+                                            className="absolute opacity-0 w-0 h-0"
+                                        />
+                                        <Input
+                                            value={((chartConfig as any)?.background?.imageBaseColor as string) || "#ffffff"}
+                                            onChange={(e) => handleConfigUpdate("background.imageBaseColor", e.target.value)}
+                                            className="h-7 text-xs w-24 font-mono bg-white"
+                                            placeholder="#ffffff"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div>
                             <Label className="text-xs font-medium">Image Fit</Label>
@@ -266,14 +288,14 @@ export function BackgroundTab({ chartConfig, handleConfigUpdate }: BackgroundTab
                             <Label className="text-xs font-medium">Image Opacity</Label>
                             <div className="flex items-center gap-2">
                                 <Slider
-                                    value={[((chartConfig as any)?.background?.opacity as number) || 100]}
+                                    value={[typeof (chartConfig as any)?.background?.opacity === 'number' ? (chartConfig as any)?.background?.opacity : 100]}
                                     onValueChange={([value]) => handleConfigUpdate("background.opacity", value)}
                                     max={100}
                                     min={0}
                                     step={1}
                                     className="flex-1"
                                 />
-                                <span className="text-xs w-8 text-right text-gray-500">{((chartConfig as any)?.background?.opacity as number) || 100}%</span>
+                                <span className="text-xs w-8 text-right text-gray-500">{typeof (chartConfig as any)?.background?.opacity === 'number' ? (chartConfig as any)?.background?.opacity : 100}%</span>
                             </div>
                         </div>
                         <div className="col-span-2">

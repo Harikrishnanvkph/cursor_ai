@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useState, useCallback } from "react"
-import { Pencil, Check, Loader2, Hand, Search, ZoomIn, ZoomOut, Undo2, Redo2, ScanSearch, Ellipsis, Camera, RotateCcw, Download, Palette, Maximize2, Minimize2, Eye, EyeOff, RulerDimensionLine, Sparkles, FileImage, ImageIcon, FileCode, FileText } from "lucide-react"
+import { Pencil, Check, Loader2, Hand, Search, ZoomIn, ZoomOut, Undo2, Redo2, ScanSearch, Ellipsis, Camera, RotateCcw, Download, Palette, Eye, EyeOff, RulerDimensionLine, Sparkles, FileImage, ImageIcon, FileCode, FileText } from "lucide-react"
 import { ChartBgColorPicker } from "./chart-bg-color-picker"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,6 @@ import { Slider } from "@/components/ui/slider"
 import { useStore } from "zustand"
 import { useLoupeStore } from "@/lib/stores/loupe-store"
 import { useSnapStateStore } from "@/lib/stores/snap-state-store"
-import { toast } from "sonner"
 import { ChartLoupeOverlay } from "@/components/chart-preview/chart-loupe-overlay"
 
 const ZOOM_VALUES: number[] = (() => {
@@ -48,13 +47,11 @@ import { useStoreHydration } from "@/lib/hooks/use-store-hydration"
 import { useChartRename } from "@/lib/hooks/use-chart-rename"
 import { useChartTransitions } from "@/lib/hooks/use-chart-transitions"
 import { useChartExport } from "@/lib/hooks/use-chart-export"
-import { useFullscreen } from "@/lib/hooks/use-fullscreen"
 import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
 
 // Extracted sub-components
 import { ChartPreviewToolbar } from "@/components/chart-preview/chart-preview-toolbar"
 import { ChartPreviewCanvas } from "@/components/chart-preview/chart-preview-canvas"
-import { FullscreenOverlay } from "@/components/chart-preview/fullscreen-overlay"
 import { ChartStyleGallery } from "@/components/chart-style-gallery"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useUIStore } from "@/lib/stores/ui-store"
@@ -95,10 +92,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const { isLoupeActive, toggleLoupe } = useLoupeStore();
 
   // --- Refs ---
-  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const leftSidebarPanelRef = useRef<HTMLDivElement>(null);
-  const rightSidebarPanelRef = useRef<HTMLDivElement>(null);
   const prevEditorModeRef = useRef<string>(editorMode);
 
   // --- Extracted hooks ---
@@ -108,7 +102,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     onToggleLeftSidebar,
     isLeftSidebarCollapsed,
   });
-  const fullscreen = useFullscreen(fullscreenContainerRef);
   const zoomPan = useZoomPan();
 
   // --- Local state ---
@@ -234,18 +227,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       clearHover();
     };
   }, []);
-
-  // --- Listen to global triggerFullscreen custom event ---
-  useEffect(() => {
-    const handleGlobalFullscreen = () => {
-      fullscreen.handleFullscreen();
-    };
-
-    window.addEventListener('triggerFullscreen', handleGlobalFullscreen);
-    return () => {
-      window.removeEventListener('triggerFullscreen', handleGlobalFullscreen);
-    };
-  }, [fullscreen]);
 
   // --- Non-responsive canvas DPI handling ---
   const isResponsive = false;
@@ -383,9 +364,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
   // --- Render ---
   return (
-    <div className="flex min-w-full flex-col overflow-hidden h-full relative" ref={fullscreenContainerRef}>
-      {/* Fullscreen bg overlay */}
-      {fullscreen.isFullscreen && <div className="fixed inset-0 bg-white z-40" />}
+    <div className="flex min-w-full flex-col overflow-hidden h-full relative">
 
       {/* Combined Mobile Float Toolbar */}
       {isMobile && rename.chartTitle && (
@@ -636,16 +615,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   </div>
                 </div>
 
-                {/* Fullscreen Toggle */}
-                <DropdownMenuItem
-                  disabled={!hasData}
-                  onClick={() => fullscreen.handleFullscreen()}
-                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-                >
-                  {fullscreen.isFullscreen ? <Minimize2 className="h-4 w-4 text-slate-500 shrink-0" /> : <Maximize2 className="h-4 w-4 text-slate-500 shrink-0" />}
-                  <span>{fullscreen.isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
-                </DropdownMenuItem>
-
                 {/* Loupe View (Inspect Details) */}
                 <DropdownMenuItem
                   disabled={!hasData}
@@ -671,7 +640,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   disabled={!hasData}
                   onClick={() => {
                     useSnapStateStore.getState().captureCurrentState('manual', null, 'Manual Snapshot');
-                    toast.success("Snapshot baseline saved!");
                   }}
                   className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
                 >
@@ -683,12 +651,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 <DropdownMenuItem
                   disabled={!hasData || !useSnapStateStore.getState().snapState}
                   onClick={() => {
-                    const success = useSnapStateStore.getState().restoreSnapState();
-                    if (success) {
-                      toast.success("Restored to baseline snapshot!");
-                    } else {
-                      toast.error("No snap state saved yet.");
-                    }
+                    useSnapStateStore.getState().restoreSnapState();
                   }}
                   className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -704,7 +667,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       {/* Toolbar */}
       {!isMobile && (
         variant === 'landing' ? (
-          <div className="h-[52px] min-h-[52px] px-3.5 border-b border-slate-200/80 bg-white/40 backdrop-blur-xl flex items-center justify-between flex-shrink-0 z-10">
+          <div className="h-[52px] min-h-[52px] px-3.5 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-950 flex items-center justify-between flex-shrink-0 z-10">
             <ChartPreviewToolbar
               isMobile={isMobile}
               editorMode={editorMode}
@@ -718,7 +681,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               rename={rename}
               zoomPan={zoomPan}
               exports={exports}
-              handleFullscreen={fullscreen.handleFullscreen}
               isLeftSidebarCollapsed={isLeftSidebarCollapsed}
               className="px-0 py-0 mb-0 h-full"
             />
@@ -737,7 +699,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             rename={rename}
             zoomPan={zoomPan}
             exports={exports}
-            handleFullscreen={fullscreen.handleFullscreen}
             isLeftSidebarCollapsed={isLeftSidebarCollapsed}
           />
         )
@@ -746,7 +707,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       {/* Chart Container */}
       {(() => {
         const cardElement = (
-          <Card className={`w-full flex flex-col flex-1 min-h-[300px] rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${fullscreen.isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}>
+          <Card className="w-full flex flex-col flex-1 min-h-[300px] rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200">
             <CardContent className="p-0 flex-1 flex flex-col h-full w-full relative">
               <div
                 ref={chartContainerRef}
@@ -807,25 +768,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         chartType={transitions.scatterBubbleSetup.targetType || 'scatter'}
         onDatasetCreate={transitions.handleCreateDataset}
       />
-
-      {/* Fullscreen UI */}
-      {fullscreen.isFullscreen && (
-        <FullscreenOverlay
-          zoomPan={zoomPan}
-          handleFullscreen={fullscreen.handleFullscreen}
-          handleExport={exports.handleExport}
-          exports={exports}
-          showLeftOverlay={fullscreen.showLeftOverlay}
-          showRightOverlay={fullscreen.showRightOverlay}
-          setShowLeftOverlay={fullscreen.setShowLeftOverlay}
-          setShowRightOverlay={fullscreen.setShowRightOverlay}
-          activeTab={activeTab}
-          onTabChange={onTabChange}
-          onNewChart={onNewChart}
-          leftSidebarPanelRef={leftSidebarPanelRef as any}
-          rightSidebarPanelRef={rightSidebarPanelRef as any}
-        />
-      )}
 
       {/* Chart Transition Dialog */}
       <ChartTransitionDialog

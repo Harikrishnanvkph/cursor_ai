@@ -8,12 +8,15 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { FontFamilySelect } from "@/components/ui/font-family-select"
+import {
+  FontSettingSection,
+  mapChartJsFontValue,
+  applyChartJsFontPatch,
+} from "@/components/ui/font-setting-section"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { Copy, Download } from "lucide-react"
 import { useState } from "react"
-import { toast } from "sonner"
 
 const allowedEasings = [
   "linear",
@@ -129,34 +132,48 @@ export function AdvancedPanel() {
         </div>
         <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
           {tooltipOpen && (
-            <div className={`px-3 py-3 space-y-2 ${(chartConfig as any).plugins?.tooltip?.enabled === false ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs font-medium">Tooltip Display Mode</Label>
-                  <Select
-                    value={(chartConfig as any).plugins?.tooltip?.customDisplayMode || "slice"}
-                    onValueChange={value => handleConfigUpdate("plugins.tooltip.customDisplayMode", value)}
-                    disabled={(chartConfig as any).plugins?.tooltip?.enabled === false}
-                  >
-                    <SelectTrigger className="h-8 text-xs mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="slice">Slice Values</SelectItem>
-                      <SelectItem value="dataset">Dataset Values</SelectItem>
-                      <SelectItem value="xaxis">X Axis Values</SelectItem>
-                      <SelectItem value="yaxis">Y Axis Values</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Font Family</Label>
-                  <FontFamilySelect
-                    value={(chartConfig as any).plugins?.tooltip?.bodyFont?.family || "Arial"}
-                    onValueChange={value => handleConfigUpdate("plugins.tooltip.bodyFont.family", value)}
-                  />
-                </div>
+            <div className={`px-3 py-3 space-y-2.5 ${(chartConfig as any).plugins?.tooltip?.enabled === false ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div>
+                <Label className="text-xs font-medium">Tooltip Display Mode</Label>
+                <Select
+                  value={(chartConfig as any).plugins?.tooltip?.customDisplayMode || "slice"}
+                  onValueChange={value => handleConfigUpdate("plugins.tooltip.customDisplayMode", value)}
+                  disabled={(chartConfig as any).plugins?.tooltip?.enabled === false}
+                >
+                  <SelectTrigger className="h-8 text-xs mt-1 bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="slice">Slice Values</SelectItem>
+                    <SelectItem value="dataset">Dataset Values</SelectItem>
+                    <SelectItem value="xaxis">X Axis Values</SelectItem>
+                    <SelectItem value="yaxis">Y Axis Values</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              <FontSettingSection
+                idPrefix="tooltip-body"
+                value={mapChartJsFontValue(
+                  (chartConfig as any).plugins?.tooltip?.bodyFont,
+                  (chartConfig as any).plugins?.tooltip?.bodyColor
+                )}
+                defaultFamily="Arial"
+                defaultSize={12}
+                defaultWeight="400"
+                defaultColor="#ffffff"
+                sizeMin={8}
+                sizeMax={36}
+                disabled={(chartConfig as any).plugins?.tooltip?.enabled === false}
+                onChange={(patch) =>
+                  applyChartJsFontPatch(
+                    patch,
+                    (field, val) => handleConfigUpdate(`plugins.tooltip.bodyFont.${field}`, val),
+                    (color) => handleConfigUpdate("plugins.tooltip.bodyColor", color)
+                  )
+                }
+              />
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs font-medium">Background Color</Label>
@@ -179,15 +196,6 @@ export function AdvancedPanel() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs font-medium">Text Color</Label>
-                  <Input
-                    type="color"
-                    value={(chartConfig as any).plugins?.tooltip?.bodyColor || "#ffffff"}
-                    onChange={e => handleConfigUpdate("plugins.tooltip.bodyColor", e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-                <div>
                   <Label className="text-xs font-medium">Border Color</Label>
                   <Input
                     type="color"
@@ -203,17 +211,7 @@ export function AdvancedPanel() {
                     min={0}
                     value={(chartConfig as any).plugins?.tooltip?.borderWidth ?? 1}
                     onChange={e => handleConfigUpdate("plugins.tooltip.borderWidth", e.target.value ? Number(e.target.value) : 0)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-medium">Font Size</Label>
-                  <Input
-                    type="number"
-                    min={8}
-                    value={(chartConfig as any).plugins?.tooltip?.bodyFont?.size ?? 12}
-                    onChange={e => handleConfigUpdate("plugins.tooltip.bodyFont.size", e.target.value ? Number(e.target.value) : 12)}
-                    className="h-8 text-xs"
+                    className="h-8 text-xs bg-white"
                   />
                 </div>
               </div>

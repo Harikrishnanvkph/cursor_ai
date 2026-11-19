@@ -74,9 +74,9 @@ export function TemplateListTab({ mode = 'editor' }: TemplateListTabProps = {}) 
     // Sub-view toggle: 'global' (Official) or 'mine' (My Templates)
     const [formatView, setFormatView] = React.useState<'global' | 'mine'>('global')
 
-    // Always ensure fresh blueprints when mounted
+    // Load blueprints respecting store cooldown cache unless not yet populated
     React.useEffect(() => {
-        loadFormats(true)
+        loadFormats()
     }, [loadFormats])
 
     React.useEffect(() => {

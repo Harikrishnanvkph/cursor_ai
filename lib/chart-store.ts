@@ -381,14 +381,15 @@ export const useChartStore = create<ChartStore>()(
         const dataset = state.chartData.datasets[index];
         if (!dataset) return { activeDatasetIndex: index };
 
-        // 1. Commit outgoing dataset's active chartConfig and sliceLabels
+        // 1. Commit outgoing dataset's active chartConfig, sliceLabels, and snapshot reference
         const outgoingIndex = state.activeDatasetIndex;
         const commitDatasets = state.chartData.datasets.map((ds, i) => {
           if (i === outgoingIndex && i !== index) {
             return {
               ...ds,
               chartConfig: state.chartConfig ? JSON.parse(JSON.stringify(state.chartConfig)) : ds.chartConfig,
-              sliceLabels: state.chartData.labels && state.chartData.labels.length > 0 ? [...state.chartData.labels] : ds.sliceLabels
+              sliceLabels: state.chartData.labels && state.chartData.labels.length > 0 ? [...state.chartData.labels] : ds.sliceLabels,
+              sourceSnapshotId: ds.sourceSnapshotId || (ds.sourceId && state.currentSnapshotId ? state.currentSnapshotId : undefined),
             };
           }
           return ds;
@@ -430,13 +431,18 @@ export const useChartStore = create<ChartStore>()(
           }).catch(() => {});
         }
 
+        const outgoingDataset = commitDatasets[outgoingIndex];
+        const resolvedSnapshotId = targetDataset.sourceSnapshotId
+          || (targetDataset.sourceId && targetDataset.sourceId === outgoingDataset?.sourceId ? state.currentSnapshotId : null)
+          || null;
+
         return {
           activeDatasetIndex: index,
           chartType: newType,
           chartConfig: newConfig,
           chartData: newChartData,
           chartTitle: targetDataset.sourceTitle || state.chartTitle,
-          currentSnapshotId: targetDataset.sourceId ? state.currentSnapshotId : null,
+          currentSnapshotId: resolvedSnapshotId,
           ...(state.chartMode === 'single' ? { singleModeData: newChartData } : { groupedModeData: newChartData })
         } as any;
       }),

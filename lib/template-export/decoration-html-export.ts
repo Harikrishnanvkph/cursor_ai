@@ -390,7 +390,7 @@ function shapeSVGContent(shape: DecorationShape): string {
       return `<g${tAttr}>
         <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" fill-opacity="${opacity}" rx="4" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr}/>
         ${textContent ? `<foreignObject x="${x + 4}" y="${y + 4}" width="${Math.max(0, w - 8)}" height="${Math.max(0, h - 8)}">
-          <div xmlns="http://www.w3.org/1999/xhtml" class="deco-textbox-export" style="width:100%;height:100%;font-size:${fSize}px;font-family:${shape.fontFamily || 'Arial'};font-weight:${shape.fontWeight || 'normal'};font-style:${shape.fontStyle || 'normal'};text-decoration:${shape.textDecoration || 'none'};text-align:${shape.textAlign || 'left'};color:${shape.textColor || strokeColor};line-height:${shape.lineHeight || 1.4};word-break:break-word;white-space:pre-wrap;user-select:none;pointer-events:none">${hasHtml ? textContent : escapeHtml(textContent)}</div>
+          <div xmlns="http://www.w3.org/1999/xhtml" class="deco-textbox-export" style="width:100%;height:100%;font-size:${fSize}px;font-family:${shape.fontFamily || 'Arial'};font-weight:${shape.fontWeight || 'normal'};font-style:${shape.fontStyle || 'normal'};text-decoration:${shape.textDecoration || 'none'};text-transform:${shape.textTransform || 'none'};${typeof shape.letterSpacing === 'number' && shape.letterSpacing !== 0 ? `letter-spacing:${shape.letterSpacing}px;` : ''}text-align:${shape.textAlign || 'left'};color:${shape.textColor || strokeColor};line-height:${shape.lineHeight || 1.4};word-break:break-word;white-space:pre-wrap;user-select:none;pointer-events:none">${hasHtml ? textContent : escapeHtml(textContent)}</div>
         </foreignObject>` : ''}
       </g>`
     }

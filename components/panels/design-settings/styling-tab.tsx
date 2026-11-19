@@ -13,6 +13,7 @@ import { useUIStore } from "@/lib/stores/ui-store"
 import { PATTERN_TYPES, type PatternConfig } from "@/lib/plugins/slice-pattern-plugin"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { Switch } from "@/components/ui/switch"
+import { FontSettingSection } from "@/components/ui/font-setting-section"
 
 /** Small inline toggle for Point Fill setting — lives inside the Point Settings section */
 function PointFillToggle() {
@@ -1347,65 +1348,57 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             </div>
                         </div>
 
-                        {/* Position & Font Size row */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex flex-col justify-end space-y-1.5 h-[60px]">
-                                <Label className="text-xs font-medium text-gray-600">Position</Label>
-                                <Select
-                                    value={(chartConfig.plugins as any)?.gauge?.valuePosition || 'bottom'}
-                                    onValueChange={(value) => handleConfigUpdate('plugins.gauge.valuePosition', value)}
-                                >
-                                    <SelectTrigger className="h-9 text-xs">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="bottom">Bottom</SelectItem>
-                                        <SelectItem value="center">Center</SelectItem>
-                                        <SelectItem value="top">Top</SelectItem>
-                                        <SelectItem value="left">Left</SelectItem>
-                                        <SelectItem value="right">Right</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex flex-col justify-end space-y-1.5 h-[60px]">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-medium text-gray-600">Font Size</Label>
-                                    <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                                        {(chartConfig.plugins as any)?.gauge?.valueFontSize ?? 28}px
-                                    </span>
-                                </div>
-                                <div className="flex h-9 items-center">
-                                    <Slider
-                                        value={[Number((chartConfig.plugins as any)?.gauge?.valueFontSize ?? 28)]}
-                                        onValueChange={([value]) => handleConfigUpdate('plugins.gauge.valueFontSize', value)}
-                                        min={10}
-                                        max={60}
-                                        step={1}
-                                    />
-                                </div>
-                            </div>
+                        {/* Position */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-gray-600">Position</Label>
+                            <Select
+                                value={(chartConfig.plugins as any)?.gauge?.valuePosition || 'bottom'}
+                                onValueChange={(value) => handleConfigUpdate('plugins.gauge.valuePosition', value)}
+                            >
+                                <SelectTrigger className="h-9 text-xs bg-white">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="bottom">Bottom</SelectItem>
+                                    <SelectItem value="center">Center</SelectItem>
+                                    <SelectItem value="top">Top</SelectItem>
+                                    <SelectItem value="left">Left</SelectItem>
+                                    <SelectItem value="right">Right</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        {/* Value Color */}
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-gray-600">Color</Label>
-                            <div className="flex items-center gap-2">
-                                <div className="relative w-8 h-8 rounded-md border border-gray-300 hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.gauge?.valueColor || '#111827' }}>
-                                    <input
-                                        id="gauge-value-color"
-                                        type="color"
-                                        value={(chartConfig.plugins as any)?.gauge?.valueColor || '#111827'}
-                                        onChange={(e) => handleConfigUpdate('plugins.gauge.valueColor', e.target.value)}
-                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
-                                    />
-                                </div>
-                                <Input
-                                    value={(chartConfig.plugins as any)?.gauge?.valueColor || '#111827'}
-                                    onChange={(e) => handleConfigUpdate('plugins.gauge.valueColor', e.target.value)}
-                                    className="h-9 text-xs font-mono flex-1"
-                                />
-                            </div>
-                        </div>
+                        <FontSettingSection
+                            idPrefix="gauge-value"
+                            value={{
+                                family: (chartConfig.plugins as any)?.gauge?.valueFontFamily,
+                                size: (chartConfig.plugins as any)?.gauge?.valueFontSize,
+                                weight: (chartConfig.plugins as any)?.gauge?.valueFontWeight,
+                                style: (chartConfig.plugins as any)?.gauge?.valueFontStyle,
+                                color: (chartConfig.plugins as any)?.gauge?.valueColor,
+                                underline: (chartConfig.plugins as any)?.gauge?.valueUnderline,
+                                strikethrough: (chartConfig.plugins as any)?.gauge?.valueStrikethrough,
+                                textTransform: (chartConfig.plugins as any)?.gauge?.valueTextTransform,
+                                letterSpacing: (chartConfig.plugins as any)?.gauge?.valueLetterSpacing,
+                            }}
+                            defaultFamily="'Inter', sans-serif"
+                            defaultSize={28}
+                            defaultWeight="700"
+                            defaultColor="#111827"
+                            sizeMin={10}
+                            sizeMax={72}
+                            onChange={(patch) => {
+                                if (patch.family !== undefined) handleConfigUpdate('plugins.gauge.valueFontFamily', patch.family)
+                                if (patch.size !== undefined) handleConfigUpdate('plugins.gauge.valueFontSize', patch.size)
+                                if (patch.weight !== undefined) handleConfigUpdate('plugins.gauge.valueFontWeight', patch.weight)
+                                if (patch.style !== undefined) handleConfigUpdate('plugins.gauge.valueFontStyle', patch.style)
+                                if (patch.underline !== undefined) handleConfigUpdate('plugins.gauge.valueUnderline', patch.underline)
+                                if (patch.strikethrough !== undefined) handleConfigUpdate('plugins.gauge.valueStrikethrough', patch.strikethrough)
+                                if (patch.textTransform !== undefined) handleConfigUpdate('plugins.gauge.valueTextTransform', patch.textTransform)
+                                if (patch.letterSpacing !== undefined) handleConfigUpdate('plugins.gauge.valueLetterSpacing', patch.letterSpacing)
+                                if (patch.color !== undefined) handleConfigUpdate('plugins.gauge.valueColor', patch.color)
+                            }}
+                        />
 
                         {/* Prefix & Suffix */}
                         <div className="grid grid-cols-2 gap-4">
@@ -1542,45 +1535,39 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                     </div>
                                 </div>
 
-                                {/* Label Color & Font Size */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">Label Color</Label>
-                                        <div className="flex items-center gap-2">
-                                            <div className="relative w-8 h-8 rounded-md border border-gray-300 hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.gauge?.minMaxColor || '#6b7280' }}>
-                                                <input
-                                                    id="gauge-minmax-color"
-                                                    type="color"
-                                                    value={(chartConfig.plugins as any)?.gauge?.minMaxColor || '#6b7280'}
-                                                    onChange={(e) => handleConfigUpdate('plugins.gauge.minMaxColor', e.target.value)}
-                                                    className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
-                                                />
-                                            </div>
-                                            <Input
-                                                value={(chartConfig.plugins as any)?.gauge?.minMaxColor || '#6b7280'}
-                                                onChange={(e) => handleConfigUpdate('plugins.gauge.minMaxColor', e.target.value)}
-                                                className="h-9 text-xs font-mono flex-1"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-xs font-medium text-gray-600">Font Size</Label>
-                                            <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                                                {(chartConfig.plugins as any)?.gauge?.minMaxFontSize ?? 12}px
-                                            </span>
-                                        </div>
-                                        <div className="h-9 flex items-center">
-                                            <Slider
-                                                value={[Number((chartConfig.plugins as any)?.gauge?.minMaxFontSize ?? 12)]}
-                                                onValueChange={([value]) => handleConfigUpdate('plugins.gauge.minMaxFontSize', value)}
-                                                min={8}
-                                                max={24}
-                                                step={1}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                                <FontSettingSection
+                                    idPrefix="gauge-minmax"
+                                    value={{
+                                        family:
+                                            (chartConfig.plugins as any)?.gauge?.minMaxFontFamily ||
+                                            (chartConfig.plugins as any)?.gauge?.valueFontFamily,
+                                        size: (chartConfig.plugins as any)?.gauge?.minMaxFontSize,
+                                        weight: (chartConfig.plugins as any)?.gauge?.minMaxFontWeight,
+                                        style: (chartConfig.plugins as any)?.gauge?.minMaxFontStyle,
+                                        color: (chartConfig.plugins as any)?.gauge?.minMaxColor,
+                                        underline: (chartConfig.plugins as any)?.gauge?.minMaxUnderline,
+                                        strikethrough: (chartConfig.plugins as any)?.gauge?.minMaxStrikethrough,
+                                        textTransform: (chartConfig.plugins as any)?.gauge?.minMaxTextTransform,
+                                        letterSpacing: (chartConfig.plugins as any)?.gauge?.minMaxLetterSpacing,
+                                    }}
+                                    defaultFamily="'Inter', sans-serif"
+                                    defaultSize={12}
+                                    defaultWeight="400"
+                                    defaultColor="#6b7280"
+                                    sizeMin={8}
+                                    sizeMax={28}
+                                    onChange={(patch) => {
+                                        if (patch.family !== undefined) handleConfigUpdate('plugins.gauge.minMaxFontFamily', patch.family)
+                                        if (patch.size !== undefined) handleConfigUpdate('plugins.gauge.minMaxFontSize', patch.size)
+                                        if (patch.weight !== undefined) handleConfigUpdate('plugins.gauge.minMaxFontWeight', patch.weight)
+                                        if (patch.style !== undefined) handleConfigUpdate('plugins.gauge.minMaxFontStyle', patch.style)
+                                        if (patch.underline !== undefined) handleConfigUpdate('plugins.gauge.minMaxUnderline', patch.underline)
+                                        if (patch.strikethrough !== undefined) handleConfigUpdate('plugins.gauge.minMaxStrikethrough', patch.strikethrough)
+                                        if (patch.textTransform !== undefined) handleConfigUpdate('plugins.gauge.minMaxTextTransform', patch.textTransform)
+                                        if (patch.letterSpacing !== undefined) handleConfigUpdate('plugins.gauge.minMaxLetterSpacing', patch.letterSpacing)
+                                        if (patch.color !== undefined) handleConfigUpdate('plugins.gauge.minMaxColor', patch.color)
+                                    }}
+                                />
 
                                 {/* Zero Reference Marker Options */}
                                 <div className="space-y-3 pt-3 border-t border-gray-200 mt-2">

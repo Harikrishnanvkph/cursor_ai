@@ -9,6 +9,11 @@ import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import {
+  FontSettingSection,
+  mapChartJsFontValue,
+  applyChartJsFontPatch,
+} from "@/components/ui/font-setting-section"
 
 interface PolarAreaPanelProps {
   className?: string
@@ -120,16 +125,24 @@ export function PolarAreaPanel({ className }: PolarAreaPanelProps) {
               />
             </div>
             {rScaleOptions.ticks?.display !== false && (
-              <div className="pl-4 space-y-4 border-l-2 border-gray-100">
-                <div>
-                  <Label>Tick Label Color</Label>
-                  <Input
-                    type="color"
-                    value={rScaleOptions.ticks?.color || '#666666'}
-                    onChange={(e) => handlePolarAreaScaleUpdate('ticks.color', e.target.value)}
-                    className="w-full h-8"
-                  />
-                </div>
+              <div className="pl-2 space-y-3 border-l-2 border-gray-100">
+                <FontSettingSection
+                  idPrefix="polar-area-ticks"
+                  value={mapChartJsFontValue(rScaleOptions.ticks?.font, rScaleOptions.ticks?.color)}
+                  defaultFamily="Arial"
+                  defaultSize={12}
+                  defaultWeight="400"
+                  defaultColor="#666666"
+                  sizeMin={8}
+                  sizeMax={28}
+                  onChange={(patch) =>
+                    applyChartJsFontPatch(
+                      patch,
+                      (field, val) => handlePolarAreaScaleUpdate(`ticks.font.${field}`, val),
+                      (color) => handlePolarAreaScaleUpdate('ticks.color', color)
+                    )
+                  }
+                />
                 <div>
                   <Label>Tick Backdrop Color (for contrast)</Label>
                   <Input

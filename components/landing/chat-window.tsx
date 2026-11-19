@@ -5,7 +5,6 @@ import { Send, MessageSquare, Edit3, Sparkles, X, Brain, BarChart2, LineChart, P
 import { useAuth } from "@/components/auth/AuthProvider"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useChatStore } from "@/lib/chat-store"
-import { toast } from "sonner"
 
 interface ChartSnapshot {
   chartType: string
@@ -109,10 +108,9 @@ export function ChatWindow({
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-3.5 pt-3.5 pb-24 space-y-3 bg-transparent font-sans flex flex-col min-w-0">
         {isConversationEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-8 animate-in fade-in duration-300 select-none">
-            {/* Glowing 4-pointed Gemini Star (mobile screen size only) */}
+            {/* 4-pointed Gemini Star (mobile screen size only) */}
             <div className="relative mb-5 flex items-center justify-center md:hidden">
-              <div className="absolute w-20 h-20 rounded-full bg-gradient-to-tr from-sky-400/20 via-indigo-500/25 to-pink-500/20 blur-xl animate-pulse pointer-events-none" />
-              <div className="relative w-14 h-14 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-md shadow-indigo-500/5 flex items-center justify-center backdrop-blur-md">
+              <div className="relative w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-center">
                 <svg
                   className="w-8 h-8"
                   viewBox="0 0 24 24"

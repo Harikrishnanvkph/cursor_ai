@@ -27,8 +27,14 @@ export async function exportFormatAsHTML(
     const { skeleton, renderedZones, colorPalette } = rendered
     const { width, height } = skeleton.dimensions
 
-    // Read reactive contentPackage from format store to guarantee current user edits
-    const contentPackage = useFormatGalleryStore.getState().contentPackage
+    // Read reactive contentPackage from format store unless overridden (e.g. isolated share page)
+    const hasOverrideState = Boolean(
+        options.htmlOptions?.chartDataOverride ||
+        options.htmlOptions?.chartConfigOverride ||
+        options.htmlOptions?.chartTypeOverride ||
+        options.htmlOptions?.contentPackageOverride
+    )
+    const contentPackage = options.htmlOptions?.contentPackageOverride ?? (hasOverrideState ? null : useFormatGalleryStore.getState().contentPackage)
 
     // ── Find the chart zone to generate chart JS ──────
     const chartZone = renderedZones.find(rz => rz.zone.type === 'chart')
@@ -36,14 +42,16 @@ export async function exportFormatAsHTML(
 
     // Resolve per-chart config (same logic as use-chart-state hooks)
     const storeState = useChartStore.getState()
-    const { chartConfig } = storeState
-    let resolvedConfig = chartConfig
-    if (storeState.chartMode === 'single') {
-        const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex]
-        resolvedConfig = (ds as any)?.chartConfig ?? chartConfig
-    } else {
-        const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId)
-        resolvedConfig = group?.chartConfig ?? chartConfig
+    const baseConfig = options.htmlOptions?.chartConfigOverride ?? chartZone?.resolvedChartConfig ?? storeState.chartConfig
+    let resolvedConfig = baseConfig
+    if (!options.htmlOptions?.chartConfigOverride && !hasOverrideState) {
+        if (storeState.chartMode === 'single') {
+            const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex]
+            resolvedConfig = (ds as any)?.chartConfig ?? baseConfig
+        } else {
+            const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId)
+            resolvedConfig = group?.chartConfig ?? baseConfig
+        }
     }
     const visualSettings = (resolvedConfig as any)?.visualSettings ?? {}
 

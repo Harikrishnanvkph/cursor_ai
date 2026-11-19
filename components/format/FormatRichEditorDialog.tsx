@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { TiptapEditor } from "@/components/tiptap-editor"
 import { sanitizeHTML } from "@/lib/utils/sanitize"
 import { Columns, Rows, Minimize, Maximize, PaintBucket, Info } from "lucide-react"
-import { toast } from "sonner"
 import type { TextZone } from "@/lib/format-types"
 
 export function FormatRichEditorDialog() {
@@ -103,7 +102,6 @@ export function FormatRichEditorDialog() {
       })
     }
     updateZoneContent(zone.id, editorContent)
-    toast.success(`Updated ${zone.role || 'zone'} content!`)
     closeRichEditor()
   }
 

@@ -96,7 +96,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       }
       const shareUrl = `${window.location.origin}/share/${response.data.share_id}`;
       newWindow.location.href = shareUrl;
-      toast.success("Opened share link!", { id: "share-link" });
+      toast.dismiss("share-link");
     } catch (err: any) {
       newWindow.close();
       toast.error(err.message || "Failed to generate share link.", { id: "share-link" });

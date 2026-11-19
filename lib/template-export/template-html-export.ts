@@ -19,14 +19,17 @@ export const exportTemplateAsHTML = async (
     const { fileName = 'chart-template', htmlOptions = {} } = options
 
     // Resolve per-chart config (same logic as use-chart-state hooks)
+    const hasOverrideState = Boolean(htmlOptions.chartDataOverride || htmlOptions.chartConfigOverride || htmlOptions.chartTypeOverride)
     const storeState = useChartStore.getState()
     let resolvedConfig = chartConfig
-    if (storeState.chartMode === 'single') {
-        const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex]
-        resolvedConfig = (ds as any)?.chartConfig ?? chartConfig
-    } else {
-        const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId)
-        resolvedConfig = group?.chartConfig ?? chartConfig
+    if (!hasOverrideState) {
+        if (storeState.chartMode === 'single') {
+            const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex]
+            resolvedConfig = (ds as any)?.chartConfig ?? chartConfig
+        } else {
+            const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId)
+            resolvedConfig = group?.chartConfig ?? chartConfig
+        }
     }
     const visualSettings = (resolvedConfig as any)?.visualSettings ?? {}
 
@@ -46,6 +49,10 @@ export const exportTemplateAsHTML = async (
         showLabels: visualSettings.showLabels ?? true,
         fileName: `${fileName}.html`,
         template: "standard", // Use standard template as base
+        ...(hasOverrideState ? {
+            chartDataOverride: chartData,
+            chartConfigOverride: chartConfig,
+        } : {}),
         ...htmlOptions
     }
 
@@ -190,7 +197,7 @@ export const exportTemplateAsHTML = async (
 
     // Render decoration shapes asynchronously (with base64 embedded shape images)
     const decorationsSVG = await generateDecorationsSVGAsync(
-        useDecorationStore.getState().shapes,
+        htmlOptions.decorationShapesOverride ?? useDecorationStore.getState().shapes,
         template.width,
         template.height
     )

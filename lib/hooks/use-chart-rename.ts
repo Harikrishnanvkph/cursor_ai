@@ -46,7 +46,7 @@ export function getEffectiveChartTitle(): string {
 /**
  * Persists a new chart title to in-memory store, local history, and cloud backend if saved.
  */
-export async function saveChartTitle(newTitle: string): Promise<boolean> {
+export async function saveChartTitle(newTitle: string, options?: { silent?: boolean }): Promise<boolean> {
     const trimmed = newTitle.trim();
     if (!trimmed) return false;
 
@@ -71,7 +71,9 @@ export async function saveChartTitle(newTitle: string): Promise<boolean> {
         try {
             const result = await dataService.updateConversation(saveTargetId, { title: trimmed });
             if (result.error) throw new Error(result.error);
-            toast.success("Title updated");
+            if (!options?.silent) {
+                toast.success("Title updated");
+            }
             return true;
         } catch (error) {
             console.error("Rename error:", error);

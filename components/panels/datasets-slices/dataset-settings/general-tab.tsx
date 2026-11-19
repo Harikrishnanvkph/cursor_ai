@@ -27,10 +27,8 @@ import {
     ChevronRight,
     Check,
     X,
-    Upload,
 } from "lucide-react"
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
-import { DataImportModal } from "@/components/dialogs/data-import-modal"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
@@ -109,7 +107,6 @@ export function GeneralTab({
 }: GeneralTabProps) {
     const { updateDataset } = useChartActions();
     const [isCreatingNewGroup, setIsCreatingNewGroup] = useState(false);
-    const [showImportModal, setShowImportModal] = useState(false);
     const [groupedTab, setGroupedTab] = useState<'groups' | 'datasets'>('groups');
     const [isEditingGroupName, setIsEditingGroupName] = useState(false);
     const [editingGroupNameValue, setEditingGroupNameValue] = useState('');
@@ -123,7 +120,7 @@ export function GeneralTab({
         }
         if (activeGroupId) {
             updateGroup(activeGroupId, { name: trimmed });
-            await saveChartTitle(trimmed);
+            await saveChartTitle(trimmed, { silent: true });
             toast.success(`Group renamed to "${trimmed}"`);
         }
         setIsEditingGroupName(false);
@@ -152,8 +149,6 @@ export function GeneralTab({
                 behavior: 'smooth',
                 block: 'nearest'
             });
-        } else {
-            toast.info("Active dataset not found in the list");
         }
     };
 
@@ -191,42 +186,66 @@ export function GeneralTab({
         }));
     }, [isEditModeModal, isCreatingNewGroup, chartMode, filteredDatasets, activeDatasetIndex, chartData.datasets, chartData.labels]);
 
+    const renderDatasetTypeIcon = (type: string | undefined) => {
+        switch (type) {
+            case 'horizontalBar':
+            case 'horizontalBar3d': return <ChartBarDecreasing className="h-4 w-4" />;
+            case 'bar':
+            case 'bar3d': return <BarChart3 className="h-4 w-4" />;
+            case 'stackedBar': return <ChartColumnStacked className="h-4 w-4" />;
+            case 'pie':
+            case 'pie3d': return <PieChart className="h-4 w-4" />;
+            case 'doughnut':
+            case 'doughnut3d': return <LifeBuoy className="h-4 w-4" />;
+            case 'area': return <ChartArea className="h-4 w-4" />;
+            case 'line': return <LineChart className="h-4 w-4" />;
+            case 'scatter':
+            case 'bubble': return <ScatterChart className="h-4 w-4" />;
+            case 'radar': return <Radar className="h-4 w-4" />;
+            case 'polarArea': return <CircleDot className="h-4 w-4" />;
+            default: return <Activity className="h-4 w-4" />;
+        }
+    };
+
+    const formatDatasetTypeLabel = (type: unknown) => {
+        const labels: Record<string, string> = {
+            horizontalBar: 'H. Bar',
+            horizontalBar3d: '3D H. Bar',
+            bar3d: '3D Bar',
+            pie3d: '3D Pie',
+            doughnut3d: '3D Doughnut',
+            stackedBar: 'Stacked Bar',
+            polarArea: 'Polar Area',
+        };
+        return labels[type as string] || (typeof type === 'string' ? type.charAt(0).toUpperCase() + type.slice(1) : 'Chart');
+    };
+
     const renderDatasetsList = () => (
-        <div className="space-y-2">
-            <div className="flex items-center justify-between bg-blue-50/70 px-2.5 py-2 rounded-t-lg border border-blue-100 min-w-0">
-                <div className="flex items-center gap-1.5 shrink-0 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
-                    <Label className="text-xs font-semibold text-gray-800 tracking-wide">Datasets</Label>
-                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded-full font-bold">
+        <div className="rounded-xl border border-slate-200/80 bg-white shadow-2xs overflow-hidden">
+            <div className="flex items-center justify-between gap-2 bg-slate-50/80 px-3 py-2.5 border-b border-slate-200/70 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
+                    <Label className="text-xs font-semibold text-slate-800 tracking-tight whitespace-nowrap">Datasets</Label>
+                    <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200/70 px-1.5 py-0.5 rounded-full font-semibold leading-none">
                         {filteredDatasets.length}
                     </span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                     <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowImportModal(true)}
-                        className="h-6.5 px-2 text-[11px] gap-1 border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95 shrink-0"
-                    >
-                        <Upload className="h-3 w-3 text-blue-600 shrink-0" />
-                        Import
-                    </Button>
-                    <Button
-                        variant="outline"
                         size="sm"
                         onClick={() => {
                             setIsCreatingNewGroup(false);
                             handleOpenAddDatasetModal();
                         }}
-                        className="h-6.5 px-2 text-[11px] gap-1 border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95 shrink-0"
+                        className="h-7 px-2.5 text-[11px] gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-2xs transition-all active:scale-95 shrink-0 cursor-pointer"
                     >
-                        <Plus className="h-3 w-3 text-blue-600 shrink-0" />
-                        {chartMode === 'grouped' ? 'Datasets' : 'Add'}
+                        <Plus className="h-3.5 w-3.5 shrink-0" />
+                        {chartMode === 'grouped' ? 'Dataset' : 'Add'}
                     </Button>
 
                     <button
                         type="button"
-                        className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-blue-100/40 cursor-pointer transition-colors shrink-0"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 cursor-pointer transition-colors shrink-0"
                         onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
                         title={datasetsDropdownOpen ? "Collapse datasets" : "Expand datasets"}
                     >
@@ -249,113 +268,94 @@ export function GeneralTab({
             </div>
 
             {datasetsDropdownOpen && (
-                <div className="bg-blue-50/50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
+                <div className="bg-slate-50/40 p-2.5 space-y-2">
                     {filteredDatasets.length > 0 && (
-                        <div className="flex items-center gap-1.5 px-1 pb-1">
-                            <span className="text-[10px] text-gray-500 font-medium">Selected :</span>
+                        <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-white rounded-lg border border-slate-200/70">
+                            <span className="text-[11px] text-slate-500 font-medium shrink-0 whitespace-nowrap">Active</span>
                             <button
+                                type="button"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     handleFocusActiveDataset();
                                 }}
-                                className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 bg-white px-2 py-0.5 rounded border border-blue-200 shadow-xs cursor-pointer flex items-center gap-1"
+                                title={`Jump to ${activeDatasetName}`}
+                                className="min-w-0 flex-1 flex items-center justify-end gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
                             >
-                                <span>{activeDatasetName}</span>
-                                <span className="text-[9px] text-blue-400">↵</span>
+                                <span className="truncate">{activeDatasetName}</span>
+                                <ChevronRight className="h-3 w-3 shrink-0 text-blue-400" />
                             </button>
                         </div>
                     )}
-                    <div ref={datasetsContainerRef} className="max-h-96 overflow-y-auto space-y-2 pr-1 scroll-smooth">
+                    <div ref={datasetsContainerRef} className="max-h-96 overflow-y-auto space-y-1.5 scroll-smooth">
                         {filteredDatasets.length === 0 ? (
-                            <div className="text-center py-6 px-2 bg-white rounded-lg border border-dashed border-gray-200">
-                                <p className="text-xs text-gray-500 italic">No datasets to display.</p>
-                                <p className="text-[10px] text-gray-400 mt-1">
-                                    Click &quot;+ {chartMode === 'grouped' ? 'Datasets' : 'Add'}&quot; to create a new dataset.
+                            <div className="text-center py-6 px-3 bg-white rounded-xl border border-dashed border-slate-200">
+                                <p className="text-xs font-medium text-slate-500">No datasets yet</p>
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                    Click &quot;+ {chartMode === 'grouped' ? 'Dataset' : 'Add'}&quot; to create one.
                                 </p>
                             </div>
                         ) : (
-                            filteredDatasets.map((dataset, datasetIndex) => (
-                                <div
-                                    key={datasetIndex}
-                                    data-active={chartData.datasets.indexOf(dataset) === activeDatasetIndex}
-                                    onClick={() => {
-                                        const actualIndex = chartData.datasets.indexOf(dataset);
-                                        if (actualIndex !== -1) {
-                                            handleActiveDatasetChange(actualIndex);
-                                        }
-                                    }}
-                                    className={`group relative p-3 rounded-lg transition-all cursor-pointer border ${chartData.datasets.indexOf(dataset) === activeDatasetIndex
-                                        ? 'bg-blue-50/50 border-blue-200 shadow-sm'
-                                        : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm hover:bg-gray-50/50'
-                                        }`}
-                                >
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-gray-800 truncate max-w-[200px]">
-                                                    {chartMode === 'single'
-                                                        ? (dataset.sourceTitle || dataset.label || `Dataset ${datasetIndex + 1}`)
-                                                        : (dataset.label || dataset.sourceTitle || `Dataset ${datasetIndex + 1}`)
-                                                    }
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-[10px] text-gray-400 pl-0.5">
-                                                <span className="font-medium text-gray-500">
-                                                    {(() => {
-                                                        const type = dataset.chartType || dataset.type || chartType;
-                                                        const labels: Record<string, string> = {
-                                                            horizontalBar: 'H. Bar',
-                                                            stackedBar: 'Stacked Bar',
-                                                            polarArea: 'Polar Area',
-                                                        };
-                                                        return labels[type as string] || (typeof type === 'string' ? type.charAt(0).toUpperCase() + type.slice(1) : 'Unknown');
-                                                    })()}
-                                                </span>
-                                                <span className="w-0.5 h-0.5 rounded-full bg-gray-300"></span>
-                                                <span>{dataset.data.length} points</span>
-                                                {(chartMode === 'grouped' || datasetIndex === activeDatasetIndex) && (
-                                                    <>
-                                                        <span className="w-0.5 h-0.5 rounded-full bg-gray-300"></span>
-                                                        <span className={dataset.hidden ? "text-gray-400" : "text-blue-600 font-medium"}>
-                                                            {dataset.hidden ? "Hidden" : "Visible"}
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
+                            filteredDatasets.map((dataset, datasetIndex) => {
+                                const actualIndex = chartData.datasets.indexOf(dataset);
+                                const isActive = actualIndex === activeDatasetIndex;
+                                const type = (dataset.chartType || dataset.type || chartType) as string | undefined;
+                                const title = chartMode === 'single'
+                                    ? (dataset.sourceTitle || dataset.label || `Dataset ${datasetIndex + 1}`)
+                                    : (dataset.label || dataset.sourceTitle || `Dataset ${datasetIndex + 1}`);
 
-                                        <div className="flex items-center gap-1 justify-end min-w-[60px]">
-                                            {/* Idle State: Chart Type Icon */}
-                                            <div className="group-hover:hidden text-gray-400">
-                                                {(() => {
-                                                    const type = dataset.chartType || dataset.type || chartType;
-                                                    switch (type) {
-                                                        case 'horizontalBar':
-                                                        case 'horizontalBar3d': return <ChartBarDecreasing className="h-4 w-4" />;
-                                                        case 'bar':
-                                                        case 'bar3d': return <BarChart3 className="h-4 w-4" />;
-                                                        case 'stackedBar': return <ChartColumnStacked className="h-4 w-4" />;
-                                                        case 'pie':
-                                                        case 'pie3d': return <PieChart className="h-4 w-4" />;
-                                                        case 'doughnut':
-                                                        case 'doughnut3d': return <LifeBuoy className="h-4 w-4" />;
-                                                        case 'area': return <ChartArea className="h-4 w-4" />;
-                                                        case 'line': return <LineChart className="h-4 w-4" />;
-                                                        case 'scatter':
-                                                        case 'bubble': return <ScatterChart className="h-4 w-4" />;
-                                                        case 'radar': return <Radar className="h-4 w-4" />;
-                                                        case 'polarArea': return <CircleDot className="h-4 w-4" />;
-                                                        default: return <Activity className="h-4 w-4" />;
-                                                    }
-                                                })()}
+                                return (
+                                    <div
+                                        key={datasetIndex}
+                                        data-active={isActive}
+                                        onClick={() => {
+                                            if (actualIndex !== -1) {
+                                                handleActiveDatasetChange(actualIndex);
+                                            }
+                                        }}
+                                        className={`group relative p-2.5 rounded-xl transition-all cursor-pointer border ${isActive
+                                            ? 'bg-blue-50/60 border-blue-300/90 shadow-2xs ring-1 ring-blue-500/15'
+                                            : 'bg-white border-slate-200/75 hover:border-slate-300 hover:shadow-2xs'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            {/* Chart Type Badge */}
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isActive
+                                                ? 'bg-blue-600 text-white shadow-2xs'
+                                                : 'bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600'
+                                                }`}>
+                                                {renderDatasetTypeIcon(type)}
                                             </div>
 
-                                            {/* Hover State: Action Buttons */}
-                                            <div className="hidden group-hover:flex items-center gap-1 animate-in fade-in duration-200">
+                                            {/* Title + Meta */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-xs font-semibold text-slate-800 truncate" title={title}>
+                                                    {title}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5 flex-wrap">
+                                                    <span className="font-medium text-slate-600">
+                                                        {formatDatasetTypeLabel(type)}
+                                                    </span>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span>{dataset.data.length} pts</span>
+                                                    {(chartMode === 'grouped' || isActive) && (
+                                                        <>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span className={`inline-flex items-center gap-1 font-medium ${dataset.hidden ? "text-slate-400" : "text-emerald-600"}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${dataset.hidden ? "bg-slate-300" : "bg-emerald-500"}`} />
+                                                                {dataset.hidden ? "Hidden" : "Visible"}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="flex items-center gap-0.5 shrink-0">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                                                    title="Edit dataset"
+                                                    className="h-7 w-7 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
                                                     onClick={(e) => {
                                                         e.stopPropagation()
                                                         handleDatasetTileClick(datasetIndex)
@@ -366,7 +366,8 @@ export function GeneralTab({
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                                                    title="Delete dataset"
+                                                    className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
                                                     onClick={(e) => {
                                                         e.stopPropagation()
                                                         handleDeleteClick(datasetIndex)
@@ -377,8 +378,8 @@ export function GeneralTab({
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
@@ -387,35 +388,34 @@ export function GeneralTab({
     );
 
     const renderGroupsList = () => (
-        <div className="space-y-2">
-            <div className="flex items-center justify-between bg-blue-50/70 px-2.5 py-2 rounded-t-lg border border-blue-100 min-w-0">
-                <div className="flex items-center gap-1.5 shrink-0 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
-                    <Label className="text-xs font-semibold text-gray-800 tracking-wide">Groups</Label>
-                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded-full font-bold">
+        <div className="rounded-xl border border-slate-200/80 bg-white shadow-2xs overflow-hidden">
+            <div className="flex items-center justify-between gap-2 bg-slate-50/80 px-3 py-2.5 border-b border-slate-200/70 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
+                    <Label className="text-xs font-semibold text-slate-800 tracking-tight whitespace-nowrap">Groups</Label>
+                    <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200/70 px-1.5 py-0.5 rounded-full font-semibold leading-none">
                         {groups.length}
                     </span>
                 </div>
                 <Button
-                    variant="outline"
                     size="sm"
                     onClick={() => {
                         setIsCreatingNewGroup(true);
                         setShowAddDatasetModal(true);
                     }}
-                    className="h-6.5 px-2 text-[11px] gap-1 border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95 shrink-0"
+                    className="h-7 px-2.5 text-[11px] gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-2xs transition-all active:scale-95 shrink-0 cursor-pointer"
                 >
-                    <Plus className="h-3 w-3 text-blue-600 shrink-0" />
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
                     Group
                 </Button>
             </div>
 
-            <div className="bg-blue-50/50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
-                <div className="max-h-96 overflow-y-auto space-y-2 pr-1 scroll-smooth">
+            <div className="bg-slate-50/40 p-2.5 space-y-2">
+                <div className="max-h-96 overflow-y-auto space-y-1.5 scroll-smooth">
                     {groups.length === 0 ? (
-                        <div className="text-center py-6 px-2 bg-white rounded-lg border border-dashed border-gray-200">
-                            <p className="text-xs text-gray-500 italic">No groups to display.</p>
-                            <p className="text-[10px] text-gray-400 mt-1">Click &quot;+ Group&quot; to create a new group.</p>
+                        <div className="text-center py-6 px-3 bg-white rounded-xl border border-dashed border-slate-200">
+                            <p className="text-xs font-medium text-slate-500">No groups yet</p>
+                            <p className="text-[11px] text-slate-400 mt-1">Click &quot;+ Group&quot; to create a new group.</p>
                         </div>
                     ) : (
                         groups.map((group) => {
@@ -425,25 +425,25 @@ export function GeneralTab({
                                 <div
                                     key={group.id}
                                     onClick={() => handleActiveGroupChange(group.id)}
-                                    className={`group relative p-2.5 rounded-lg transition-all cursor-pointer border ${
+                                    className={`group relative p-2.5 rounded-xl transition-all cursor-pointer border ${
                                         isSelected
-                                            ? 'bg-blue-50/40 border-blue-400 ring-1 ring-blue-400/30 shadow-xs'
-                                            : 'bg-white border-gray-200/80 hover:border-blue-200 hover:bg-gray-50/50 hover:shadow-xs'
+                                            ? 'bg-blue-50/60 border-blue-300/90 ring-1 ring-blue-500/15 shadow-2xs'
+                                            : 'bg-white border-slate-200/75 hover:border-slate-300 hover:shadow-2xs'
                                     }`}
                                 >
                                     {/* Top row: Title + badges + delete */}
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                            <span className="text-xs font-semibold text-gray-800 truncate" title={group.name}>
+                                            <span className="text-xs font-semibold text-slate-800 truncate" title={group.name}>
                                                 {group.name}
                                             </span>
                                             {isSelected && (
                                                 <span className="text-[9px] font-semibold bg-blue-600 text-white px-1.5 py-0.5 rounded-full shrink-0">
-                                                    Selected
+                                                    Active
                                                 </span>
                                             )}
                                             {group.isDefault && (
-                                                <span className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-medium shrink-0">
+                                                <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md font-medium shrink-0">
                                                     Default
                                                 </span>
                                             )}
@@ -453,7 +453,7 @@ export function GeneralTab({
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded shrink-0 -mr-1"
+                                                className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0 -mr-1 cursor-pointer"
                                                 title="Delete group"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -467,25 +467,25 @@ export function GeneralTab({
                                     </div>
 
                                     {/* Bottom row: Category, uniformity, dataset count */}
-                                    <div className="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-gray-100 text-[10px]">
+                                    <div className="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-slate-100 text-[10px]">
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                             {group.category ? (
-                                                <span className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 font-medium">
+                                                <span className="px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200/60 font-medium">
                                                     {group.category === 'coordinate' ? 'Coordinate' : 'Categorical'}
                                                 </span>
                                             ) : (
-                                                <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
+                                                <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 font-medium">
                                                     Unset
                                                 </span>
                                             )}
                                             {group.uniformityMode && (
-                                                <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100 capitalize font-medium">
+                                                <span className="px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200/60 capitalize font-medium">
                                                     {group.uniformityMode}
                                                 </span>
                                             )}
                                         </div>
 
-                                        <span className="text-gray-500 font-medium shrink-0">
+                                        <span className="text-slate-500 font-medium shrink-0">
                                             {count} {count === 1 ? 'dataset' : 'datasets'}
                                         </span>
                                     </div>
@@ -499,31 +499,37 @@ export function GeneralTab({
     );
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
             {/* Chart Mode Section */}
-            <div>
-                <div className="font-semibold text-xs mb-2">Chart Mode</div>
-                <div className="flex items-center gap-4 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 shadow-sm">
-                    <label className={`flex items-center gap-2 cursor-pointer transition-colors text-xs ${chartMode === 'single' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
-                        <input
-                            type="radio"
-                            className="accent-blue-600"
-                            checked={chartMode === 'single'}
-                            onChange={() => handleChartModeChange('single')}
-                        />
-                        <BarChart2 className="h-4 w-4" />
-                        Single
-                    </label>
-                    <label className={`flex items-center gap-2 cursor-pointer transition-colors text-xs ${chartMode === 'grouped' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
-                        <input
-                            type="radio"
-                            className="accent-blue-600"
-                            checked={chartMode === 'grouped'}
-                            onChange={() => handleChartModeChange('grouped')}
-                        />
-                        <Layers className="h-4 w-4" />
-                        Grouped
-                    </label>
+            <div className="space-y-1.5">
+                <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-0.5">
+                    Chart Mode
+                </Label>
+                <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100/90 border border-slate-200/70 rounded-xl">
+                    <button
+                        type="button"
+                        onClick={() => handleChartModeChange('single')}
+                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs transition-all cursor-pointer ${
+                            chartMode === 'single'
+                                ? 'bg-white text-blue-600 font-semibold shadow-xs ring-1 ring-slate-200/70'
+                                : 'text-slate-500 hover:text-slate-800 font-medium'
+                        }`}
+                    >
+                        <BarChart2 className="h-3.5 w-3.5 shrink-0" />
+                        <span>Single</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleChartModeChange('grouped')}
+                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs transition-all cursor-pointer ${
+                            chartMode === 'grouped'
+                                ? 'bg-white text-blue-600 font-semibold shadow-xs ring-1 ring-slate-200/70'
+                                : 'text-slate-500 hover:text-slate-800 font-medium'
+                        }`}
+                    >
+                        <Layers className="h-3.5 w-3.5 shrink-0" />
+                        <span>Grouped</span>
+                    </button>
                 </div>
             </div>
 
@@ -531,22 +537,22 @@ export function GeneralTab({
             {chartMode === 'grouped' ? (
                 <div className="space-y-3">
                     {/* Two Tabs: Groups vs Datasets */}
-                    <div className="grid grid-cols-2 p-1 bg-gray-100/80 border border-gray-200/60 rounded-lg text-xs font-medium">
+                    <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100/90 border border-slate-200/70 rounded-xl text-xs font-medium">
                         <button
                             type="button"
                             onClick={() => setGroupedTab('groups')}
-                            className={`flex items-center justify-center gap-2 py-1.5 rounded-md transition-all ${
+                            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                                 groupedTab === 'groups'
-                                    ? 'bg-white text-gray-900 shadow-xs font-semibold'
-                                    : 'text-gray-500 hover:text-gray-900'
+                                    ? 'bg-white text-slate-900 shadow-xs font-semibold ring-1 ring-slate-200/70'
+                                    : 'text-slate-500 hover:text-slate-900'
                             }`}
                         >
                             <Layers className="h-3.5 w-3.5" />
                             <span>Groups</span>
-                            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold leading-none ${
                                 groupedTab === 'groups'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-gray-200 text-gray-600'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                                    : 'bg-slate-200/80 text-slate-600'
                             }`}>
                                 {groups.length}
                             </span>
@@ -554,18 +560,18 @@ export function GeneralTab({
                         <button
                             type="button"
                             onClick={() => setGroupedTab('datasets')}
-                            className={`flex items-center justify-center gap-2 py-1.5 rounded-md transition-all ${
+                            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                                 groupedTab === 'datasets'
-                                    ? 'bg-white text-blue-700 shadow-xs font-semibold'
-                                    : 'text-gray-500 hover:text-gray-900'
+                                    ? 'bg-white text-blue-600 shadow-xs font-semibold ring-1 ring-slate-200/70'
+                                    : 'text-slate-500 hover:text-slate-900'
                             }`}
                         >
                             <BarChart2 className="h-3.5 w-3.5" />
                             <span>Datasets</span>
-                            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold leading-none ${
                                 groupedTab === 'datasets'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-gray-200 text-gray-600'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                                    : 'bg-slate-200/80 text-slate-600'
                             }`}>
                                 {filteredDatasets.length}
                             </span>
@@ -580,9 +586,9 @@ export function GeneralTab({
                             {(() => {
                                 const activeGroup = groups.find((g: any) => g.id === activeGroupId) || groups[0];
                                 return (
-                                    <div className="flex items-center justify-between p-2.5 bg-blue-50/40 border border-blue-200/80 rounded-lg shadow-2xs">
+                                    <div className="flex items-center justify-between p-2.5 bg-slate-50/80 border border-slate-200/80 rounded-xl shadow-2xs">
                                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                                            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">Group:</span>
+                                            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider shrink-0">Group</span>
                                             {isEditingGroupName ? (
                                                 <div className="flex items-center gap-1 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                                                     <input
@@ -594,12 +600,12 @@ export function GeneralTab({
                                                             if (e.key === 'Escape') setIsEditingGroupName(false);
                                                         }}
                                                         autoFocus
-                                                        className="h-6 px-2 text-xs font-semibold bg-white border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
+                                                        className="h-6 px-2 text-xs font-semibold bg-white border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
                                                     />
                                                     <button
                                                         type="button"
                                                         onClick={handleSaveGroupName}
-                                                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                                                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer"
                                                         title="Save name"
                                                     >
                                                         <Check className="h-3.5 w-3.5" />
@@ -607,7 +613,7 @@ export function GeneralTab({
                                                     <button
                                                         type="button"
                                                         onClick={() => setIsEditingGroupName(false)}
-                                                        className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                                                        className="p-1 text-slate-400 hover:bg-slate-100 rounded-md cursor-pointer"
                                                         title="Cancel"
                                                     >
                                                         <X className="h-3.5 w-3.5" />
@@ -615,7 +621,7 @@ export function GeneralTab({
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                    <span className="text-xs font-bold text-gray-900 truncate" title={activeGroup?.name}>
+                                                    <span className="text-xs font-semibold text-slate-900 truncate" title={activeGroup?.name}>
                                                         {activeGroup?.name || 'Selected Group'}
                                                     </span>
                                                     <button
@@ -624,13 +630,13 @@ export function GeneralTab({
                                                             setEditingGroupNameValue(activeGroup?.name || '');
                                                             setIsEditingGroupName(true);
                                                         }}
-                                                        className="p-0.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100/50 rounded transition-colors"
+                                                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
                                                         title="Rename group"
                                                     >
                                                         <Pencil className="h-3 w-3" />
                                                     </button>
                                                     {activeGroup?.category && (
-                                                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-700 font-medium shrink-0">
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/60 font-medium shrink-0">
                                                             {activeGroup.category === 'coordinate' ? 'Coordinate' : 'Categorical'}
                                                         </span>
                                                     )}
@@ -689,7 +695,7 @@ export function GeneralTab({
                                 });
                                 if (groupName && activeGroupId) {
                                     updateGroup(activeGroupId, { name: groupName });
-                                    await saveChartTitle(groupName);
+                                    await saveChartTitle(groupName, { silent: true });
                                 }
                             } else {
                                 const firstDataset = datasets[0];
@@ -719,10 +725,9 @@ export function GeneralTab({
                                     chartConfig: useChartStore.getState().getActiveChartConfig()
                                 });
                                 if (groupName) {
-                                    await saveChartTitle(groupName);
+                                    await saveChartTitle(groupName, { silent: true });
                                 }
                             }
-                            toast.success(`Chart updated successfully.`);
                         }
                         setShowAddDatasetModal(false);
                         setTimeout(() => {
@@ -799,7 +804,6 @@ export function GeneralTab({
                         setGroupedTab('datasets');
 
                         useChatStore.getState().setBackendConversationId(null);
-                        toast.success(`Created group "${groupName || `Group ${groups.length + 1}`}"`);
                     } else if (chartMode === 'grouped' && activeGroupId) {
                         const currentGroup = groups.find(g => g.id === activeGroupId);
                         const existingGroupConfig = currentGroup?.chartConfig
@@ -848,7 +852,6 @@ export function GeneralTab({
                                 groupedModeData: newChartData,
                                 chartType: newChartType as any
                             });
-                            toast.success(`Dataset updated successfully.`);
                         }
                     } else {
                         // chartMode === 'single': adding new dataset/chart, completely isolated with clean default settings
@@ -884,7 +887,6 @@ export function GeneralTab({
                                     mode: 'single'
                                 });
                             });
-                            toast.success(`Single chart created successfully.`);
                         }
                     }
 
@@ -910,12 +912,6 @@ export function GeneralTab({
                 confirmButtonText={isEditModeModal ? "Update Chart" : (isCreatingNewGroup ? "Create Group" : (chartMode === 'grouped' ? "Update Chart" : undefined))}
             />
 
-            {/* Data Import Modal */}
-            <DataImportModal
-                open={showImportModal}
-                onOpenChange={setShowImportModal}
-                defaultChartType={chartType === 'timeline' ? 'timeline' : 'line'}
-            />
         </div>
     )
 }

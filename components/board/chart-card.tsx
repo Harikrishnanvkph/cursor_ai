@@ -16,6 +16,7 @@ import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
 import { getChartTypeBadgeClass, formatChartTypeName } from "@/lib/chart-type-meta"
 import { getBackgroundConfig } from "@/lib/utils/dimension-utils"
+import { copyConversationShareLink, openConversationShareLink } from "@/lib/share-utils"
 import { sanitizeHTML } from "@/lib/utils/sanitize"
 import {
   Eye,
@@ -376,7 +377,6 @@ export function ChartCard({
 
     if (!activeSnapshot?.chartData) {
       onPreview(conversation)
-      toast.info("Opening chart preview for download...")
       return
     }
 
@@ -408,7 +408,6 @@ export function ChartCard({
         }
         // If not rendered in DOM (e.g. list view), open preview modal
         onPreview(conversation)
-        toast.info("Opened chart preview for high-resolution download")
         return
       }
 
@@ -468,17 +467,19 @@ export function ChartCard({
 
       // 4. If nothing in DOM (e.g. in list view or offscreen), open preview modal
       onPreview(conversation)
-      toast.info("Opened chart preview for high-resolution download")
     } catch (error) {
       console.error("Download error:", error)
       toast.error("Failed to download chart")
     }
   }
 
+  const resolvedSnapshotId = cachedSnapshot?.id || conversation.snapshot?.id || undefined
+
   const handleShare = () => {
-    const shareUrl = `${window.location.origin}/chart/${conversation.id}`
-    navigator.clipboard.writeText(shareUrl)
-    toast.success("Share link copied to clipboard!")
+    void copyConversationShareLink({
+      conversationId: conversation.id,
+      snapshotId: resolvedSnapshotId,
+    })
   }
 
   const formatDate = (timestamp: number) => {
@@ -851,7 +852,7 @@ export function ChartCard({
                       if (bg.type === 'image' && bg.imageUrl) {
                         const size = bg.imageFit === 'fill' ? '100% 100%' : bg.imageFit === 'contain' ? 'contain' : 'cover';
                         return (
-                          <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: bg.imageWhiteBase !== false ? '#ffffff' : 'transparent' }}>
+                          <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: bg.imageWhiteBase !== false ? (bg.imageBaseColor || '#ffffff') : 'transparent' }}>
                             <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100, filter: bg.blur ? `blur(${bg.blur}px)` : 'none' }} />
                           </div>
                         );
@@ -992,7 +993,7 @@ export function ChartCard({
                         if (bg.type === 'image' && bg.imageUrl) {
                           const size = bg.imageFit === 'fill' ? '100% 100%' : bg.imageFit === 'contain' ? 'contain' : 'cover';
                           return (
-                            <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: bg.imageWhiteBase !== false ? '#ffffff' : 'transparent' }}>
+                            <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: bg.imageWhiteBase !== false ? (bg.imageBaseColor || '#ffffff') : 'transparent' }}>
                               <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100, filter: bg.blur ? `blur(${bg.blur}px)` : 'none' }} />
                             </div>
                           );
@@ -1137,11 +1138,11 @@ export function ChartCard({
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => {
-                    const url = shareTab === "share"
-                      ? `${window.location.origin}/share/${conversation.id}`
-                      : `${window.location.origin}/chart/${conversation.id}`
-                    navigator.clipboard.writeText(url)
-                    toast.success(shareTab === "share" ? "Share link copied!" : "Embed link copied!")
+                    void copyConversationShareLink({
+                      conversationId: conversation.id,
+                      snapshotId: resolvedSnapshotId,
+                      embed: shareTab === "embed",
+                    })
                   }}
                   className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-zinc-700 hover:text-violet-750 hover:bg-violet-50/50 rounded-md border border-zinc-200/60 hover:border-violet-100 transition-all"
                 >
@@ -1150,10 +1151,11 @@ export function ChartCard({
                 </button>
                 <button
                   onClick={() => {
-                    const url = shareTab === "share"
-                      ? `/share/${conversation.id}`
-                      : `/chart/${conversation.id}`
-                    window.open(url, "_blank")
+                    void openConversationShareLink({
+                      conversationId: conversation.id,
+                      snapshotId: resolvedSnapshotId,
+                      embed: shareTab === "embed",
+                    })
                   }}
                   className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-zinc-700 hover:text-violet-750 hover:bg-violet-50/50 rounded-md border border-zinc-200/60 hover:border-violet-100 transition-all"
                 >

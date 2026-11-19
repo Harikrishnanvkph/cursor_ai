@@ -215,8 +215,12 @@ export interface ChartStylePresetRow {
  * Options passed to applyPresetToChart() to control behavior.
  */
 export interface PresetApplyOptions {
-  /** If true, overwrite the chart's dimensions with the preset's dimensions */
+  /** If true, overwrite the chart's dimensions with the preset's (or target) dimensions */
   applyDimensions?: boolean
+  /** Optional target dimensions or aspect-ratio size to dynamically translate the preset into */
+  targetDimensions?: PresetDimensions | null
+  /** Enable automatic scaling translation when target dimensions differ from the preset's native dimensions (default: true) */
+  translateToTarget?: boolean
 }
 
 // ========================================

@@ -107,8 +107,13 @@ function CurrentChartTile({ chartData, chartConfig, chartType }: CurrentChartTil
 const PAGE_SIZE = 12
 import { toast } from "sonner"
 import { PresetCard } from "./preset-card"
-import type { ChartStylePreset, PresetCategory } from "@/lib/chart-style-types"
+import type { ChartStylePreset, PresetCategory, PresetDimensions } from "@/lib/chart-style-types"
 import { checkPresetCompatibility } from "@/lib/chart-style-engine"
+import {
+  translatePresetsBatch,
+  STANDARD_ASPECT_RATIO_TARGETS,
+  type StandardAspectRatioKey,
+} from "@/lib/preset-scaling-engine"
 import type { SupportedChartType } from "@/lib/chart-defaults"
 import { parseDimension } from "@/lib/utils/dimension-utils"
 import { PresetPreviewDialog } from "./preset-preview-dialog"
@@ -158,6 +163,7 @@ export function ChartStyleGalleryPage() {
     isLoading,
     loadPresets,
     officialPresets,
+    userPresets,
     filters,
     setFilters,
     resetFilters,
@@ -182,6 +188,7 @@ export function ChartStyleGalleryPage() {
   const [syncCooldown, setSyncCooldown] = useState(0)
   const [previewPreset, setPreviewPreset] = useState<ChartStylePreset | null>(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [adaptToAspectRatio, setAdaptToAspectRatio] = useState(true)
 
   // Countdown timer for sync cooldown
   useEffect(() => {
@@ -220,7 +227,28 @@ export function ChartStyleGalleryPage() {
   }, [isGalleryOpen, closeGallery])
 
   const filteredPresets = useMemo(() => {
-    const rawFiltered = getFilteredPresets()
+    let rawFiltered: ChartStylePreset[]
+    if (filters.aspectRatio !== 'all' && adaptToAspectRatio) {
+      const q = (filters.searchQuery || '').toLowerCase()
+      const candidates = [...officialPresets, ...userPresets].filter(p => {
+        if (filters.chartType !== 'all' && p.chartType !== filters.chartType) return false
+        if (filters.category !== 'all' && filters.category && p.category !== filters.category) return false
+        if (q) {
+          const matchesText =
+            p.name.toLowerCase().includes(q) ||
+            (p.description || '').toLowerCase().includes(q) ||
+            (p.tags || []).some(t => t.toLowerCase().includes(q))
+          if (!matchesText) return false
+        }
+        return true
+      })
+      rawFiltered = translatePresetsBatch(candidates, filters.aspectRatio, {
+        dataCount: chartData?.labels?.length || 8,
+        fontScaleMode: 'normalized',
+      }).map(r => r.preset)
+    } else {
+      rawFiltered = getFilteredPresets()
+    }
 
     // ── 1. Create a virtual preset for the simple AI generated style ──
     const simplePreset: ChartStylePreset = {
@@ -291,12 +319,24 @@ export function ChartStyleGalleryPage() {
       return [simplePreset, ...rawFiltered]
     }
     return rawFiltered
-  }, [getFilteredPresets, chartType, chartConfig, filters.chartType, filters.category, filters.aspectRatio, filters.searchQuery])
+  }, [
+    getFilteredPresets,
+    officialPresets,
+    userPresets,
+    adaptToAspectRatio,
+    chartData?.labels?.length,
+    chartType,
+    chartConfig,
+    filters.chartType,
+    filters.category,
+    filters.aspectRatio,
+    filters.searchQuery,
+  ])
 
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE)
-  }, [filters.chartType, filters.category, filters.aspectRatio, filters.searchQuery])
+  }, [filters.chartType, filters.category, filters.aspectRatio, filters.searchQuery, adaptToAspectRatio])
 
   // Paginated subset
   const visiblePresets = useMemo(
@@ -308,7 +348,7 @@ export function ChartStyleGalleryPage() {
   const hasActualPresets = filteredPresets.some(p => p.id !== 'preset-simple')
 
   const handleApplyPreset = useCallback(
-    (preset: ChartStylePreset) => {
+    (preset: ChartStylePreset, explicitTargetDimensions?: PresetDimensions | null) => {
       if (!hasChartData) {
         toast.error("Generate a chart first, then apply a style.")
         return
@@ -330,22 +370,32 @@ export function ChartStyleGalleryPage() {
             })
             useChartStyleStore.getState().setSelectedPresetId('preset-simple')
             closeGallery()
-            toast.success("Reverted to original AI-generated chart style.")
           } else {
             useChartStyleStore.getState().setSelectedPresetId(null)
             closeGallery()
-            toast.info("Original style restored.")
           }
         } catch (e) {
           useChartStyleStore.getState().setSelectedPresetId(null)
           closeGallery()
-          toast.info("Original style restored.")
         }
         return
       }
 
+      // Determine explicit target dimensions if supplied or if filtering with Auto-Adapt enabled
+      let resolvedTargetDimensions: PresetDimensions | null = explicitTargetDimensions ?? null
+      if (!resolvedTargetDimensions && filters.aspectRatio !== 'all' && adaptToAspectRatio) {
+        const stdTarget = STANDARD_ASPECT_RATIO_TARGETS[filters.aspectRatio as StandardAspectRatioKey]
+        if (stdTarget) {
+          resolvedTargetDimensions = {
+            width: `${stdTarget.width}px`,
+            height: `${stdTarget.height}px`,
+          }
+        }
+      }
+
       const { warnings } = checkPresetCompatibility(preset, chartData)
-      const success = applyPreset(preset.id, !!preset.dimensions)
+      const shouldApplyDims = resolvedTargetDimensions ? true : !!preset.dimensions
+      const success = applyPreset(preset.id, shouldApplyDims, resolvedTargetDimensions)
 
       if (success) {
         closeGallery()
@@ -356,7 +406,7 @@ export function ChartStyleGalleryPage() {
         toast.error("Failed to apply style preset.")
       }
     },
-    [hasChartData, chartData, applyPreset, closeGallery]
+    [hasChartData, chartData, applyPreset, closeGallery, filters.aspectRatio, adaptToAspectRatio]
   )
 
   const activeFilterCount =
@@ -469,7 +519,22 @@ export function ChartStyleGalleryPage() {
 
           {/* Aspect Ratio */}
           <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Aspect Ratio</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Aspect Ratio</span>
+              {filters.aspectRatio !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setAdaptToAspectRatio(prev => !prev)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold transition-all ${
+                    adaptToAspectRatio
+                      ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {adaptToAspectRatio ? `Auto-Adapting All to ${filters.aspectRatio}` : `Native ${filters.aspectRatio} Only`}
+                </button>
+              )}
+            </div>
             <div className="flex gap-1.5 flex-wrap">
               {ASPECT_RATIO_OPTIONS.map(opt => (
                 <button
@@ -541,7 +606,10 @@ export function ChartStyleGalleryPage() {
                   isSelected={preset.id === 'preset-simple' ? (selectedPresetId === 'preset-simple' || selectedPresetId === null) : selectedPresetId === preset.id}
                   hasChartData={hasChartData}
                   onApply={() => handleApplyPreset(preset)}
-                  onPreview={() => setPreviewPreset(preset)}
+                  onPreview={() => {
+                    const sourcePreset = [...officialPresets, ...userPresets].find(p => p.id === preset.id) || preset
+                    setPreviewPreset(sourcePreset)
+                  }}
                   chartData={hasChartData ? chartData : undefined}
                   chartConfig={hasChartData ? chartConfig : undefined}
                   chartType={chartType}
@@ -585,8 +653,14 @@ export function ChartStyleGalleryPage() {
               
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <button
-                  onClick={() => setFilters({ aspectRatio: 'all' })}
+                  onClick={() => setAdaptToAspectRatio(true)}
                   className="text-xs px-4 py-2.5 font-bold rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors shadow-sm cursor-pointer"
+                >
+                  Adapt All Styles to {filters.aspectRatio}
+                </button>
+                <button
+                  onClick={() => setFilters({ aspectRatio: 'all' })}
+                  className="text-xs px-4 py-2.5 font-bold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors shadow-sm cursor-pointer"
                 >
                   Reset Aspect Ratio to All
                 </button>
@@ -667,6 +741,11 @@ export function ChartStyleGalleryPage() {
         chartData={hasChartData ? chartData : undefined}
         chartConfig={hasChartData ? chartConfig : undefined}
         chartType={chartType}
+        initialTargetRatio={
+          filters.aspectRatio !== 'all' && adaptToAspectRatio
+            ? (filters.aspectRatio as StandardAspectRatioKey)
+            : 'native'
+        }
       />
     </div>
   )

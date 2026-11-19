@@ -69,12 +69,12 @@ export const downloadTemplateExport = async (
 export const downloadFormatExport = async (
     rendered: RenderedFormat,
     decorationShapes: DecorationShape[],
-    options: { fileName?: string } = {}
+    options: { fileName?: string; htmlOptions?: any } = {}
 ): Promise<void> => {
-    const { fileName = 'chart-format' } = options
+    const { fileName = 'chart-format', htmlOptions } = options
 
     try {
-        const html = await exportFormatAsHTML(rendered, decorationShapes, { fileName })
+        const html = await exportFormatAsHTML(rendered, decorationShapes, { fileName, htmlOptions })
 
         // Create blob and download
         const blob = new Blob([html], { type: 'text/html' })

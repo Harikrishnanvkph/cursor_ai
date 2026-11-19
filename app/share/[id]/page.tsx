@@ -1,62 +1,54 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from "react"
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { useParams } from "next/navigation"
 import { dataService } from "@/lib/data-service"
 import { Chart as ChartJS } from "chart.js"
 import "@/lib/chart-registration"
-import { 
-  Loader2, 
-  AlertCircle, 
-  Maximize, 
-  Settings2, 
-  ZoomIn, 
-  ZoomOut,
+import {
+  Loader2,
+  AlertCircle,
   Hand,
-  Search,
   Share2,
-  RotateCcw,
-  Maximize2,
   Check,
-  Copy,
   Plus,
   Minus,
   Sparkles,
-  BarChart3,
   Download,
-  Settings,
-  ChevronRight,
-  Eye,
-  EyeOff,
+  ChevronDown,
   MousePointerClick,
   Sun,
-  Moon
+  Moon,
+  Maximize2,
+  SlidersHorizontal,
+  BarChart3,
+  Image as ImageIcon,
+  Code2,
+  ArrowUpRight,
 } from "lucide-react"
-import { generateCustomLabelsFromConfig } from "@/lib/html-exporter/export-utils"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { toast } from "sonner"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
-import { getBackgroundConfig } from "@/lib/utils/dimension-utils"
+import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
+import { getBackgroundConfig, parseDimension } from "@/lib/utils/dimension-utils"
+import { getProxiedImageUrl, requiresProxy } from "@/lib/utils/image-proxy-utils"
 import { renderFormat } from "@/lib/variant-engine"
 import { FormatRenderer } from "@/components/gallery/FormatRenderer"
-import { useDecorationStore } from "@/lib/stores/decoration-store"
+import { type DecorationShape } from "@/lib/stores/decoration-store"
 import { DecorationShapeRenderer } from "@/components/decorations/DecorationShapeRenderer"
-import { useChartStore, chartTypeMapping, type SupportedChartType } from "@/lib/chart-store"
-import { useTemplateStore } from "@/lib/template-store"
 import { getPatternCSS } from "@/lib/utils"
 import { ChartGenerator } from "@/lib/chart_generator"
 import { sanitizeHTML } from "@/lib/utils/sanitize"
+import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
 
 interface SharedChart {
   chart_type: string
@@ -67,29 +59,90 @@ interface SharedChart {
   template_content?: any
 }
 
+const ZOOM_VALUES = [10, 25, 50, 75, 100, 125, 150, 200, 300, 400, 500]
+
+const hexToRgba = (hex: string, opacity: number): string => {
+  if (!hex || typeof hex !== "string") return `rgba(255, 255, 255, ${opacity})`
+  if (hex === "transparent") return "transparent"
+  if (!hex.startsWith("#")) return hex
+  let clean = hex.replace("#", "")
+  if (clean.length === 3) {
+    clean = clean
+      .split("")
+      .map((c) => c + c)
+      .join("")
+  }
+  if (clean.length !== 6) return hex
+  const r = parseInt(clean.substring(0, 2), 16)
+  const g = parseInt(clean.substring(2, 4), 16)
+  const b = parseInt(clean.substring(4, 6), 16)
+  if ([r, g, b].some(Number.isNaN)) return hex
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`
+}
+
+const getBackgroundSize = (fit?: string): string => {
+  switch (fit) {
+    case "fill":
+      return "100% 100%"
+    case "contain":
+      return "contain"
+    case "cover":
+      return "cover"
+    case "none":
+    case "scale-down":
+      return "auto"
+    default:
+      return "cover"
+  }
+}
+
 export default function SharedChartPage() {
   const params = useParams()
   const shareId = params.id as string
+
   const [chart, setChart] = useState<SharedChart | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dimensionMode, setDimensionMode] = useState<"original" | "responsive" | "manual">("original")
   const [manualWidth, setManualWidth] = useState<number>(800)
   const [manualHeight, setManualHeight] = useState<number>(600)
-  const [zoom, setZoom] = useState<number>(1)
-  const [panMode, setPanMode] = useState<boolean>(false)
-  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState<boolean>(false)
-  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [copiedLink, setCopiedLink] = useState(false)
+  const [isExportingImage, setIsExportingImage] = useState(false)
 
-  const [theme, setTheme] = useState<"dark" | "light">("dark")
+  const [theme, setTheme] = useState<"dark" | "light">("light")
+  const [isEmbed, setIsEmbed] = useState<boolean>(false)
+
+  const zoomPan = useZoomPan()
+  const {
+    zoom,
+    panMode,
+    isDragging,
+    panOffset,
+    setZoom,
+    setPanMode,
+    setPanOffset,
+    handleZoomIn: rawZoomIn,
+    handleZoomOut: rawZoomOut,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    attachTouchHandlers,
+  } = zoomPan
+
+  const mainContainerRef = useRef<HTMLDivElement>(null)
+  const canvasWrapperRef = useRef<HTMLDivElement>(null)
+  const hasUserZoomedRef = useRef<boolean>(false)
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("share-page-theme") as "dark" | "light" | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    } else if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
-      setTheme("light")
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search)
+      setIsEmbed(searchParams.get("embed") === "true" || searchParams.get("embed") === "1")
+      const savedTheme = localStorage.getItem("share-page-theme") as "dark" | "light" | null
+      if (savedTheme === "dark" || savedTheme === "light") {
+        setTheme(savedTheme)
+      } else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+        setTheme("dark")
+      }
     }
   }, [])
 
@@ -98,113 +151,123 @@ export default function SharedChartPage() {
     setTheme(nextTheme)
     localStorage.setItem("share-page-theme", nextTheme)
   }
-  const mainContainerRef = useRef<HTMLDivElement>(null)
 
-  const ZOOM_VALUES = [10, 25, 50, 75, 100, 125, 150, 200, 300, 400, 500];
-
-  const currentZoomPct = Math.round(zoom * 100);
-  let closestIndex = 4; // default to 100%
-  let minDiff = Infinity;
-  for (let i = 0; i < ZOOM_VALUES.length; i++) {
-    const diff = Math.abs(ZOOM_VALUES[i] - currentZoomPct);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closestIndex = i;
-    }
-  }
-
-  const handleSliderChange = (value: number[]) => {
-    const newZoomPct = ZOOM_VALUES[value[0]];
-    setZoom(newZoomPct / 100);
-  };
-
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 5));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1));
-  
-  const handleResetZoom = () => {
-    setZoom(1);
-    setPanOffset({ x: 0, y: 0 });
-  };
-
-  const handleShare = async () => {
-    try {
-      const shareUrl = window.location.href;
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("Link copied!", {
-        description: "Public link copied to clipboard successfully.",
-      });
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: chart?.chart_config?.plugins?.title?.text || "Chartography.in Shared Chart",
-            url: shareUrl,
-          });
-        } catch (e) {
-          // ignore native cancel
-        }
-      }
-    } catch (err) {
-      console.error("Failed to copy link:", err);
-      toast.error("Failed to copy link");
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!panMode) return;
-    setIsDragging(true);
-    setDragStart({
-      x: e.clientX - panOffset.x,
-      y: e.clientY - panOffset.y
-    });
-    e.preventDefault();
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging && panMode) {
-      setPanOffset({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  const isDark = theme === "dark"
 
   // Determine rendering modes
   const isFormat = !!chart?.template_structure?.zones
   const isTemplate = !!chart?.template_structure && !isFormat
 
-  // Memoize rendered format if in format mode
-  const renderedFormat = React.useMemo(() => {
+  // Derive chart mode cleanly from saved config/data without mutating global stores
+  const inferredMode = useMemo<"single" | "grouped">(() => {
+    if (chart?.chart_config?.mode === "single" || chart?.chart_config?.mode === "grouped") {
+      return chart.chart_config.mode
+    }
+    const datasets = chart?.chart_data?.datasets || []
+    if (datasets.length > 1) return "grouped"
+    if (datasets[0]?.mode === "single" || datasets[0]?.mode === "grouped") {
+      return datasets[0].mode
+    }
+    if (datasets.some((d: any) => typeof d.groupId === "string")) {
+      return "grouped"
+    }
+    return "single"
+  }, [chart])
+
+  const decorations = useMemo<DecorationShape[]>(() => {
+    if (!chart) return []
+    const raw =
+      chart.chart_config?.decorationShapes ||
+      chart.chart_config?.decorations ||
+      chart.template_structure?.decorations
+    return Array.isArray(raw) ? raw : []
+  }, [chart])
+
+  const resolvedContentPackage = useMemo(() => {
     if (!isFormat || !chart) return null
+    const basePkg = chart.chart_config?.formatData?.contentPackage || chart.template_content || {}
+    const contentPkg = { ...basePkg }
+    if (chart.chart_data) {
+      contentPkg.chartData = chart.chart_data
+    }
+    if (chart.chart_config) {
+      const { formatData, ...cleanConfig } = chart.chart_config
+      contentPkg.chartConfig = cleanConfig
+    }
+    return contentPkg
+  }, [isFormat, chart])
+
+  const renderedFormat = useMemo(() => {
+    if (!isFormat || !chart || !resolvedContentPackage) return null
     try {
       const blueprint = {
-        id: 'shared-format',
-        name: 'Shared Format',
-        skeleton: chart.template_structure
+        id: "shared-format",
+        name: "Shared Format",
+        skeleton: chart.template_structure,
       }
-      // For formats, the content package is saved in chart_config.formatData.contentPackage
-      const contentPkg = chart.chart_config?.formatData?.contentPackage || chart.template_content || {}
       const ctxImage = chart.chart_config?.formatData?.contextualImageUrl || undefined
-      return renderFormat(blueprint as any, contentPkg, chart.chart_type, ctxImage)
+      const safeChartType =
+        chart.chart_type && chart.chart_type !== "format"
+          ? chart.chart_type
+          : resolvedContentPackage?.suggestedChartTypes?.[0] || "bar"
+      return renderFormat(blueprint as any, resolvedContentPackage, safeChartType, ctxImage)
     } catch (err) {
       console.error("Failed to render shared format", err)
       return null
     }
-  }, [isFormat, chart])
+  }, [isFormat, chart, resolvedContentPackage])
 
-  // Hydrate decorations for templates and plain charts
-  useEffect(() => {
-    if (chart) {
-      const decorations = chart.chart_config?.decorationShapes || chart.template_structure?.decorations;
-      if (decorations && decorations.length > 0) {
-        useDecorationStore.setState({ shapes: decorations })
+  // Single source of truth for intrinsic chart dimensions across fit, canvas, decorations, and export
+  const intrinsicDimensions = useMemo(() => {
+    if (!chart) return { width: 800, height: 600 }
+    if (isFormat) {
+      return {
+        width: Math.max(100, parseDimension(chart.template_structure?.dimensions?.width, 800)),
+        height: Math.max(100, parseDimension(chart.template_structure?.dimensions?.height, 600)),
       }
     }
-  }, [chart])
+    if (isTemplate) {
+      return {
+        width: Math.max(100, parseDimension(chart.template_structure?.width, 800)),
+        height: Math.max(100, parseDimension(chart.template_structure?.height, 600)),
+      }
+    }
+    if (dimensionMode === "manual") {
+      return {
+        width: Math.max(100, manualWidth || 800),
+        height: Math.max(100, manualHeight || 600),
+      }
+    }
+    return {
+      width: Math.max(100, parseDimension(chart.chart_config?.width, 800)),
+      height: Math.max(100, parseDimension(chart.chart_config?.height, 600)),
+    }
+  }, [chart, isFormat, isTemplate, dimensionMode, manualWidth, manualHeight])
 
+  // Override dimension flags on configOverride when the viewer switches view modes
+  const effectiveChartConfig = useMemo(() => {
+    if (!chart?.chart_config) return undefined
+    if (isFormat || isTemplate) return chart.chart_config
+    const base = { ...chart.chart_config }
+    if (dimensionMode === "responsive") {
+      return {
+        ...base,
+        responsive: true,
+        manualDimensions: false,
+        width: "100%",
+        height: "100%",
+      }
+    }
+    return {
+      ...base,
+      responsive: false,
+      manualDimensions: true,
+      width: `${intrinsicDimensions.width}px`,
+      height: `${intrinsicDimensions.height}px`,
+    }
+  }, [chart?.chart_config, isFormat, isTemplate, dimensionMode, intrinsicDimensions])
+
+  // Fetch shared chart
   useEffect(() => {
     if (!shareId) return
 
@@ -212,151 +275,53 @@ export default function SharedChartPage() {
       try {
         setLoading(true)
         setError(null)
+        hasUserZoomedRef.current = false
 
-        let fetchedChart: SharedChart | null = null;
-        let isSharedChartNotFoundError = false;
-        const response = await dataService.getSharedChart(shareId);
-        if (response && response.error) {
-          const errMsg = response.error || "";
+        const response = await dataService.getSharedChart(shareId)
+        if (response?.error || !response?.data) {
+          const errMsg = response?.error || ""
           if (
-            response.status === 404 ||
-            errMsg.includes("Shared chart not found") || 
+            response?.status === 404 ||
+            errMsg.includes("Shared chart not found") ||
             errMsg.includes("HTTP 404") ||
-            errMsg.includes("not found") ||
-            errMsg.includes("Not Found")
+            errMsg.toLowerCase().includes("not found")
           ) {
-            isSharedChartNotFoundError = true;
-            setError("This shared chart is no longer available or has been removed.");
+            setError("This shared chart is no longer available or has been removed.")
           } else {
-            console.warn("Backend not available, falling back to rich interactive mock chart preview", response.error);
+            setError(errMsg || "Unable to load this shared chart. Please try again later.")
           }
-        } else if (response && response.data) {
-          fetchedChart = response.data;
+          setChart(null)
+          return
         }
 
-        // If backend fails or we are in preview mode, fallback to a gorgeous mock chart
-        if (!fetchedChart && !isSharedChartNotFoundError) {
-          fetchedChart = {
-            chart_type: 'bar',
-            chart_data: {
-              labels: ['Q1 Launch', 'Market Fit', 'Scale Up', 'Enterprise', 'Expansion', 'Dominance'],
-              datasets: [
-                {
-                  label: 'Projected Growth (%)',
-                  data: [25, 45, 60, 85, 115, 150],
-                  backgroundColor: 'rgba(99, 102, 241, 0.65)',
-                  borderColor: 'rgba(99, 102, 241, 1)',
-                  borderWidth: 2,
-                  borderRadius: 8,
-                },
-                {
-                  label: 'Realized Revenue ($M)',
-                  data: [12, 22, 38, 59, 82, 110],
-                  backgroundColor: 'rgba(236, 72, 153, 0.65)',
-                  borderColor: 'rgba(236, 72, 153, 1)',
-                  borderWidth: 2,
-                  borderRadius: 8,
-                }
-              ]
-            },
-            chart_config: {
-              type: 'bar',
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                      font: { family: 'Outfit, sans-serif', weight: 'bold' }
-                    }
-                  },
-                  title: {
-                    display: true,
-                    text: 'Enterprise Expansion Performance Metric',
-                    font: { size: 16, family: 'Outfit, sans-serif', weight: '900' }
-                  }
-                }
-              }
-            },
-            created_at: new Date().toISOString()
-          };
+        const fetchedChart: SharedChart = { ...response.data }
+
+        // Fall back to embedded formatSnapshot skeleton if server-side template_structure lacks zones
+        if (
+          !fetchedChart.template_structure?.zones &&
+          fetchedChart.chart_config?.formatData?.formatSnapshot?.skeleton?.zones
+        ) {
+          fetchedChart.template_structure = fetchedChart.chart_config.formatData.formatSnapshot.skeleton
         }
 
-        if (!fetchedChart) {
-          return;
-        }
+        setChart(fetchedChart)
 
-        // If this chart is a format, we need to fetch the format blueprint to render it properly
-        if (fetchedChart.chart_config?.formatData?.formatId) {
-          try {
-            const formatRes = await dataService.getFormat(fetchedChart.chart_config.formatData.formatId);
-            if (formatRes.data && formatRes.data.skeleton) {
-              fetchedChart.template_structure = formatRes.data.skeleton;
-            }
-          } catch (e) {
-            console.error("Failed to fetch format skeleton", e);
-          }
-        }
-
-        setChart(fetchedChart as SharedChart);
-        
-        // Determine the correct rendering mode based on the saved data properties
-        // Since prepareChartDataForSave strips everything down to what's visible,
-        // single mode will have 1 dataset (at index 0). Grouped mode will have datasets with a groupId.
-        const datasets = fetchedChart.chart_data?.datasets || [];
-        let inferredMode: "single" | "grouped" = "single";
-        let inferredGroupId = "default";
-
-        if (datasets.length > 1 || datasets.some((d: any) => typeof d.groupId === 'string')) {
-          inferredMode = "grouped";
-          inferredGroupId = datasets.find((d: any) => typeof d.groupId === 'string')?.groupId || "default";
-        }
-
-        // Hydrate ChartStore for ChartGenerator (both formats and templates need this)
-        const cfg = fetchedChart.chart_config || {};
-        useChartStore.setState({
-          chartData: fetchedChart.chart_data,
-          chartConfig: cfg,
-          chartType: fetchedChart.chart_type as any,
-          hasJSON: true,
-
-          // CRITICAL: Reset viewing state so it doesn't inherit from the user's localStorage
-          chartMode: inferredMode,
-          activeDatasetIndex: 0,
-          activeGroupId: inferredGroupId,
-
-
-        })
-
-        // Hydrate TemplateStore so ChartGenerator enforces responsive container bounds
-        // for Templates and Formats, acting identically to the live editor. 
-        useTemplateStore.setState({
-          editorMode: (fetchedChart.template_structure || fetchedChart.chart_type === 'format') ? 'template' : 'chart'
-        });
-        
-        // Initialize manual dimensions if they exist in the original config
-        const config = fetchedChart.chart_config;
+        const config = fetchedChart.chart_config
         if (config) {
-          if (config.width) {
-            const w = parseInt(config.width);
-            if (!isNaN(w)) setManualWidth(w);
-          }
-          if (config.height) {
-            const h = parseInt(config.height);
-            if (!isNaN(h)) setManualHeight(h);
-          }
-          // Set initial mode based on config
-          // Set initial mode based on config
-          // Templates and formats ALWAYS use 'original' mode so they scale via zoom 
-          // and preserve their native backgrounds/custom dimensions
-          if (fetchedChart.template_structure || fetchedChart.chart_type === 'format') {
-            setDimensionMode("original");
-          } else if (config.responsive && !config.templateDimensions && !config.originalDimensions && !config.manualDimensions) {
-            setDimensionMode("responsive");
-          } else if (config.manualDimensions || config.dynamicDimension || config.originalDimensions) {
-            setDimensionMode("original");
+          setManualWidth(Math.max(100, parseDimension(config.width, 800)))
+          setManualHeight(Math.max(100, parseDimension(config.height, 600)))
+
+          if (fetchedChart.template_structure || fetchedChart.chart_type === "format") {
+            setDimensionMode("original")
+          } else if (
+            config.responsive &&
+            !config.templateDimensions &&
+            !config.originalDimensions &&
+            !config.manualDimensions
+          ) {
+            setDimensionMode("responsive")
+          } else {
+            setDimensionMode("original")
           }
         }
       } catch (err) {
@@ -370,55 +335,357 @@ export default function SharedChartPage() {
     fetchSharedChart()
   }, [shareId])
 
-  const handleDownloadImage = async () => {
-    const globalChartRef = useChartStore.getState().globalChartRef;
-    const chartInstance = globalChartRef?.current;
-    if (!chartInstance) {
-      toast.error("Chart is not ready for export");
-      return;
+  const handleFitToScreen = useCallback(() => {
+    if (!mainContainerRef.current || !chart || dimensionMode === "responsive") return
+    const cw = mainContainerRef.current.clientWidth
+    const ch = mainContainerRef.current.clientHeight
+    if (cw <= 0 || ch <= 0) return
+
+    // Leave comfortable breathing room around the chart & clear the floating bottom bar
+    const isSmallScreen = cw < 640
+    const isTabletScreen = cw >= 640 && cw < 1024
+    const padX = isEmbed ? (isSmallScreen ? 16 : 32) : isSmallScreen ? 24 : isTabletScreen ? 48 : 72
+    const padY = isEmbed ? (isSmallScreen ? 16 : 32) : isSmallScreen ? 92 : isTabletScreen ? 104 : 112
+
+    const availW = Math.max(80, cw - padX)
+    const availH = Math.max(80, ch - padY)
+
+    const scaleW = availW / intrinsicDimensions.width
+    const scaleH = availH / intrinsicDimensions.height
+    const fitScale = Math.max(0.1, Math.min(scaleW, scaleH, 1))
+
+    hasUserZoomedRef.current = false
+    setZoom((prev) => (Math.abs(prev - fitScale) < 0.0005 ? prev : fitScale))
+    setPanOffset((prev) => (prev.x === 0 && prev.y === 0 ? prev : { x: 0, y: 0 }))
+  }, [chart, dimensionMode, intrinsicDimensions, isEmbed, setZoom, setPanOffset])
+
+  // Auto-fit on load, dimension changes, and viewport resize/rotation (until user manually zooms)
+  useEffect(() => {
+    if (!chart || dimensionMode === "responsive" || !mainContainerRef.current) return
+    const el = mainContainerRef.current
+
+    const fitIfAuto = () => {
+      if (!hasUserZoomedRef.current) {
+        requestAnimationFrame(() => handleFitToScreen())
+      }
     }
+
+    fitIfAuto()
+
+    const observer = new ResizeObserver(() => {
+      fitIfAuto()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [chart, dimensionMode, intrinsicDimensions, handleFitToScreen])
+
+  // Attach mobile/tablet pinch-to-zoom & single-finger pan
+  useEffect(() => {
+    const el = mainContainerRef.current
+    if (!el || dimensionMode === "responsive") return
+    const cleanupTouch = attachTouchHandlers(el)
+
+    const markManualPinch = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        hasUserZoomedRef.current = true
+      }
+    }
+    el.addEventListener("touchstart", markManualPinch, { passive: true })
+
+    return () => {
+      cleanupTouch()
+      el.removeEventListener("touchstart", markManualPinch)
+    }
+  }, [attachTouchHandlers, dimensionMode, chart])
+
+  // Desktop Ctrl/Cmd + Wheel zoom
+  useEffect(() => {
+    const el = mainContainerRef.current
+    if (!el || dimensionMode === "responsive") return
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!el.contains(e.target as Node)) return
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        hasUserZoomedRef.current = true
+        const zoomFactor = 1.06
+        setZoom((prev) => {
+          const next = e.deltaY < 0 ? prev * zoomFactor : prev / zoomFactor
+          return Math.min(Math.max(next, 0.1), 5)
+        })
+      }
+    }
+
+    window.addEventListener("wheel", handleWheel, { passive: false })
+    return () => window.removeEventListener("wheel", handleWheel)
+  }, [dimensionMode, setZoom, chart])
+
+  const handleZoomIn = () => {
+    hasUserZoomedRef.current = true
+    rawZoomIn()
+  }
+
+  const handleZoomOut = () => {
+    hasUserZoomedRef.current = true
+    rawZoomOut()
+  }
+
+  const handleSetExactZoom = (targetZoom: number) => {
+    hasUserZoomedRef.current = true
+    setZoom(targetZoom)
+    setPanOffset({ x: 0, y: 0 })
+  }
+
+  const currentZoomPct = Math.round(zoom * 100)
+  let closestIndex = 4
+  let minDiff = Infinity
+  for (let i = 0; i < ZOOM_VALUES.length; i++) {
+    const diff = Math.abs(ZOOM_VALUES[i] - currentZoomPct)
+    if (diff < minDiff) {
+      minDiff = diff
+      closestIndex = i
+    }
+  }
+
+  const handleSliderChange = (value: number[]) => {
+    hasUserZoomedRef.current = true
+    setZoom(ZOOM_VALUES[value[0]] / 100)
+  }
+
+  const handleShare = async () => {
     try {
-      const bgConfig = getBackgroundConfig(chart?.chart_config);
-      if (chartInstance.exportToImage) {
-        chartInstance.exportToImage({
-          background: bgConfig,
-          fileNamePrefix: `chart-${chart?.chart_type || 'export'}`,
-          quality: 1.0
-        });
+      const shareUrl = window.location.href
+      const titleText =
+        chart?.chart_config?.plugins?.title?.text ||
+        chart?.chart_config?.options?.plugins?.title?.text ||
+        "AIChartor Shared Chart"
+
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try {
+          await navigator.share({
+            title: String(titleText),
+            url: shareUrl,
+          })
+          return
+        } catch (shareErr: any) {
+          if (shareErr?.name === "AbortError") return
+        }
+      }
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl)
       } else {
-        const url = chartInstance.toBase64Image('image/png', 1.0);
-        const link = document.createElement('a');
-        link.download = `chart-${new Date().toISOString().slice(0, 10)}.png`;
-        link.href = url;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const input = document.createElement("input")
+        input.value = shareUrl
+        document.body.appendChild(input)
+        input.select()
+        document.execCommand("copy")
+        document.body.removeChild(input)
+      }
+
+      setCopiedLink(true)
+      setTimeout(() => setCopiedLink(false), 2000)
+      toast.success("Link copied!", {
+        description: "Public link copied to clipboard.",
+      })
+    } catch (err) {
+      console.error("Failed to share link:", err)
+      toast.error("Failed to copy link")
+    }
+  }
+
+  const handleDownloadImage = async () => {
+    if (!chart || isExportingImage) return
+    setIsExportingImage(true)
+
+    const canvasReplacements: { canvas: HTMLCanvasElement; img: HTMLImageElement }[] = []
+    const imageSrcRestores: { img: HTMLImageElement; origSrc: string }[] = []
+
+    try {
+      // Formats & templates: capture the full rendered wrapper DOM with canvas snapshot & CORS image inlining
+      if ((isFormat || isTemplate) && canvasWrapperRef.current) {
+        toast.loading("Preparing image export...", { id: "share-img-export" })
+        const target = canvasWrapperRef.current
+        const exportW = intrinsicDimensions.width
+        const exportH = intrinsicDimensions.height
+
+        const canvases = Array.from(target.querySelectorAll("canvas"))
+        for (const canvas of canvases) {
+          try {
+            const data = canvas.toDataURL("image/png")
+            const img = document.createElement("img")
+            img.src = data
+            img.className = canvas.className
+            img.style.cssText = canvas.style.cssText
+            img.style.width = `${canvas.clientWidth || canvas.offsetWidth}px`
+            img.style.height = `${canvas.clientHeight || canvas.offsetHeight}px`
+            canvas.parentNode?.insertBefore(img, canvas)
+            canvas.style.display = "none"
+            canvasReplacements.push({ canvas, img })
+          } catch (e) {
+            console.warn("Failed to snapshot canvas for export:", e)
+          }
+        }
+
+        const allImages = Array.from(target.querySelectorAll("img")).filter(
+          (img) => !canvasReplacements.some((cr) => cr.img === img)
+        )
+        await Promise.all(
+          allImages.map(async (img) => {
+            const src = img.src || img.getAttribute("src") || ""
+            if (!src || src.startsWith("data:")) return
+            try {
+              const proxiedUrl = requiresProxy(src) ? getProxiedImageUrl(src) : src
+              const response = await fetch(proxiedUrl)
+              const blob = await response.blob()
+              const dataUrl = await new Promise<string>((resolve) => {
+                const reader = new FileReader()
+                reader.onloadend = () => resolve((reader.result as string) || "")
+                reader.onerror = () => resolve("")
+                reader.readAsDataURL(blob)
+              })
+              if (dataUrl) {
+                imageSrcRestores.push({ img, origSrc: src })
+                img.src = dataUrl
+              }
+            } catch (e) {
+              console.warn("Failed to inline image for export:", src, e)
+            }
+          })
+        )
+
+        if (typeof document !== "undefined" && "fonts" in document) {
+          try {
+            await Promise.race([
+              (document.fonts as any).ready,
+              new Promise((resolve) => setTimeout(resolve, 1200)),
+            ])
+          } catch {}
+        }
+
+        const { domToPng } = await import("modern-screenshot")
+        const dataUrl = await domToPng(target, {
+          scale: 2,
+          width: exportW,
+          height: exportH,
+          style: {
+            transform: "none",
+            transformOrigin: "top left",
+          },
+        })
+
+        const link = document.createElement("a")
+        link.download = `chart-${chart.chart_type || "export"}-${new Date().toISOString().slice(0, 10)}.png`
+        link.href = dataUrl
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success("Image downloaded!", { id: "share-img-export" })
+        return
+      }
+
+      // Plain chart: locate local ChartJS canvas instance
+      const canvas = canvasWrapperRef.current?.querySelector("canvas")
+      const chartInstance: any = canvas ? ChartJS.getChart(canvas) : null
+      if (!chartInstance) {
+        toast.error("Chart is not ready for export")
+        return
+      }
+
+      const bgConfig = getBackgroundConfig(chart?.chart_config)
+      if (chartInstance.exportToImage) {
+        await chartInstance.exportToImage({
+          background: bgConfig,
+          fileNamePrefix: `chart-${chart?.chart_type || "export"}`,
+          quality: 1.0,
+          exportScale: 3,
+          width: dimensionMode === "responsive" ? undefined : intrinsicDimensions.width,
+          height: dimensionMode === "responsive" ? undefined : intrinsicDimensions.height,
+        })
+      } else {
+        const url = chartInstance.toBase64Image("image/png", 1.0)
+        const link = document.createElement("a")
+        link.download = `chart-${new Date().toISOString().slice(0, 10)}.png`
+        link.href = url
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
       }
     } catch (err) {
-      console.error("Failed to export image:", err);
-      toast.error("Failed to export image");
+      console.error("Failed to export image:", err)
+      toast.error("Failed to export image", { id: "share-img-export" })
+    } finally {
+      for (const { img, origSrc } of imageSrcRestores) {
+        img.src = origSrc
+      }
+      for (const { canvas, img } of canvasReplacements) {
+        canvas.style.display = ""
+        if (img && img.parentNode) {
+          img.parentNode.removeChild(img)
+        }
+      }
+      setIsExportingImage(false)
     }
-  };
+  }
 
   const handleDownloadHTML = async () => {
-    if (!chart) return;
+    if (!chart) return
     try {
-      const config = chart.chart_config;
-      let width = 800;
-      let height = 600;
-      if (config) {
-        width = parseInt(config.width) || 800;
-        height = parseInt(config.height) || 600;
-      }
-      const title = config?.plugins?.title?.text || "Chart Export";
-      const subtitle = config?.plugins?.subtitle?.display ? config.plugins.subtitle.text : undefined;
-      const bgConfig = getBackgroundConfig(config);
+      const config = effectiveChartConfig || chart.chart_config
+      const baseFileName = `chart-${chart.chart_type}-${new Date().toISOString().slice(0, 10)}`
 
-      const visualSettings = config?.visualSettings || {};
-      const showImages = visualSettings.showImages ?? true;
-      const showLabels = visualSettings.showLabels ?? false;
-      const fillArea = visualSettings.fillArea ?? true;
-      const showBorder = visualSettings.showBorder ?? true;
+      if (isFormat && renderedFormat) {
+        await downloadFormatExport(renderedFormat, decorations, {
+          fileName: baseFileName,
+          htmlOptions: {
+            chartTypeOverride:
+              chart.chart_type && chart.chart_type !== "format"
+                ? chart.chart_type
+                : renderedFormat.chartType,
+            chartDataOverride: chart.chart_data,
+            chartConfigOverride: config,
+            chartModeOverride: inferredMode,
+            contentPackageOverride: resolvedContentPackage,
+          },
+        })
+        toast.success("Interactive HTML downloaded!")
+        return
+      }
+
+      if (isTemplate && chart.template_structure) {
+        const templateForExport = {
+          id: "shared-template",
+          name: config?.plugins?.title?.text || "Shared Chart",
+          description: "",
+          ...chart.template_structure,
+        }
+        await downloadTemplateExport(templateForExport, null, chart.chart_data, config, {
+          format: "html",
+          fileName: baseFileName,
+          htmlOptions: {
+            chartTypeOverride: chart.chart_type,
+            chartDataOverride: chart.chart_data,
+            chartConfigOverride: config,
+            chartModeOverride: inferredMode,
+            decorationShapesOverride: decorations,
+          },
+        })
+        toast.success("Interactive HTML downloaded!")
+        return
+      }
+
+      const width = intrinsicDimensions.width
+      const height = intrinsicDimensions.height
+      const title = config?.plugins?.title?.text || "Chart Export"
+      const subtitle = config?.plugins?.subtitle?.display ? config.plugins.subtitle.text : undefined
+      const bgConfig = getBackgroundConfig(config)
+
+      const visualSettings = config?.visualSettings || {}
+      const showImages = visualSettings.showImages ?? true
+      const showLabels = visualSettings.showLabels ?? false
+      const fillArea = visualSettings.fillArea ?? true
+      const showBorder = visualSettings.showBorder ?? true
 
       const result = await downloadChartAsHTML({
         title: title as string,
@@ -430,349 +697,100 @@ export default function SharedChartPage() {
         includeAnimations: true,
         includeTooltips: true,
         includeLegend: true,
-        fileName: `chart-${chart.chart_type}-${new Date().toISOString().slice(0, 10)}.html`,
+        fileName: `${baseFileName}.html`,
         template: "plain",
         dragState: config?.dragState || {},
         showImages,
         showLabels,
         fillArea,
-        showBorder
-      });
+        showBorder,
+        chartTypeOverride: chart.chart_type,
+        chartDataOverride: chart.chart_data,
+        chartConfigOverride: config,
+        chartModeOverride: inferredMode,
+        decorationShapesOverride: decorations,
+      })
 
       if (result && !result.success) {
-        console.error("Export failed:", result.error);
+        console.error("Export failed:", result.error)
+        toast.error("Failed to download HTML")
+      } else {
+        toast.success("Interactive HTML downloaded!")
       }
     } catch (err) {
-      console.error("Error downloading HTML:", err);
-    }
-  };
-
-
-
-  const handleFitToScreen = React.useCallback(() => {
-    if (!mainContainerRef.current || !chart || dimensionMode === 'responsive') return;
-    
-    // Get container size
-    const cw = mainContainerRef.current.clientWidth;
-    const ch = mainContainerRef.current.clientHeight;
-    
-    // Get chart intrinsic size
-    let chartW = 800;
-    let chartH = 600;
-    
-    if (chart.template_structure) {
-       // Formats store dimensions at .dimensions.width/height
-       if (chart.template_structure.dimensions?.width) {
-         chartW = chart.template_structure.dimensions.width;
-         chartH = chart.template_structure.dimensions.height || 600;
-       } else {
-         // Templates store at top-level .width/.height
-         chartW = parseInt(chart.template_structure.width) || 800;
-         chartH = parseInt(chart.template_structure.height) || 600;
-       }
-    } else {
-       chartW = dimensionMode === 'manual' ? manualWidth : 
-         (typeof chart.chart_config?.width === 'number' ? chart.chart_config.width : 800);
-       chartH = dimensionMode === 'manual' ? manualHeight : 
-         (typeof chart.chart_config?.height === 'number' ? chart.chart_config.height : 600);
-    }
-    
-    const scaleW = cw / chartW;
-    const scaleH = ch / chartH;
-    const fitScale = Math.min(scaleW, scaleH); // Fit dynamically
-    setZoom(fitScale);
-  }, [chart, dimensionMode, manualWidth, manualHeight]);
-
-  // Auto-fit on initial load or dimension mode change using ResizeObserver for robustness
-  useEffect(() => {
-    if (!chart || dimensionMode === 'responsive' || !mainContainerRef.current) return;
-    
-    let hasRun = false;
-    const observer = new ResizeObserver(() => {
-      // We only want to auto-fit ONCE per chart load, so users can still manually zoom afterwards.
-      if (!hasRun) {
-        hasRun = true;
-        // Use requestAnimationFrame to let browser breathe before recalculating
-        requestAnimationFrame(() => handleFitToScreen());
-      }
-    });
-    
-    observer.observe(mainContainerRef.current);
-    
-    return () => {
-      observer.disconnect();
-    };
-  }, [chart, dimensionMode, manualWidth, manualHeight, handleFitToScreen]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-500 font-medium">Loading this masterpiece...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !chart) {
-    return (
-      <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
-        theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
-      }`}>
-        {/* Header / Brand Bar */}
-        <header className={`h-[56px] border-b flex items-center justify-between px-6 shrink-0 z-20 relative transition-all duration-200 ${
-          theme === 'dark' 
-            ? 'bg-slate-900/80 border-slate-800 backdrop-blur-md' 
-            : 'bg-white/80 border-slate-200 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.02)]'
-        }`}>
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
-            <span className={`text-base font-extrabold tracking-tight transition-colors ${
-              theme === 'dark' ? 'text-white' : 'text-slate-900'
-            }`}>
-              Chartography.in
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={toggleTheme}
-              size="sm"
-              variant="ghost"
-              className={`w-8 h-8 p-0 rounded-lg flex items-center justify-center transition-all hover:rotate-12 ${
-                theme === 'dark' 
-                  ? 'text-yellow-400 hover:text-yellow-300 hover:bg-slate-800' 
-                  : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-200'
-              }`}
-              title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </Button>
-            
-            <a href="/signin">
-              <Button variant="ghost" size="sm" className="text-xs font-semibold">
-                Sign In
-              </Button>
-            </a>
-            
-            <a href="/signup">
-              <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-bold shadow-md shadow-indigo-500/10 rounded-lg px-4 h-8">
-                Sign Up Free
-              </Button>
-            </a>
-          </div>
-        </header>
-
-        {/* Ambient Glowing Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-[20%] left-[10%] w-[30vw] h-[30vw] bg-indigo-500/10 rounded-full blur-[120px] dark:bg-indigo-500/5" />
-          <div className="absolute bottom-[20%] right-[10%] w-[25vw] h-[25vw] bg-purple-500/10 rounded-full blur-[120px] dark:bg-purple-500/5" />
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 z-10 relative max-w-4xl mx-auto w-full">
-          {/* Main Error Box (Glassmorphic) */}
-          <div className={`w-full max-w-2xl rounded-3xl p-8 md:p-10 border text-center transition-all ${
-            theme === 'dark'
-              ? 'bg-slate-900/60 border-slate-800/80 backdrop-blur-xl shadow-2xl'
-              : 'bg-white/80 border-slate-200/60 backdrop-blur-xl shadow-xl shadow-slate-100'
-          }`}>
-            <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3 shadow-inner">
-              <AlertCircle className="w-8 h-8" />
-            </div>
-            
-            <h1 className="text-3xl font-extrabold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">
-              Chart Not Available
-            </h1>
-            
-            <p className={`text-base max-w-md mx-auto mb-8 leading-relaxed ${
-              theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
-            }`}>
-              {error || "This shared chart has been removed, deleted, or is no longer available to the public."}
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a href="/" className="w-full sm:w-auto">
-                <Button className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white font-bold px-6 py-5 rounded-xl text-sm shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all duration-200">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Create Your Own Chart
-                </Button>
-              </a>
-              <a href="/signup" className="w-full sm:w-auto">
-                <Button variant="outline" className={`w-full font-bold px-6 py-5 rounded-xl text-sm transition-all duration-200 hover:scale-105 ${
-                  theme === 'dark' 
-                    ? 'border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white' 
-                    : 'border-slate-200 hover:bg-slate-100 text-slate-700 hover:text-slate-950'
-                }`}>
-                  Sign Up Free
-                </Button>
-              </a>
-            </div>
-          </div>
-
-          {/* App Showcase Grid */}
-          <div className="mt-16 w-full text-center">
-            <h2 className={`text-xs font-bold uppercase tracking-widest mb-10 ${
-              theme === 'dark' ? 'text-slate-500' : 'text-slate-400'
-            }`}>
-              Powered by Chartography.in — The Ultimate Chart Builder
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-              {/* Feature 1 */}
-              <div className={`p-6 rounded-2xl border transition-all hover:translate-y-[-2px] duration-300 ${
-                theme === 'dark' 
-                  ? 'bg-slate-900/40 border-slate-900 hover:border-indigo-500/30' 
-                  : 'bg-white border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200'
-              }`}>
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm font-bold mb-2">AI-Driven Creation</h3>
-                <p className={`text-xs leading-relaxed ${
-                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
-                }`}>
-                  Just describe your data in plain English. Our AI understands and shapes your charts and layouts in seconds.
-                </p>
-              </div>
-
-              {/* Feature 2 */}
-              <div className={`p-6 rounded-2xl border transition-all hover:translate-y-[-2px] duration-300 ${
-                theme === 'dark' 
-                  ? 'bg-slate-900/40 border-slate-900 hover:border-purple-500/30' 
-                  : 'bg-white border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200'
-              }`}>
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center mb-4">
-                  <Settings2 className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm font-bold mb-2">Full Visual Control</h3>
-                <p className={`text-xs leading-relaxed ${
-                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
-                }`}>
-                  Add premium gradients, brand-styled custom overlays, text shapes, icons, and background patterns.
-                </p>
-              </div>
-
-              {/* Feature 3 */}
-              <div className={`p-6 rounded-2xl border transition-all hover:translate-y-[-2px] duration-300 ${
-                theme === 'dark' 
-                  ? 'bg-slate-900/40 border-slate-900 hover:border-pink-500/30' 
-                  : 'bg-white border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200'
-              }`}>
-                <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center mb-4">
-                  <Download className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm font-bold mb-2">High-Fidelity Exports</h3>
-                <p className={`text-xs leading-relaxed ${
-                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
-                }`}>
-                  Download standalone interactive web pages, vector SVGs, or high-res images to embed directly in slides.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className={`py-6 text-center border-t text-xs shrink-0 transition-colors duration-200 ${
-          theme === 'dark' 
-            ? 'border-slate-900 text-slate-500 bg-slate-950' 
-            : 'border-slate-200 text-slate-400 bg-slate-50'
-        }`}>
-          <p>© {new Date().getFullYear()} Chartography.in. All rights reserved. Create, present, and stand out.</p>
-        </footer>
-      </div>
-    )
-  }
-
-  // Helper functions for template rendering
-  const getBackgroundSize = (fit?: string): string => {
-    switch (fit) {
-      case 'fill': return '100% 100%'
-      case 'contain': return 'contain'
-      case 'cover': return 'cover'
-      case 'none': return 'auto'
-      case 'scale-down': return 'auto'
-      default: return 'cover'
+      console.error("Error downloading HTML:", err)
+      toast.error("Failed to download HTML")
     }
   }
 
-  const hexToRgba = (hex: string, opacity: number): string => {
-    hex = hex.replace('#', '')
-    const r = parseInt(hex.substring(0, 2), 16)
-    const g = parseInt(hex.substring(2, 4), 16)
-    const b = parseInt(hex.substring(4, 6), 16)
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`
-  }
-
+  // Template background style helper
   const getTemplateBackgroundStyle = (template: any): React.CSSProperties => {
     const bg = template.background
-    if (!bg || bg.type === 'transparent') {
-      return { backgroundColor: template.backgroundColor || '#ffffff' }
+    if (!bg || bg.type === "transparent") {
+      return { backgroundColor: template.backgroundColor || "transparent" }
     }
     const opacity = (bg.opacity ?? 100) / 100
-    if (bg.type === 'color') {
-      const color = bg.color || '#ffffff'
+    if (bg.type === "color") {
+      const color = bg.color || "#ffffff"
       return { backgroundColor: hexToRgba(color, opacity) }
     }
-    if (bg.type === 'pattern') {
-      const patternColor = bg.patternColor || '#e2e8f0'
-      const patternType = bg.patternType || 'dots'
+    if (bg.type === "pattern") {
+      const patternColor = bg.patternColor || "#e2e8f0"
+      const patternType = bg.patternType || "dots"
       const rgbaColor = hexToRgba(patternColor, opacity)
       const { backgroundImage, backgroundSize, backgroundRepeat } = getPatternCSS(patternType, rgbaColor, 1)
       return { backgroundImage, backgroundSize, backgroundRepeat }
     }
-    if (bg.type === 'gradient') {
-      const color1 = bg.gradientColor1 || '#ffffff'
-      const color2 = bg.gradientColor2 || '#000000'
-      const gradientType = bg.gradientType || 'linear'
-      const direction = bg.gradientDirection || 'to right'
+    if (bg.type === "gradient") {
+      const color1 = bg.gradientColor1 || "#ffffff"
+      const color2 = bg.gradientColor2 || "#000000"
+      const gradientType = bg.gradientType || "linear"
+      const direction = bg.gradientDirection || "to right"
       const rgbaColor1 = hexToRgba(color1, opacity)
       const rgbaColor2 = hexToRgba(color2, opacity)
-      if (gradientType === 'radial') {
+      if (gradientType === "radial") {
         return { backgroundImage: `radial-gradient(circle, ${rgbaColor1}, ${rgbaColor2})` }
-      } else {
-        return { backgroundImage: `linear-gradient(${direction}, ${rgbaColor1}, ${rgbaColor2})` }
       }
+      return { backgroundImage: `linear-gradient(${direction}, ${rgbaColor1}, ${rgbaColor2})` }
     }
-    if (bg.type === 'image' && bg.imageUrl) {
+    if (bg.type === "image" && bg.imageUrl) {
+      const proxiedUrl = getProxiedImageUrl(bg.imageUrl)
       if (opacity < 1) {
         return {
-          backgroundImage: `linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${bg.imageUrl})`,
+          backgroundImage: `linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url("${proxiedUrl}")`,
           backgroundSize: getBackgroundSize(bg.imageFit),
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }
-      } else {
-        return {
-          backgroundImage: `url(${bg.imageUrl})`,
-          backgroundSize: getBackgroundSize(bg.imageFit),
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
         }
       }
+      return {
+        backgroundImage: `url("${proxiedUrl}")`,
+        backgroundSize: getBackgroundSize(bg.imageFit),
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }
     }
-    return { backgroundColor: template.backgroundColor || '#ffffff' }
+    return { backgroundColor: template.backgroundColor || "#ffffff" }
   }
 
   const renderTemplateTextAreas = (template: any) => {
     return (template.textAreas || [])
       .filter((textArea: any) => textArea.visible)
       .map((textArea: any) => {
-        const isHTML = textArea.contentType === 'html'
-
-        // Use structure content, then fallback to content obj if exists
-        let content = textArea.content;
-        if (!content && chart.template_content && chart.template_content[textArea.type]) {
-          content = chart.template_content[textArea.type];
+        let content = textArea.content
+        if (!content && chart?.template_content && chart.template_content[textArea.type]) {
+          content = chart.template_content[textArea.type]
           if (Array.isArray(content)) {
-            content = content[0]; // best effort if array
+            content = content[0]
           }
         }
 
+        const isHTML =
+          textArea.contentType === "html" ||
+          (typeof content === "string" && /<[a-z][\s\S]*>/i.test(content))
+
         const style: React.CSSProperties = {
-          position: 'absolute',
+          position: "absolute",
           left: textArea.position.x,
           top: textArea.position.y,
           width: textArea.position.width,
@@ -784,41 +802,53 @@ export default function SharedChartPage() {
           textAlign: textArea.style.textAlign,
           lineHeight: textArea.style.lineHeight,
           letterSpacing: `${textArea.style.letterSpacing}px`,
-          wordBreak: 'break-word',
-          whiteSpace: isHTML ? 'normal' : 'pre-wrap',
-          padding: '8px',
+          wordBreak: "break-word",
+          whiteSpace: isHTML ? "normal" : "pre-wrap",
+          padding: "8px",
         }
 
-        // Add background logic to textArea if specified
-        if (textArea.background && textArea.background.type !== 'transparent') {
-          const opacity = (textArea.background.opacity ?? 100) / 100;
-          if (textArea.background.type === 'color') {
-            style.backgroundColor = hexToRgba(textArea.background.color || '#ffffff', opacity);
-          } else if (textArea.background.type === 'gradient') {
-            const c1 = hexToRgba(textArea.background.gradientColor1 || '#ffffff', opacity);
-            const c2 = hexToRgba(textArea.background.gradientColor2 || '#000000', opacity);
-            const dir = textArea.background.gradientDirection || 'to right';
-            if (textArea.background.gradientType === 'radial') {
-              style.backgroundImage = `radial-gradient(circle, ${c1}, ${c2})`;
-            } else {
-              style.backgroundImage = `linear-gradient(${dir}, ${c1}, ${c2})`;
-            }
-          } else if (textArea.background.type === 'image' && textArea.background.imageUrl) {
-            if (opacity < 1) {
-              style.backgroundImage = `linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${textArea.background.imageUrl})`;
-            } else {
-              style.backgroundImage = `url(${textArea.background.imageUrl})`;
-            }
-            style.backgroundSize = getBackgroundSize(textArea.background.imageFit);
-            style.backgroundPosition = 'center';
-            style.backgroundRepeat = 'no-repeat';
+        if (textArea.background && textArea.background.type !== "transparent") {
+          const opacity = (textArea.background.opacity ?? 100) / 100
+          if (textArea.background.type === "color") {
+            style.backgroundColor = hexToRgba(textArea.background.color || "#ffffff", opacity)
+          } else if (textArea.background.type === "gradient") {
+            const c1 = hexToRgba(textArea.background.gradientColor1 || "#ffffff", opacity)
+            const c2 = hexToRgba(textArea.background.gradientColor2 || "#000000", opacity)
+            const dir = textArea.background.gradientDirection || "to right"
+            style.backgroundImage =
+              textArea.background.gradientType === "radial"
+                ? `radial-gradient(circle, ${c1}, ${c2})`
+                : `linear-gradient(${dir}, ${c1}, ${c2})`
+          } else if (textArea.background.type === "image" && textArea.background.imageUrl) {
+            const proxiedUrl = getProxiedImageUrl(textArea.background.imageUrl)
+            style.backgroundImage =
+              opacity < 1
+                ? `linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url("${proxiedUrl}")`
+                : `url("${proxiedUrl}")`
+            style.backgroundSize = getBackgroundSize(textArea.background.imageFit)
+            style.backgroundPosition = "center"
+            style.backgroundRepeat = "no-repeat"
           }
         }
 
         return (
-          <div key={textArea.id} style={style} className="overflow-hidden">
+          <div key={textArea.id} style={style} className="template-text-area overflow-hidden">
             {isHTML ? (
-              <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(content || '') }} style={{ width: '100%', height: '100%' }} />
+              <div
+                className="html-content-area"
+                dangerouslySetInnerHTML={{ __html: sanitizeHTML(content || "") }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  fontSize: "inherit",
+                  fontFamily: "inherit",
+                  fontWeight: "inherit",
+                  color: "inherit",
+                  textAlign: "inherit",
+                  lineHeight: "inherit",
+                  letterSpacing: "inherit",
+                }}
+              />
             ) : (
               content
             )}
@@ -827,511 +857,911 @@ export default function SharedChartPage() {
       })
   }
 
-  return (
-    <div className={`h-screen flex flex-col font-sans overflow-hidden select-none transition-colors duration-200 ${
-      theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
-    }`}>
-      {/* 1. Sleek, Modern, Slate/Glassmorphic Header */}
-      <header className={`h-[48px] border-b flex items-center justify-between px-4 shrink-0 z-20 relative transition-all duration-200 ${
-        theme === 'dark' 
-          ? 'bg-slate-900/95 border-slate-800 text-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
-          : 'bg-white/95 border-slate-200 text-slate-800 shadow-[0_2px_10px_rgba(0,0,0,0.03)]'
-      }`}>
-        
-        {/* Left Section: Sleek AIChartor Brand Logo & Settings dropdown */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
-            <div className="flex flex-col justify-center">
-              <span className={`text-sm font-extrabold tracking-tight leading-none transition-colors ${
-                theme === 'dark' ? 'text-white' : 'text-slate-900'
-              }`}>
-                Chartography.in
-              </span>
-              <span className={`text-[9px] font-semibold uppercase tracking-widest leading-none mt-0.5 hidden sm:block transition-colors ${
-                theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
-              }`}>
-                Shared View
-              </span>
+  /* ─────────────── LOADING STATE ─────────────── */
+  if (loading) {
+    return (
+      <div
+        className={`h-screen supports-[height:100dvh]:h-[100dvh] flex items-center justify-center font-sans transition-colors ${
+          isDark ? "bg-[#09090b] text-zinc-100" : "bg-[#f7f8fa] text-zinc-900"
+        }`}
+      >
+        <div className="flex flex-col items-center gap-3.5 px-6 text-center">
+          <div
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center border shadow-sm ${
+              isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200/80"
+            }`}
+          >
+            <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+          </div>
+          <p className={`text-sm font-medium ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
+            Loading chart…
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  /* ─────────────── ERROR / NOT FOUND STATE ─────────────── */
+  if (error || !chart) {
+    return (
+      <div
+        className={`min-h-screen supports-[min-height:100dvh]:min-h-[100dvh] flex flex-col font-sans transition-colors ${
+          isDark ? "bg-[#09090b] text-zinc-100" : "bg-[#f7f8fa] text-zinc-900"
+        }`}
+      >
+        {!isEmbed && (
+          <header
+            className={`h-12 sm:h-[52px] border-b flex items-center justify-between px-4 sm:px-6 shrink-0 backdrop-blur-xl ${
+              isDark
+                ? "bg-zinc-950/80 border-zinc-800/80"
+                : "bg-white/80 border-zinc-200/80"
+            }`}
+          >
+            <a href="/" className="flex items-center gap-2">
+              <img src="/svg/aichartor-icon-top-rounded.svg" alt="AIChartor" className="w-7 h-7 object-contain" />
+              <span className="text-sm font-semibold tracking-tight">AIChartor</span>
+            </a>
+
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={toggleTheme}
+                size="icon"
+                variant="ghost"
+                className={`w-8 h-8 rounded-lg ${
+                  isDark
+                    ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                    : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+                aria-label="Toggle theme"
+              >
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="h-8 px-3.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-semibold shadow-sm"
+              >
+                <a href="/editor">Create Chart</a>
+              </Button>
+            </div>
+          </header>
+        )}
+
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+          <div
+            className={`w-full max-w-md rounded-2xl border p-6 sm:p-8 text-center shadow-sm ${
+              isDark
+                ? "bg-zinc-900/70 border-zinc-800"
+                : "bg-white border-zinc-200/80"
+            }`}
+          >
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight mb-2">
+              Chart Unavailable
+            </h1>
+
+            <p className={`text-sm leading-relaxed mb-6 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
+              {error || "This shared chart has been removed or is no longer public."}
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
+              <Button
+                asChild
+                className="w-full sm:w-auto h-9 px-4 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-semibold"
+              >
+                <a href="/editor" className="inline-flex items-center justify-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Create Your Own
+                </a>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className={`w-full sm:w-auto h-9 px-4 rounded-lg text-xs font-semibold ${
+                  isDark
+                    ? "border-zinc-800 bg-transparent text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                    : "border-zinc-200 text-zinc-700 hover:bg-zinc-100"
+                }`}
+              >
+                <a href="/">Go Home</a>
+              </Button>
             </div>
           </div>
+        </main>
+      </div>
+    )
+  }
 
-          {!chart.template_structure && (
-            <>
-              <div className={`w-[1px] h-5 hidden sm:block transition-colors ${
-                theme === 'dark' ? 'bg-slate-800' : 'bg-slate-200'
-              }`}></div>
-              {/* Dimension View Mode Toggle */}
-              <div className="flex items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className={`border-none gap-1.5 px-2 h-7 text-xs transition-colors ${
-                      theme === 'dark' 
-                        ? 'text-slate-300 hover:bg-slate-800 hover:text-white' 
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}>
-                      <Settings className="w-3.5 h-3.5 opacity-80" />
-                      <span className="font-medium opacity-90 hidden sm:block">
-                        {dimensionMode === 'original' ? 'Original Size' : dimensionMode === 'responsive' ? 'Fill Screen' : 'Custom Size'}
-                      </span>
-                      <svg className="w-3.5 h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className={`w-48 shadow-xl p-1 z-30 transition-all ${
-                    theme === 'dark' ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
-                  }`}>
-                    <DropdownMenuItem onClick={() => setDimensionMode('original')} className={`cursor-pointer font-medium rounded-md text-xs py-2 px-3 transition-colors ${
-                      theme === 'dark' ? 'hover:bg-slate-800 hover:text-white text-slate-200' : 'hover:bg-slate-100 hover:text-slate-950 text-slate-700'
-                    }`}>Original Size</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDimensionMode('responsive')} className={`cursor-pointer font-medium rounded-md text-xs py-2 px-3 transition-colors ${
-                      theme === 'dark' ? 'hover:bg-slate-800 hover:text-white text-slate-200' : 'hover:bg-slate-100 hover:text-slate-950 text-slate-700'
-                    }`}>Fill Screen</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDimensionMode('manual')} className={`cursor-pointer font-medium rounded-md text-xs py-2 px-3 transition-colors ${
-                      theme === 'dark' ? 'hover:bg-slate-800 hover:text-white text-slate-200' : 'hover:bg-slate-100 hover:text-slate-950 text-slate-700'
-                    }`}>Custom Size</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+  const sizeLabel =
+    dimensionMode === "original"
+      ? "Original"
+      : dimensionMode === "responsive"
+      ? "Fill"
+      : "Custom"
 
-                {dimensionMode === "manual" && (
-                  <div className={`flex items-center rounded-md px-1.5 py-0.5 gap-1.5 shadow-inner border hidden md:flex h-7 transition-colors ${
-                    theme === 'dark' ? 'bg-slate-950/60 border-slate-800/80' : 'bg-slate-100 border-slate-200'
-                  }`}>
-                    <Input 
-                      type="number" 
-                      value={manualWidth} 
-                      onChange={(e) => setManualWidth(parseInt(e.target.value) || 0)}
-                      className={`w-10 h-5 text-[10px] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-center font-bold transition-colors ${
-                        theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
-                      }`}
-                      style={{ MozAppearance: 'textfield' }}
-                    />
-                    <span className={`text-[10px] font-extrabold select-none transition-colors ${
-                      theme === 'dark' ? 'text-slate-600' : 'text-slate-400'
-                    }`}>×</span>
-                    <Input 
-                      type="number" 
-                      value={manualHeight} 
-                      onChange={(e) => setManualHeight(parseInt(e.target.value) || 0)}
-                      className={`w-10 h-5 text-[10px] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-center font-bold transition-colors ${
-                        theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
-                      }`}
-                      style={{ MozAppearance: 'textfield' }}
-                    />
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+  const sizeFullLabel =
+    dimensionMode === "original"
+      ? "Original Size"
+      : dimensionMode === "responsive"
+      ? "Fill Screen"
+      : "Custom Size"
 
-        {/* Right Section: Theme Toggle, Share, Download, Try Now */}
-        <div className="flex items-center gap-2">
-          {/* Beautiful Glassmorphic Theme Toggle Button */}
-          <Button
-            onClick={toggleTheme}
-            size="sm"
-            variant="ghost"
-            className={`w-7 h-7 p-0 rounded-lg flex items-center justify-center transition-all hover:rotate-12 ${
-              theme === 'dark' 
-                ? 'text-yellow-400 hover:text-yellow-300 hover:bg-slate-850' 
-                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-100'
-            }`}
-            title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4 text-indigo-600" />}
-          </Button>
+  const isPlainChartTransparent =
+    chart?.chart_config?.background?.type === "transparent"
 
-          {/* Share Link Button */}
-          <Button 
-            onClick={handleShare}
-            size="sm" 
-            className={`gap-1.5 px-3 h-7 text-xs shadow-sm transition-all rounded-lg ${
-              theme === 'dark' 
-                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/50' 
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
-            }`}
-          >
-            <Share2 className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="font-semibold hidden sm:block">Share</span>
-          </Button>
-
-          {/* Download Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" className={`gap-1.5 px-3 h-7 text-xs shadow-sm transition-all rounded-lg ${
-                theme === 'dark' 
-                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/50' 
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
-              }`}>
-                <Download className="w-3.5 h-3.5 text-slate-400" />
-                <span className="font-semibold hidden sm:block">Download</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className={`w-52 shadow-xl p-1 z-30 transition-all ${
-              theme === 'dark' ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
-            }`}>
-              <DropdownMenuItem onClick={handleDownloadImage} className={`cursor-pointer gap-2 py-2 px-3 rounded-md transition-colors ${
-                theme === 'dark' ? 'hover:bg-slate-800 hover:text-white text-slate-200' : 'hover:bg-slate-100 hover:text-slate-950 text-slate-800'
-              }`}>
-                <div className={`p-1.5 rounded-md transition-colors ${theme === 'dark' ? 'bg-indigo-900/40' : 'bg-indigo-50'}`}>
-                  <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className={`font-semibold text-xs transition-colors ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>Image</span>
-                  <span className={`text-[9px] font-medium transition-colors ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Standard PNG format</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDownloadHTML} className={`cursor-pointer gap-2 py-2 px-3 rounded-md transition-colors ${
-                theme === 'dark' ? 'hover:bg-slate-800 hover:text-white text-slate-200' : 'hover:bg-slate-100 hover:text-slate-950 text-slate-800'
-              }`}>
-                <div className={`p-1.5 rounded-md transition-colors ${theme === 'dark' ? 'bg-emerald-900/40' : 'bg-emerald-50'}`}>
-                  <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className={`font-semibold text-xs transition-colors ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>Interactive HTML</span>
-                  <span className={`text-[9px] font-medium transition-colors ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>With tooltips & animations</span>
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Try Now! Premium glowing button */}
-          <Button 
-            asChild
-            size="sm" 
-            className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 hover:scale-[1.02] active:scale-[0.98] text-white border-none shadow-md shadow-indigo-500/10 font-bold px-3.5 h-7 text-xs tracking-wide rounded-lg flex items-center gap-1 transition-all"
-          >
-            <a href="/editor">
-              <Sparkles className="w-3 h-3 text-indigo-200" />
-              <span>Try Now!</span>
-              <ChevronRight className="w-3 h-3 text-white/70" />
+  /* ─────────────── MAIN VIEWPORT ─────────────── */
+  return (
+    <div
+      className={`h-screen supports-[height:100dvh]:h-[100dvh] flex flex-col font-sans overflow-hidden select-none transition-colors duration-200 ${
+        isDark ? "bg-[#09090b] text-zinc-100" : "bg-[#f7f8fa] text-zinc-900"
+      }`}
+    >
+      {/* 1. Minimal Glassmorphic Header (hidden in embed mode) */}
+      {!isEmbed && (
+        <header
+          className={`h-12 sm:h-[52px] border-b flex items-center justify-between px-3 sm:px-5 shrink-0 z-30 relative backdrop-blur-xl transition-colors duration-200 ${
+            isDark
+              ? "bg-zinc-950/80 border-zinc-800/80"
+              : "bg-white/80 border-zinc-200/80"
+          }`}
+        >
+          {/* Left: Brand + Size Mode Selector */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <a
+              href="/"
+              className="flex items-center gap-2 shrink-0 group focus:outline-none"
+              title="AIChartor"
+            >
+              <img src="/svg/aichartor-icon-top-rounded.svg" alt="AIChartor" className="w-7 h-7 object-contain" />
+              <span className="text-[13px] sm:text-sm font-semibold tracking-tight">
+                AIChartor
+              </span>
             </a>
-          </Button>
-        </div>
-      </header>
 
-      {/* 2. Main Canvas Area with Dot Pattern Background */}
-      <main 
+            {!chart.template_structure && (
+              <>
+                <div
+                  className={`w-px h-4 shrink-0 ${
+                    isDark ? "bg-zinc-800" : "bg-zinc-200"
+                  }`}
+                />
+
+                <div className="flex items-center gap-1.5">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-8 gap-1.5 px-2 sm:px-2.5 rounded-lg text-xs font-medium transition-colors ${
+                          isDark
+                            ? "text-zinc-300 hover:bg-zinc-800/80 hover:text-white"
+                            : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                        }`}
+                        title={`View size: ${sizeFullLabel}`}
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5 opacity-75 shrink-0" />
+                        <span className="hidden xs:inline sm:hidden">{sizeLabel}</span>
+                        <span className="hidden sm:inline">{sizeFullLabel}</span>
+                        <ChevronDown className="w-3 h-3 opacity-50 shrink-0" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className={`w-44 p-1 rounded-xl shadow-xl z-40 ${
+                        isDark
+                          ? "bg-zinc-900 border-zinc-800 text-zinc-200"
+                          : "bg-white border-zinc-200 text-zinc-800"
+                      }`}
+                    >
+                      {(
+                        [
+                          { id: "original", label: "Original Size" },
+                          { id: "responsive", label: "Fill Screen" },
+                          { id: "manual", label: "Custom Size" },
+                        ] as const
+                      ).map((opt) => (
+                        <DropdownMenuItem
+                          key={opt.id}
+                          onClick={() => {
+                            hasUserZoomedRef.current = false
+                            setDimensionMode(opt.id)
+                          }}
+                          className={`cursor-pointer rounded-lg text-xs py-2 px-2.5 flex items-center justify-between font-medium ${
+                            dimensionMode === opt.id
+                              ? isDark
+                                ? "bg-zinc-800 text-white"
+                                : "bg-zinc-100 text-zinc-950"
+                              : isDark
+                              ? "hover:bg-zinc-800/60"
+                              : "hover:bg-zinc-50"
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {dimensionMode === opt.id && (
+                            <Check className="w-3.5 h-3.5 text-indigo-500" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Inline Custom Size Inputs on Tablet/Desktop (md+) */}
+                  {dimensionMode === "manual" && (
+                    <div
+                      className={`hidden md:flex items-center rounded-lg px-2 gap-1 border h-8 ${
+                        isDark
+                          ? "bg-zinc-900 border-zinc-800"
+                          : "bg-zinc-50 border-zinc-200"
+                      }`}
+                    >
+                      <Input
+                        type="number"
+                        min={100}
+                        max={4000}
+                        value={manualWidth || ""}
+                        onChange={(e) => {
+                          hasUserZoomedRef.current = false
+                          setManualWidth(Math.max(0, parseInt(e.target.value, 10) || 0))
+                        }}
+                        onBlur={() => setManualWidth((w) => Math.max(100, w || 800))}
+                        className="w-12 h-6 text-[11px] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-center font-medium tabular-nums"
+                        aria-label="Width"
+                      />
+                      <span className="text-[11px] text-zinc-400">×</span>
+                      <Input
+                        type="number"
+                        min={100}
+                        max={4000}
+                        value={manualHeight || ""}
+                        onChange={(e) => {
+                          hasUserZoomedRef.current = false
+                          setManualHeight(Math.max(0, parseInt(e.target.value, 10) || 0))
+                        }}
+                        onBlur={() => setManualHeight((h) => Math.max(100, h || 600))}
+                        className="w-12 h-6 text-[11px] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-center font-medium tabular-nums"
+                        aria-label="Height"
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Right: Theme, Share, Download, Try Now */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <Button
+              onClick={toggleTheme}
+              size="icon"
+              variant="ghost"
+              className={`w-8 h-8 rounded-lg transition-colors ${
+                isDark
+                  ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80"
+                  : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+              }`}
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle theme"
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+
+            <Button
+              onClick={handleShare}
+              size="sm"
+              variant="ghost"
+              className={`h-8 w-8 sm:w-auto px-0 sm:px-2.5 gap-1.5 rounded-lg text-xs font-medium transition-colors ${
+                isDark
+                  ? "text-zinc-300 hover:bg-zinc-800/80 hover:text-white"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+              title="Share link"
+              aria-label="Share link"
+            >
+              {copiedLink ? (
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+              ) : (
+                <Share2 className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden sm:inline">{copiedLink ? "Copied" : "Share"}</span>
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={isExportingImage}
+                  className={`h-8 w-8 sm:w-auto px-0 sm:px-2.5 gap-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    isDark
+                      ? "text-zinc-300 hover:bg-zinc-800/80 hover:text-white"
+                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                  }`}
+                  title="Download"
+                  aria-label="Download chart"
+                >
+                  {isExportingImage ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  <span className="hidden sm:inline">Export</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className={`w-52 p-1 rounded-xl shadow-xl z-40 ${
+                  isDark
+                    ? "bg-zinc-900 border-zinc-800 text-zinc-200"
+                    : "bg-white border-zinc-200 text-zinc-800"
+                }`}
+              >
+                <DropdownMenuItem
+                  onClick={handleDownloadImage}
+                  className={`cursor-pointer gap-2.5 py-2 px-2.5 rounded-lg ${
+                    isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                  }`}
+                >
+                  <div
+                    className={`p-1.5 rounded-md ${
+                      isDark ? "bg-indigo-500/15 text-indigo-400" : "bg-indigo-50 text-indigo-600"
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-xs">PNG Image</span>
+                    <span className="text-[10px] text-zinc-400">High-resolution export</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleDownloadHTML}
+                  className={`cursor-pointer gap-2.5 py-2 px-2.5 rounded-lg ${
+                    isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                  }`}
+                >
+                  <div
+                    className={`p-1.5 rounded-md ${
+                      isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"
+                    }`}
+                  >
+                    <Code2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-xs">Interactive HTML</span>
+                    <span className="text-[10px] text-zinc-400">Tooltips & animations</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              asChild
+              size="sm"
+              className="h-8 px-2.5 sm:px-3.5 ml-0.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-semibold shadow-sm transition-all"
+            >
+              <a href="/editor" className="inline-flex items-center gap-1">
+                <Sparkles className="w-3 h-3 opacity-90" />
+                <span className="sm:hidden">Try</span>
+                <span className="hidden sm:inline">Try Now</span>
+              </a>
+            </Button>
+          </div>
+        </header>
+      )}
+
+      {/* Mobile & Small Tablet Floating Custom Size Bar (< md) */}
+      {!isEmbed && !chart.template_structure && dimensionMode === "manual" && (
+        <div className="md:hidden fixed top-14 left-1/2 -translate-x-1/2 z-30">
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border backdrop-blur-xl shadow-lg text-xs ${
+              isDark
+                ? "bg-zinc-900/90 border-zinc-800 text-zinc-200"
+                : "bg-white/90 border-zinc-200/90 text-zinc-800"
+            }`}
+          >
+            <span className="text-[11px] font-medium text-zinc-400">Size</span>
+            <Input
+              type="number"
+              min={100}
+              max={4000}
+              value={manualWidth || ""}
+              onChange={(e) => {
+                hasUserZoomedRef.current = false
+                setManualWidth(Math.max(0, parseInt(e.target.value, 10) || 0))
+              }}
+              onBlur={() => setManualWidth((w) => Math.max(100, w || 800))}
+              className={`w-14 h-6 text-xs bg-transparent border rounded-md focus-visible:ring-1 p-0 text-center font-medium tabular-nums ${
+                isDark ? "border-zinc-700" : "border-zinc-300/70"
+              }`}
+              aria-label="Width"
+            />
+            <span className="text-zinc-400">×</span>
+            <Input
+              type="number"
+              min={100}
+              max={4000}
+              value={manualHeight || ""}
+              onChange={(e) => {
+                hasUserZoomedRef.current = false
+                setManualHeight(Math.max(0, parseInt(e.target.value, 10) || 0))
+              }}
+              onBlur={() => setManualHeight((h) => Math.max(100, h || 600))}
+              className={`w-14 h-6 text-xs bg-transparent border rounded-md focus-visible:ring-1 p-0 text-center font-medium tabular-nums ${
+                isDark ? "border-zinc-700" : "border-zinc-300/70"
+              }`}
+              aria-label="Height"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 2. Main Canvas Area */}
+      <main
         ref={mainContainerRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        className={`flex-1 overflow-hidden relative transition-colors duration-200 ${
-          panMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'
+        onMouseDown={dimensionMode !== "responsive" && panMode ? handleMouseDown : undefined}
+        onMouseMove={dimensionMode !== "responsive" && panMode && isDragging ? handleMouseMove : undefined}
+        onMouseUp={dimensionMode !== "responsive" && isDragging ? handleMouseUp : undefined}
+        className={`flex-1 relative overflow-hidden flex items-center justify-center transition-colors duration-200 ${
+          dimensionMode !== "responsive" && panMode
+            ? isDragging
+              ? "cursor-grabbing"
+              : "cursor-grab"
+            : "cursor-default"
         }`}
         style={{
-          display: 'grid',
-          placeContent: 'safe center',
-          backgroundImage: theme === 'dark' 
-            ? 'radial-gradient(#334155 1.2px, transparent 1.2px)' 
-            : 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
-          backgroundSize: '20px 20px',
-          backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
+          padding:
+            dimensionMode === "responsive"
+              ? isEmbed
+                ? "12px"
+                : "12px 12px 24px 12px"
+              : undefined,
+          touchAction:
+            dimensionMode !== "responsive" && panMode ? "none" : "manipulation",
+          backgroundImage: isDark
+            ? "radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px)"
+            : "radial-gradient(rgba(15, 23, 42, 0.09) 1px, transparent 1px)",
+          backgroundSize: "20px 20px",
         }}
       >
-        <div 
-          className="relative flex-shrink-0 bg-transparent transition-transform duration-100 ease-out"
-          style={dimensionMode === 'responsive' ? { width: '100%', height: '100%', minHeight: '400px' } : (() => {
-            let w = 800, h = 600;
-            if (isFormat && chart.template_structure?.dimensions) {
-              w = chart.template_structure.dimensions.width || 800;
-              h = chart.template_structure.dimensions.height || 600;
-            } else if (isTemplate && chart.template_structure) {
-              w = parseInt(chart.template_structure.width) || 800;
-              h = parseInt(chart.template_structure.height) || 600;
-            } else {
-              w = dimensionMode === 'manual' ? manualWidth : (parseInt(chart?.chart_config?.width) || 800);
-              h = dimensionMode === 'manual' ? manualHeight : (parseInt(chart?.chart_config?.height) || 600);
-            }
-            return {
-              width: w * Math.max(0.1, zoom),
-              height: h * Math.max(0.1, zoom),
-              transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
-              transformOrigin: 'top left'
-            };
-          })()}
+        <div
+          className="relative flex-shrink-0 bg-transparent"
+          style={
+            dimensionMode === "responsive"
+              ? { width: "100%", height: "100%", minHeight: 0 }
+              : {
+                  width: intrinsicDimensions.width * Math.max(0.1, zoom),
+                  height: intrinsicDimensions.height * Math.max(0.1, zoom),
+                  transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0px)`,
+                  transformOrigin: "center center",
+                  willChange: isDragging ? "transform" : undefined,
+                }
+          }
         >
-            {isFormat && renderedFormat ? (
-              <div 
-                className={`relative flex-shrink-0 transition-all ${
-                  dimensionMode !== 'responsive' 
-                    ? (theme === 'dark' 
-                      ? 'shadow-[0_12px_40px_rgba(0,0,0,0.4)] bg-slate-900 ring-1 ring-slate-800' 
-                      : 'shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white ring-1 ring-slate-200/80') 
-                    : ''
-                }`}
-                style={dimensionMode !== 'responsive' ? {
-                  width: chart.template_structure?.dimensions?.width || 800,
-                  height: chart.template_structure?.dimensions?.height || 600,
-                  transform: `scale(${Math.max(0.1, zoom)})`,
-                  transformOrigin: 'top left',
-                  position: 'absolute',
-                  top: 0, left: 0,
-                  backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff'
-                } : {
-                  width: '100%', height: '100%', backgroundColor: 'transparent'
-                }}
-              >
-                <FormatRenderer
-                  rendered={renderedFormat}
-                  scale={1}
-                  interactive={false}
-                  panMode={true}
-                  forceRealChart={true}
-                  zoomLevel={zoom}
+          {isFormat && renderedFormat ? (
+            <div
+              ref={canvasWrapperRef}
+              className={`relative flex-shrink-0 ${
+                dimensionMode !== "responsive"
+                  ? isDark
+                    ? "shadow-[0_20px_50px_-12px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.08] rounded-lg overflow-hidden"
+                    : "shadow-[0_12px_40px_-10px_rgba(15,23,42,0.14)] ring-1 ring-zinc-950/[0.06] rounded-lg overflow-hidden"
+                  : ""
+              }`}
+              style={
+                dimensionMode !== "responsive"
+                  ? {
+                      width: intrinsicDimensions.width,
+                      height: intrinsicDimensions.height,
+                      transform: `scale(${Math.max(0.1, zoom)})`,
+                      transformOrigin: "top left",
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      backgroundColor: "#ffffff",
+                    }
+                  : {
+                      width: "100%",
+                      height: "100%",
+                      backgroundColor: "transparent",
+                    }
+              }
+            >
+              <FormatRenderer
+                rendered={renderedFormat}
+                scale={1}
+                interactive={false}
+                panMode={panMode}
+                forceRealChart={true}
+                renderLocalCanvas={true}
+                isolatedChart={true}
+                zoomLevel={zoom}
+              />
+              {decorations.length > 0 && (
+                <DecorationShapeRenderer
+                  containerWidth={intrinsicDimensions.width}
+                  containerHeight={intrinsicDimensions.height}
+                  shapes={decorations}
+                  readOnly={true}
+                  panMode={panMode}
+                  zoom={zoom}
                 />
-              </div>
-            ) : isTemplate ? (
-              <div 
-                className={`relative origin-[0_0] flex-shrink-0 transition-all ${
-                  dimensionMode !== 'responsive' 
-                    ? (theme === 'dark' 
-                      ? 'bg-slate-950 group shadow-[0_12px_40px_rgba(0,0,0,0.4)] ring-1 ring-slate-800' 
-                      : 'bg-white group shadow-[0_12px_40px_rgba(0,0,0,0.06)] ring-1 ring-slate-200/80') 
-                    : ''
-                }`}
-                style={dimensionMode !== 'responsive' ? {
-                  width: chart.template_structure.width,
-                  height: chart.template_structure.height,
-                  transform: `scale(${Math.max(0.1, zoom)})`,
-                  transformOrigin: 'top left',
-                  position: 'absolute',
-                  top: 0, left: 0,
-                } : {
-                  width: '100%', height: '100%', backgroundColor: 'transparent'
+              )}
+            </div>
+          ) : isTemplate ? (
+            <div
+              ref={canvasWrapperRef}
+              className={`relative origin-[0_0] flex-shrink-0 ${
+                dimensionMode !== "responsive"
+                  ? isDark
+                    ? "bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.08] rounded-lg overflow-hidden"
+                    : "bg-white shadow-[0_12px_40px_-10px_rgba(15,23,42,0.14)] ring-1 ring-zinc-950/[0.06] rounded-lg overflow-hidden"
+                  : ""
+              }`}
+              style={
+                dimensionMode !== "responsive"
+                  ? {
+                      width: intrinsicDimensions.width,
+                      height: intrinsicDimensions.height,
+                      transform: `scale(${Math.max(0.1, zoom)})`,
+                      transformOrigin: "top left",
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                    }
+                  : {
+                      width: "100%",
+                      height: "100%",
+                      backgroundColor: "transparent",
+                    }
+              }
+            >
+              {/* Main template background layer */}
+              {dimensionMode !== "responsive" && (
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    ...getTemplateBackgroundStyle(chart.template_structure),
+                    border: `${chart.template_structure.borderWidth || 0}px solid ${
+                      chart.template_structure.borderColor || "transparent"
+                    }`,
+                  }}
+                />
+              )}
+
+              {/* Chart Area */}
+              {chart.template_structure.chartArea && (
+                <div
+                  className="absolute template-chart-area"
+                  style={{
+                    left: chart.template_structure.chartArea.x,
+                    top: chart.template_structure.chartArea.y,
+                    width: chart.template_structure.chartArea.width,
+                    height: chart.template_structure.chartArea.height,
+                    border: "none",
+                    backgroundColor: "transparent",
+                    borderRadius: "4px",
+                    pointerEvents: panMode ? "none" : "auto",
+                  }}
+                >
+                  <ChartGenerator
+                    isolated
+                    isTemplateOrFormat={true}
+                    dataOverride={chart.chart_data}
+                    configOverride={effectiveChartConfig}
+                    typeOverride={chart.chart_type}
+                    chartModeOverride={inferredMode}
+                    devicePixelRatioMultiplier={Math.max(1, zoom)}
+                    responsiveWidth={parseDimension(chart.template_structure.chartArea.width, 400)}
+                    responsiveHeight={parseDimension(chart.template_structure.chartArea.height, 300)}
+                  />
+                </div>
+              )}
+
+              {/* Text Areas */}
+              {chart.template_structure.textAreas &&
+                renderTemplateTextAreas(chart.template_structure)}
+
+              {/* Decorations */}
+              {decorations.length > 0 && (
+                <DecorationShapeRenderer
+                  containerWidth={intrinsicDimensions.width}
+                  containerHeight={intrinsicDimensions.height}
+                  shapes={decorations}
+                  readOnly={true}
+                  panMode={panMode}
+                  zoom={zoom}
+                />
+              )}
+            </div>
+          ) : (
+            <div
+              ref={canvasWrapperRef}
+              className={`relative flex-shrink-0 overflow-hidden ${
+                chart?.chart_config?.borderWidth > 0 ? "" : "rounded-xl"
+              } ${
+                dimensionMode !== "responsive"
+                  ? isDark
+                    ? "shadow-[0_20px_50px_-12px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.08]"
+                    : "shadow-[0_12px_40px_-10px_rgba(15,23,42,0.14)] ring-1 ring-zinc-950/[0.06]"
+                  : isDark
+                  ? "ring-1 ring-white/[0.08] shadow-lg"
+                  : "ring-1 ring-zinc-950/[0.06] shadow-sm"
+              }`}
+              style={
+                dimensionMode !== "responsive"
+                  ? {
+                      width: `${intrinsicDimensions.width}px`,
+                      height: `${intrinsicDimensions.height}px`,
+                      borderRadius:
+                        chart?.chart_config?.borderWidth > 0
+                          ? `${chart?.chart_config?.chartBorderRadius || 0}px`
+                          : undefined,
+                      backgroundColor: isPlainChartTransparent ? "transparent" : "#ffffff",
+                      transform: `scale(${Math.max(0.1, zoom)})`,
+                      transformOrigin: "top left",
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                    }
+                  : {
+                      width: "100%",
+                      height: "100%",
+                      borderRadius:
+                        chart?.chart_config?.borderWidth > 0
+                          ? `${chart?.chart_config?.chartBorderRadius || 0}px`
+                          : undefined,
+                      backgroundColor: isPlainChartTransparent ? "transparent" : "#ffffff",
+                    }
+              }
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: 0,
+                  pointerEvents: panMode ? "none" : "auto",
                 }}
               >
-                {/* Main template background layer */}
-                {dimensionMode !== 'responsive' && (
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      ...getTemplateBackgroundStyle(chart.template_structure),
-                      border: `${chart.template_structure.borderWidth || 0}px solid ${chart.template_structure.borderColor || 'transparent'}`,
-                      borderRadius: '0px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-                    }}
-                  />
-                )}
-
-                {/* Chart Area */}
-                {chart.template_structure.chartArea && (
-                  <div className="absolute template-chart-area" style={{ 
-                      left: chart.template_structure.chartArea.x, 
-                      top: chart.template_structure.chartArea.y, 
-                      width: chart.template_structure.chartArea.width, 
-                      height: chart.template_structure.chartArea.height,
-                      border: 'none',
-                      backgroundColor: 'transparent',
-                      borderRadius: '4px'
-                  }}>
-                    <ChartGenerator
-                      devicePixelRatioMultiplier={Math.max(1, zoom)}
-                      responsiveWidth={chart.template_structure.chartArea.width}
-                      responsiveHeight={chart.template_structure.chartArea.height}
+                <ChartGenerator
+                  isolated
+                  dataOverride={chart.chart_data}
+                  configOverride={effectiveChartConfig}
+                  typeOverride={chart.chart_type}
+                  chartModeOverride={inferredMode}
+                  devicePixelRatioMultiplier={dimensionMode === "responsive" ? 1 : Math.max(1, zoom)}
+                  {...(dimensionMode !== "responsive"
+                    ? {
+                        responsiveWidth: intrinsicDimensions.width,
+                        responsiveHeight: intrinsicDimensions.height,
+                      }
+                    : {})}
+                />
+                {decorations.length > 0 && dimensionMode !== "responsive" && (
+                  <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
+                    <DecorationShapeRenderer
+                      containerWidth={intrinsicDimensions.width}
+                      containerHeight={intrinsicDimensions.height}
+                      shapes={decorations}
+                      readOnly={true}
+                      panMode={panMode}
+                      zoom={zoom}
                     />
                   </div>
                 )}
-                
-                {/* Text Areas */}
-                {chart.template_structure.textAreas && renderTemplateTextAreas(chart.template_structure)}
-
-                {/* Decorations Phase */}
-                <DecorationShapeRenderer
-                  containerWidth={parseInt(chart.template_structure.width) || manualWidth}
-                  containerHeight={parseInt(chart.template_structure.height) || manualHeight}
-                  panMode={true}
-                  zoom={zoom}
-                />
               </div>
-            ) : (
-              <div 
-                className={`relative flex-shrink-0 transition-all ${
-                  dimensionMode !== 'responsive' 
-                    ? (theme === 'dark' 
-                      ? 'shadow-[0_12px_40px_rgba(0,0,0,0.4)] ring-1 ring-slate-800' 
-                      : 'shadow-[0_12px_40px_rgba(0,0,0,0.06)] ring-1 ring-slate-200/80') 
-                    : ''
-                }`}
-                style={dimensionMode !== 'responsive' ? {
-                  width: dimensionMode === 'manual' ? `${manualWidth}px` : `${parseInt(chart?.chart_config?.width) || 800}px`,
-                  height: dimensionMode === 'manual' ? `${manualHeight}px` : `${parseInt(chart?.chart_config?.height) || 600}px`,
-                  borderRadius: '6px',
-                  backgroundColor: chart?.chart_config?.background?.type === 'transparent' ? 'transparent' : (chart?.chart_config?.backgroundColor || '#ffffff'),
-                  transform: `scale(${Math.max(0.1, zoom)})`,
-                  transformOrigin: 'top left',
-                  position: 'absolute',
-                  top: 0, left: 0,
-                } : {
-                  width: '100%', height: '100%', backgroundColor: 'transparent'
-                }}
-              >
-                <div style={{ position: 'absolute', inset: 0, padding: 0 }}>
-                  <ChartGenerator
-                    devicePixelRatioMultiplier={Math.max(1, zoom)}
-                    {...(dimensionMode !== 'responsive' ? {
-                      responsiveWidth: dimensionMode === 'manual' ? manualWidth : (parseInt(chart?.chart_config?.width) || 800),
-                      responsiveHeight: dimensionMode === 'manual' ? manualHeight : (parseInt(chart?.chart_config?.height) || 600),
-                    } : {})}
-                  />
-                </div>
-              </div>
-            )}
+            </div>
+          )}
         </div>
       </main>
 
-      {/* 3. Bottom Footer */}
-      <footer className={`h-[40px] border-t flex items-center justify-between px-4 shrink-0 z-20 text-xs font-sans transition-all duration-200 ${
-        theme === 'dark' 
-          ? 'bg-slate-900 border-slate-800 text-slate-400 shadow-[0_-4px_20px_rgba(0,0,0,0.25)]' 
-          : 'bg-white border-slate-200 text-slate-600 shadow-[0_-2px_10px_rgba(0,0,0,0.03)]'
-      }`}>
-         <div className="flex items-center gap-1.5 select-none">
-           <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-           </svg>
-           <span className={`text-[10px] font-bold tracking-wider uppercase hidden sm:block transition-colors ${
-             theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
-           }`}>
-             Powered by Chartography.in
-           </span>
-         </div>
-         
-         {/* Sleek consolidated Canvas Tool Widget */}
-         {dimensionMode !== 'responsive' && (
-           <div className={`flex items-center gap-1 sm:gap-2 px-2 py-0.5 rounded-full border h-[28px] transition-colors duration-200 ${
-             theme === 'dark' 
-               ? 'bg-slate-950 border-slate-800/80 shadow-inner' 
-               : 'bg-white border-slate-200 shadow-sm'
-           }`}>
-             
-             {/* MousePointerClick Select Mode */}
-             <button
-               onClick={() => setPanMode(false)}
-               className={`w-6 h-6 flex items-center justify-center rounded-full transition-all ${
-                 !panMode 
-                   ? 'bg-indigo-600 text-white shadow-sm' 
-                   : (theme === 'dark' 
-                     ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-900' 
-                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')
-               }`}
-               title="Cursor Select Mode"
-             >
-               <MousePointerClick className="w-3.5 h-3.5" />
-             </button>
+      {/* 3. Subtle Floating Brand Pill (Desktop/Tablet) & Floating Canvas Dock */}
+      {!isEmbed && (
+        <>
+          <a
+            href="/"
+            className={`hidden lg:inline-flex items-center gap-1.5 fixed bottom-4 left-4 z-30 px-3 py-1.5 rounded-full border backdrop-blur-xl text-[11px] font-medium transition-colors ${
+              isDark
+                ? "bg-zinc-900/75 border-zinc-800/80 text-zinc-400 hover:text-zinc-200"
+                : "bg-white/75 border-zinc-200/80 text-zinc-500 hover:text-zinc-900 shadow-sm"
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Powered by AIChartor</span>
+            <ArrowUpRight className="w-3 h-3 opacity-60" />
+          </a>
 
-             {/* Hand Pan Mode */}
-             <button
-               onClick={() => setPanMode(true)}
-               className={`w-6 h-6 flex items-center justify-center rounded-full transition-all ${
-                 panMode 
-                   ? 'bg-indigo-600 text-white shadow-sm' 
-                   : (theme === 'dark' 
-                     ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-900' 
-                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')
-               }`}
-               title="Pan Mode (Click & Drag)"
-             >
-               <Hand className="w-3.5 h-3.5" />
-             </button>
+          {dimensionMode !== "responsive" && (
+            <div
+              className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-1.5 py-1 rounded-full border backdrop-blur-xl transition-colors ${
+                isDark
+                  ? "bg-zinc-900/85 border-zinc-800 text-zinc-200 shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
+                  : "bg-white/85 border-zinc-200/90 text-zinc-700 shadow-[0_8px_30px_rgba(15,23,42,0.08)]"
+              }`}
+            >
+              {/* Select / Interact Mode */}
+              <button
+                onClick={() => setPanMode(false)}
+                className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
+                  !panMode
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : isDark
+                    ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                    : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+                title="Interact & Tooltips"
+                aria-label="Interact mode"
+              >
+                <MousePointerClick className="w-3.5 h-3.5" />
+              </button>
 
-             <div className={`w-[1px] h-3.5 transition-colors ${
-               theme === 'dark' ? 'bg-slate-800' : 'bg-slate-200'
-             }`}></div>
+              {/* Hand Pan Mode */}
+              <button
+                onClick={() => setPanMode(true)}
+                className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
+                  panMode
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : isDark
+                    ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                    : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+                title="Pan Canvas"
+                aria-label="Pan mode"
+              >
+                <Hand className="w-3.5 h-3.5" />
+              </button>
 
-             {/* Zoom Selector Dropdown (Canva/Figma Parity) */}
-             <DropdownMenu>
-               <DropdownMenuTrigger asChild>
-                 <Button variant="ghost" size="sm" className={`h-6 gap-1 px-1.5 text-[10px] sm:text-xs border-none rounded-full font-bold transition-all ${
-                   theme === 'dark' 
-                     ? 'text-slate-300 hover:text-white hover:bg-slate-900' 
-                     : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
-                 }`}>
-                   <Search className="w-3 h-3 text-slate-400" />
-                   <span className="tabular-nums">{Math.round(zoom * 100)}%</span>
-                   <svg className="w-2.5 h-2.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                 </Button>
-               </DropdownMenuTrigger>
-               <DropdownMenuContent align="end" className={`w-52 shadow-xl p-2 z-30 transition-all ${
-                 theme === 'dark' 
-                   ? 'bg-slate-900 border-slate-800 text-slate-200' 
-                   : 'bg-white border-slate-200 text-slate-800'
-               }`}>
-                 <DropdownMenuItem onClick={handleResetZoom} className={`cursor-pointer font-medium rounded-md text-xs py-1.5 px-2.5 transition-colors ${
-                   theme === 'dark' ? 'hover:bg-slate-800 hover:text-white text-slate-200' : 'hover:bg-slate-100 hover:text-slate-950 text-slate-700'
-                 }`}>
-                   <span className="flex-1">100% (Fit to View)</span>
-                 </DropdownMenuItem>
-                 <DropdownMenuItem onClick={handleFitToScreen} className={`cursor-pointer font-medium rounded-md text-xs py-1.5 px-2.5 transition-colors ${
-                   theme === 'dark' ? 'hover:bg-slate-800 hover:text-white text-slate-200' : 'hover:bg-slate-100 hover:text-slate-950 text-slate-700'
-                 }`}>
-                   <span className="flex-1">Fit to Screen</span>
-                 </DropdownMenuItem>
-                 <DropdownMenuItem 
-                   onClick={() => {
-                     setZoom(1.0);
-                     setPanOffset({ x: 0, y: 0 });
-                   }} 
-                   className={`cursor-pointer font-medium rounded-md text-xs py-1.5 px-2.5 transition-colors ${
-                     theme === 'dark' ? 'hover:bg-slate-800 hover:text-white text-slate-200' : 'hover:bg-slate-100 hover:text-slate-950 text-slate-700'
-                   }`}
-                 >
-                   <span className="flex-1">Full Dimension</span>
-                 </DropdownMenuItem>
+              <div className={`w-px h-4 mx-0.5 ${isDark ? "bg-zinc-800" : "bg-zinc-200"}`} />
 
-                 <DropdownMenuSeparator className={`my-1.5 transition-colors ${
-                   theme === 'dark' ? 'border-slate-800' : 'border-slate-150'
-                 }`} />
+              {/* Quick Zoom Out */}
+              <button
+                onClick={handleZoomOut}
+                className={`hidden xs:flex w-7 h-7 items-center justify-center rounded-full transition-colors ${
+                  isDark
+                    ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                    : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+                title="Zoom Out"
+                aria-label="Zoom out"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
 
-                 <div className="px-2.5 py-2.5" onClick={(e) => e.stopPropagation()}>
-                   <Slider
-                     min={0}
-                     max={ZOOM_VALUES.length - 1}
-                     step={1}
-                     value={[closestIndex]}
-                     onValueChange={handleSliderChange}
-                     className={`cursor-pointer ${theme === 'dark' ? 'dark' : ''}`}
-                   />
-                 </div>
+              {/* Zoom Percentage Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`h-7 px-2 rounded-full text-xs font-semibold tabular-nums flex items-center gap-1 transition-colors ${
+                      isDark
+                        ? "text-zinc-200 hover:bg-zinc-800"
+                        : "text-zinc-700 hover:bg-zinc-100"
+                    }`}
+                    title="Zoom options"
+                  >
+                    <span>{currentZoomPct}%</span>
+                    <ChevronDown className="w-3 h-3 opacity-50" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="center"
+                  sideOffset={10}
+                  className={`w-52 p-1.5 rounded-xl shadow-xl z-40 ${
+                    isDark
+                      ? "bg-zinc-900 border-zinc-800 text-zinc-200"
+                      : "bg-white border-zinc-200 text-zinc-800"
+                  }`}
+                >
+                  <DropdownMenuItem
+                    onClick={handleFitToScreen}
+                    className={`cursor-pointer font-medium rounded-lg text-xs py-1.5 px-2.5 ${
+                      isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                    }`}
+                  >
+                    Fit to Screen
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleSetExactZoom(1.0)}
+                    className={`cursor-pointer font-medium rounded-lg text-xs py-1.5 px-2.5 ${
+                      isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                    }`}
+                  >
+                    100% (Original Size)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleSetExactZoom(1.5)}
+                    className={`cursor-pointer font-medium rounded-lg text-xs py-1.5 px-2.5 ${
+                      isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                    }`}
+                  >
+                    150%
+                  </DropdownMenuItem>
 
-                 <DropdownMenuSeparator className={`my-1.5 transition-colors ${
-                   theme === 'dark' ? 'border-slate-800' : 'border-slate-150'
-                 }`} />
-                 
-                 <div className="flex items-center justify-between gap-1 px-1">
-                   <Button 
-                     onClick={(e) => { e.stopPropagation(); handleZoomOut(); }}
-                     size="icon" 
-                     variant="ghost" 
-                     className={`h-7 w-7 transition-colors ${
-                       theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-850' : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
-                     }`} 
-                     title="Zoom Out"
-                   >
-                     <Minus className="h-3.5 w-3.5" />
-                   </Button>
-                   <div className={`w-[1px] h-4 transition-colors ${
-                     theme === 'dark' ? 'bg-slate-800' : 'bg-slate-200'
-                   }`} />
-                   <Button 
-                     onClick={(e) => { e.stopPropagation(); handleZoomIn(); }}
-                     size="icon" 
-                     variant="ghost" 
-                     className={`h-7 w-7 transition-colors ${
-                       theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-850' : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
-                     }`} 
-                     title="Zoom In"
-                   >
-                     <Plus className="h-3.5 w-3.5" />
-                   </Button>
-                 </div>
-               </DropdownMenuContent>
-             </DropdownMenu>
+                  <DropdownMenuSeparator
+                    className={`my-1.5 ${isDark ? "bg-zinc-800" : "bg-zinc-100"}`}
+                  />
 
-           </div>
-         )}
-      </footer>
+                  <div className="px-2.5 py-2" onClick={(e) => e.stopPropagation()}>
+                    <Slider
+                      min={0}
+                      max={ZOOM_VALUES.length - 1}
+                      step={1}
+                      value={[closestIndex]}
+                      onValueChange={handleSliderChange}
+                      className={`cursor-pointer ${isDark ? "dark" : ""}`}
+                    />
+                  </div>
+
+                  <DropdownMenuSeparator
+                    className={`my-1.5 ${isDark ? "bg-zinc-800" : "bg-zinc-100"}`}
+                  />
+
+                  <div className="flex items-center justify-between gap-1 px-1">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleZoomOut()
+                      }}
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 rounded-lg"
+                      title="Zoom Out"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="text-[11px] font-medium tabular-nums text-zinc-400">
+                      {currentZoomPct}%
+                    </span>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleZoomIn()
+                      }}
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 rounded-lg"
+                      title="Zoom In"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Quick Zoom In */}
+              <button
+                onClick={handleZoomIn}
+                className={`hidden xs:flex w-7 h-7 items-center justify-center rounded-full transition-colors ${
+                  isDark
+                    ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                    : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+                title="Zoom In"
+                aria-label="Zoom in"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+
+              <div className={`w-px h-4 mx-0.5 ${isDark ? "bg-zinc-800" : "bg-zinc-200"}`} />
+
+              {/* One-Tap Fit to Screen */}
+              <button
+                onClick={handleFitToScreen}
+                className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
+                  isDark
+                    ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                    : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+                title="Fit to Screen"
+                aria-label="Fit to screen"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

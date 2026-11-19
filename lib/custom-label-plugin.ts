@@ -1,4 +1,5 @@
 import { Chart, Plugin } from 'chart.js';
+import { drawCanvasTextDecoration, extractFontSize, withCanvasLetterSpacing } from '@/lib/utils/font-decoration';
 
 function safeChartUpdate(chart: any, mode: string = 'none') {
   if (!chart || chart.isDestroyed || !chart.ctx || !chart.canvas) return;
@@ -22,6 +23,9 @@ export interface CustomLabel {
   y?: number; // absolute y (overrides anchor)
   color?: string;
   font?: string;
+  underline?: boolean;
+  strikethrough?: boolean;
+  letterSpacing?: number;
   backgroundColor?: string;
   borderColor?: string;
   borderWidth?: number;
@@ -77,8 +81,8 @@ function clampToCanvas(chart: any, x: number, y: number, label: any): { x: numbe
   const ctx = chart.ctx;
   ctx.save();
   ctx.font = label.font || 'bold 14px Arial';
-  const textWidth = ctx.measureText(label.text || '').width;
-  const textHeight = parseInt(label.font || '14', 10) || 14;
+  const textWidth = withCanvasLetterSpacing(ctx, label.letterSpacing, () => ctx.measureText(label.text || '').width);
+  const textHeight = extractFontSize(label.font, 14);
   ctx.restore();
   const padding = label.padding ?? 6;
   const halfW = (textWidth / 2) + padding;
@@ -132,11 +136,7 @@ function getElementRadius(element: any): number {
 }
 
 function getLabelFontSize(label: any): number {
-  if (typeof label?.font === 'string') {
-    const match = label.font.match(/(\d+)px/);
-    if (match && match[1]) return parseInt(match[1], 10);
-  }
-  return 14;
+  return extractFontSize(label?.font, 14);
 }
 
 // Unified callout position calculator so visual rendering and hit-testing match 100%
@@ -648,7 +648,15 @@ export const customLabelPlugin: Plugin = {
         }
         ctx.textAlign = align;
         ctx.textBaseline = label.textBaseline || 'middle';
-        ctx.fillText(label.text, x ?? 0, y ?? 0);
+        withCanvasLetterSpacing(ctx, label.letterSpacing, () => {
+          ctx.fillText(label.text, x ?? 0, y ?? 0);
+          drawCanvasTextDecoration(ctx, label.text, x ?? 0, y ?? 0, {
+            underline: Boolean(label.underline),
+            strikethrough: Boolean(label.strikethrough),
+            color: label.color || '#222',
+            fontSize: extractFontSize(label.font, 14),
+          });
+        });
         ctx.restore();
       });
     });
@@ -717,8 +725,8 @@ export const customLabelPlugin: Plugin = {
           // Measure text bounding box for generous hit testing
           ctx.save();
           ctx.font = label.font || 'bold 14px Arial';
-          const textWidth = ctx.measureText(label.text || '').width;
-          const textHeight = parseInt(label.font || '14', 10) || 14;
+          const textWidth = withCanvasLetterSpacing(ctx, label.letterSpacing, () => ctx.measureText(label.text || '').width);
+          const textHeight = extractFontSize(label.font, 14);
           ctx.restore();
           const padding = label.padding ?? 6;
           const halfW = Math.max(shapeSize / 1.5, (textWidth / 2) + padding + 8);

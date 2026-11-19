@@ -22,11 +22,11 @@ import {
   BarChart3,
   Shuffle,
   ImageIcon,
-  Upload,
   Target,
   ArrowUpRight,
   MousePointer2,
 } from "lucide-react"
+import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
 
 type DataPoint = number | { x: number; y: number } | null
 
@@ -123,20 +123,21 @@ export function DatasetPanel() {
     setChartType(type as SupportedChartType)
   }
 
-  const handleImageUpload = (datasetIndex: number, pointIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
+  const handleAddImageSelect = (datasetIndex: number, pointIndex: number, result: AddImageResult) => {
+    if (result.source === "file" && result.file) {
+      const file = result.file
+      URL.revokeObjectURL(result.url)
       const reader = new FileReader()
       reader.onload = (e) => {
         const imageUrl = e.target?.result as string
         updatePointImage(datasetIndex, pointIndex, imageUrl, {})
       }
       reader.readAsDataURL(file)
+      return
     }
-  }
-
-  const handleImageUrlChange = (datasetIndex: number, pointIndex: number, imageUrl: string) => {
-    updatePointImage(datasetIndex, pointIndex, imageUrl, {})
+    if (result.url) {
+      updatePointImage(datasetIndex, pointIndex, result.url, {})
+    }
   }
 
   const handleImageConfigChange = (datasetIndex: number, pointIndex: number, keyOrUpdates: string | Record<string, any>, value?: any) => {
@@ -391,29 +392,23 @@ export function DatasetPanel() {
                             </div>
 
                             <div className="space-y-4">
-                              <div>
-                                <Label className="text-xs font-medium">Image URL</Label>
-                                <Input
-                                  placeholder="https://example.com/image.jpg"
-                                  value={dataset.pointImages?.[pointIndex] || ""}
-                                  onChange={(e) => handleImageUrlChange(datasetIndex, pointIndex, e.target.value)}
-                                  className="text-xs mt-2"
+                              <div className="flex items-center gap-1.5">
+                                <AddImageButton
+                                  onSelectImage={(res) => handleAddImageSelect(datasetIndex, pointIndex, res)}
+                                  className="flex-1 h-8 text-xs"
                                 />
-                              </div>
-
-                              <div>
-                                <Label className="text-xs font-medium">Upload Image</Label>
-                                <div className="flex gap-2 mt-2">
-                                  <Input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => handleImageUpload(datasetIndex, pointIndex, e)}
-                                    className="text-xs"
-                                  />
-                                  <Button variant="outline" size="sm">
-                                    <Upload className="h-3 w-3" />
+                                {dataset.pointImages?.[pointIndex] && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 shrink-0 text-slate-500 hover:text-red-600"
+                                    onClick={() => updatePointImage(datasetIndex, pointIndex, "", {})}
+                                    title="Clear Image"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
-                                </div>
+                                )}
                               </div>
 
                               <div className="grid grid-cols-2 gap-4">
@@ -665,7 +660,7 @@ export function DatasetPanel() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleImageUrlChange(datasetIndex, pointIndex, "")}
+                                onClick={() => updatePointImage(datasetIndex, pointIndex, "", {})}
                                 className="w-full"
                               >
                                 Remove Image

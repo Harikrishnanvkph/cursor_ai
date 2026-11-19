@@ -60,16 +60,13 @@ function LandingLayoutInner({ children }: { children: React.ReactNode }) {
 
   // Desktop: App Shell — sidebar is persistent, children swap on navigation
   return (
-    <div className={`landing-page-container ${GeistSans.variable} ${GeistSans.className} font-sans flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden`}>
-      {/* Animated Background */}
+    <div className={`landing-page-container ${GeistSans.variable} ${GeistSans.className} font-sans flex h-screen w-screen bg-white dark:bg-slate-950 relative overflow-hidden`}>
+      {/* Crisp Grid Background (without blurry color-banding blobs) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/20 blur-[100px]"></div>
-        <div className="absolute top-1/3 right-0 w-[350px] h-[350px] rounded-full bg-purple-500/10 dark:bg-purple-600/20 blur-[100px]"></div>
-        <div className="absolute bottom-0 left-1/3 w-[300px] h-[300px] rounded-full bg-cyan-400/10 dark:bg-cyan-500/15 blur-[100px]"></div>
         <div
-          className="absolute inset-0 transition-opacity duration-300"
+          className="absolute inset-0"
           style={{
-            backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px)`,
+            backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px)`,
             backgroundSize: '60px 60px'
           }}
         ></div>

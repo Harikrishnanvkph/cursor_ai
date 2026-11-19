@@ -478,6 +478,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
             }
 
             chartInstance.exportToImage({
+              format: exportFormat as 'png' | 'jpeg',
               background: (chartConfig as any)?.background || {
                 type: 'color',
                 color: chartConfig.backgroundColor || '#ffffff',

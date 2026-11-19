@@ -102,7 +102,9 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
   if (isTextbox) {
     const isBold = shape.fontWeight === 'bold'
     const isItalic = shape.fontStyle === 'italic'
-    const isUnderline = shape.textDecoration === 'underline'
+    const decStr = shape.textDecoration || 'none'
+    const isUnderline = decStr.includes('underline')
+    const hasLineThrough = decStr.includes('line-through')
 
     const styleState: RichTextToolbarStyleState = {
       fontSize: shape.fontSize || 14,
@@ -117,7 +119,13 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
     const callbacks: RichTextToolbarCallbacks = {
       onToggleBold: () => updateShape(shapeId, { fontWeight: isBold ? 'normal' : 'bold' }),
       onToggleItalic: () => updateShape(shapeId, { fontStyle: isItalic ? 'normal' : 'italic' }),
-      onToggleUnderline: () => updateShape(shapeId, { textDecoration: isUnderline ? 'none' : 'underline' }),
+      onToggleUnderline: () => {
+        const nextUnderline = !isUnderline
+        const parts = []
+        if (nextUnderline) parts.push('underline')
+        if (hasLineThrough) parts.push('line-through')
+        updateShape(shapeId, { textDecoration: parts.length > 0 ? parts.join(' ') : 'none' })
+      },
       onSizeDown: () => updateShape(shapeId, { fontSize: Math.max(6, (shape.fontSize || 14) - 1) }),
       onSizeUp: () => updateShape(shapeId, { fontSize: Math.min(120, (shape.fontSize || 14) + 1) }),
       onColorChange: (color: string) => updateShape(shapeId, { textColor: color }),

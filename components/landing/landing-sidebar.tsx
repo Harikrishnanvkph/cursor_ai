@@ -192,7 +192,7 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
   }, [messages])
 
   return (
-    <aside className={`z-10 flex flex-col border-r border-slate-200/80 shadow-md bg-white/40 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} overflow-hidden flex-shrink-0`}>
+    <aside className={`z-10 flex flex-col border-r border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-950 ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} overflow-hidden flex-shrink-0`}>
       {leftSidebarOpen ? (
         <>
           {/* ChatGPT-style Header with Dropdown & Action Buttons */}
@@ -322,7 +322,6 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                     type="button"
                     onClick={() => {
                       useChatStore.getState().stopGeneration()
-                      toast.info("Generation cancelled")
                     }}
                     className="bg-red-500 hover:bg-red-600 active:scale-95 text-white w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0 transition-all duration-200 shadow-2xs cursor-pointer"
                     title="Stop generation"

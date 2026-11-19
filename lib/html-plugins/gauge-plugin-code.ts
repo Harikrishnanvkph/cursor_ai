@@ -44,16 +44,18 @@ function formatGaugeNumber(val, formatConfig) {
     return formatted;
 }
 
-function drawCurvedText(ctx, text, cx, cy, radius, midAngle, fontSize) {
+function drawCurvedText(ctx, text, cx, cy, radius, midAngle, fontSize, underline, strikethrough, color, letterSpacing) {
+    var ls = typeof letterSpacing === 'number' ? letterSpacing : 0;
     var charWidths = [];
     var totalWidth = 0;
     for (var i = 0; i < text.length; i++) {
-        var w = ctx.measureText(text[i]).width;
+        var w = ctx.measureText(text[i]).width + (i < text.length - 1 ? ls : 0);
         charWidths.push(w);
         totalWidth += w;
     }
     var totalArcAngle = totalWidth / radius;
     var currentAngle = midAngle - totalArcAngle / 2;
+    var fontUtils = typeof window !== 'undefined' ? window.__chartFontUtils : null;
     for (var i = 0; i < text.length; i++) {
         var charAngle = charWidths[i] / radius;
         var drawAngle = currentAngle + charAngle / 2;
@@ -63,6 +65,14 @@ function drawCurvedText(ctx, text, cx, cy, radius, midAngle, fontSize) {
         ctx.translate(x, y);
         ctx.rotate(drawAngle + Math.PI / 2);
         ctx.fillText(text[i], 0, 0);
+        if ((underline || strikethrough) && fontUtils && fontUtils.drawCanvasTextDecoration) {
+            fontUtils.drawCanvasTextDecoration(ctx, text[i], 0, 0, {
+                underline: !!underline,
+                strikethrough: !!strikethrough,
+                color: color,
+                fontSize: fontSize
+            });
+        }
         ctx.restore();
         currentAngle += charAngle;
     }
@@ -190,6 +200,11 @@ const gaugePlugin = {
                 var sliceLabelFontSize = sliceLabelsConfig.fontSize != null ? sliceLabelsConfig.fontSize : 14;
                 var sliceLabelFontFamily = sliceLabelsConfig.fontFamily || valueFontFamily;
                 var sliceLabelFontWeight = sliceLabelsConfig.fontWeight || '600';
+                var sliceLabelFontStyle = sliceLabelsConfig.fontStyle || 'normal';
+                var sliceLabelUnderline = !!sliceLabelsConfig.underline;
+                var sliceLabelStrikethrough = !!sliceLabelsConfig.strikethrough;
+                var sliceLabelTransform = sliceLabelsConfig.textTransform;
+                var sliceLabelLetterSpacing = typeof sliceLabelsConfig.letterSpacing === 'number' ? sliceLabelsConfig.letterSpacing : 0;
                 var sliceLabelContent = sliceLabelsConfig.labelContent || 'value';
                 var sliceLabelAnchor = sliceLabelsConfig.anchor || 'center';
 
@@ -202,7 +217,10 @@ const gaugePlugin = {
                     labelRadius = outerRadius + 15;
                 }
 
-                ctx.font = sliceLabelFontWeight + ' ' + sliceLabelFontSize + 'px ' + sliceLabelFontFamily;
+                var fontUtils = typeof window !== 'undefined' ? window.__chartFontUtils : null;
+                ctx.font = fontUtils && fontUtils.buildCanvasFont
+                    ? fontUtils.buildCanvasFont({ style: sliceLabelFontStyle, weight: sliceLabelFontWeight, size: sliceLabelFontSize, family: sliceLabelFontFamily })
+                    : (sliceLabelFontWeight + ' ' + sliceLabelFontSize + 'px ' + sliceLabelFontFamily);
                 ctx.fillStyle = sliceLabelColor;
                 ctx.textBaseline = 'middle';
                 ctx.textAlign = 'center';
@@ -229,8 +247,13 @@ const gaugePlugin = {
                         labelText = formatSliceVal(rawSliceValue);
                         break;
                 }
+                if (fontUtils && fontUtils.applyTextTransform) {
+                    labelText = fontUtils.applyTextTransform(labelText, sliceLabelTransform);
+                }
 
-                var textMetrics = ctx.measureText(labelText);
+                var textMetrics = (fontUtils && fontUtils.withCanvasLetterSpacing)
+                    ? fontUtils.withCanvasLetterSpacing(ctx, sliceLabelLetterSpacing, function() { return ctx.measureText(labelText); })
+                    : ctx.measureText(labelText);
                 var arcLength = sliceAngle * labelRadius;
 
                 if (textMetrics.width > arcLength * 0.9 || labelText.length <= 4) {
@@ -239,10 +262,25 @@ const gaugePlugin = {
                     ctx.save();
                     ctx.translate(lx, ly);
                     ctx.rotate(midAngle + Math.PI / 2);
-                    ctx.fillText(labelText, 0, 0);
+                    var drawStraightSlice = function() {
+                        ctx.fillText(labelText, 0, 0);
+                        if ((sliceLabelUnderline || sliceLabelStrikethrough) && fontUtils && fontUtils.drawCanvasTextDecoration) {
+                            fontUtils.drawCanvasTextDecoration(ctx, labelText, 0, 0, {
+                                underline: sliceLabelUnderline,
+                                strikethrough: sliceLabelStrikethrough,
+                                color: sliceLabelColor,
+                                fontSize: sliceLabelFontSize
+                            });
+                        }
+                    };
+                    if (fontUtils && fontUtils.withCanvasLetterSpacing) {
+                        fontUtils.withCanvasLetterSpacing(ctx, sliceLabelLetterSpacing, drawStraightSlice);
+                    } else {
+                        drawStraightSlice();
+                    }
                     ctx.restore();
                 } else {
-                    drawCurvedText(ctx, labelText, centerX, centerY, labelRadius, midAngle, sliceLabelFontSize);
+                    drawCurvedText(ctx, labelText, centerX, centerY, labelRadius, midAngle, sliceLabelFontSize, sliceLabelUnderline, sliceLabelStrikethrough, sliceLabelColor, sliceLabelLetterSpacing);
                 }
 
                 cumulativeAngle += sliceAngle;
@@ -346,7 +384,13 @@ const gaugePlugin = {
                 gaugeValueText = valuePrefix + formattedDisplay + valueSuffix;
             }
 
-            ctx.font = valueFontWeight + ' ' + valueFontSize + 'px ' + valueFontFamily;
+            var fontUtils = typeof window !== 'undefined' ? window.__chartFontUtils : null;
+            if (fontUtils && fontUtils.applyTextTransform) {
+                gaugeValueText = fontUtils.applyTextTransform(gaugeValueText, pluginOptions.valueTextTransform);
+            }
+            ctx.font = fontUtils && fontUtils.buildCanvasFont
+                ? fontUtils.buildCanvasFont({ style: pluginOptions.valueFontStyle, weight: valueFontWeight, size: valueFontSize, family: valueFontFamily })
+                : (valueFontWeight + ' ' + valueFontSize + 'px ' + valueFontFamily);
             ctx.fillStyle = valueColor;
             ctx.textBaseline = 'middle';
 
@@ -377,19 +421,63 @@ const gaugePlugin = {
                     valY = centerY + centerOffsetY;
                     break;
             }
-            ctx.fillText(gaugeValueText, valX, valY);
+            var drawGaugeVal = function() {
+                ctx.fillText(gaugeValueText, valX, valY);
+                if ((pluginOptions.valueUnderline || pluginOptions.valueStrikethrough) && fontUtils && fontUtils.drawCanvasTextDecoration) {
+                    fontUtils.drawCanvasTextDecoration(ctx, gaugeValueText, valX, valY, {
+                        underline: !!pluginOptions.valueUnderline,
+                        strikethrough: !!pluginOptions.valueStrikethrough,
+                        color: valueColor,
+                        fontSize: valueFontSize
+                    });
+                }
+            };
+            if (fontUtils && fontUtils.withCanvasLetterSpacing) {
+                fontUtils.withCanvasLetterSpacing(ctx, pluginOptions.valueLetterSpacing, drawGaugeVal);
+            } else {
+                drawGaugeVal();
+            }
         }
 
         // ── 4. Draw min/max labels
         if (showMinMax) {
-            ctx.font = '400 ' + minMaxFontSize + 'px ' + valueFontFamily;
+            var mmFontUtils = typeof window !== 'undefined' ? window.__chartFontUtils : null;
+            var mmFamily = pluginOptions.minMaxFontFamily || valueFontFamily;
+            var mmWeight = pluginOptions.minMaxFontWeight || '400';
+            var mmStyle = pluginOptions.minMaxFontStyle || 'normal';
+            var mmUnderline = !!pluginOptions.minMaxUnderline;
+            var mmStrikethrough = !!pluginOptions.minMaxStrikethrough;
+            var mmTransform = pluginOptions.minMaxTextTransform;
+            var mmLetterSpacing = pluginOptions.minMaxLetterSpacing;
+            ctx.font = mmFontUtils && mmFontUtils.buildCanvasFont
+                ? mmFontUtils.buildCanvasFont({ style: mmStyle, weight: mmWeight, size: minMaxFontSize, family: mmFamily })
+                : (mmWeight + ' ' + minMaxFontSize + 'px ' + mmFamily);
             ctx.fillStyle = minMaxColor;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             var labelY = centerY + 8;
             var labelSpread = outerRadius * 0.85;
-            ctx.fillText(String(minLabel), centerX - labelSpread, labelY);
-            ctx.fillText(String(maxLabel), centerX + labelSpread, labelY);
+            var minText = mmFontUtils && mmFontUtils.applyTextTransform ? mmFontUtils.applyTextTransform(String(minLabel), mmTransform) : String(minLabel);
+            var maxText = mmFontUtils && mmFontUtils.applyTextTransform ? mmFontUtils.applyTextTransform(String(maxLabel), mmTransform) : String(maxLabel);
+            var drawMinMaxPair = function() {
+                ctx.fillText(minText, centerX - labelSpread, labelY);
+                if ((mmUnderline || mmStrikethrough) && mmFontUtils && mmFontUtils.drawCanvasTextDecoration) {
+                    mmFontUtils.drawCanvasTextDecoration(ctx, minText, centerX - labelSpread, labelY, {
+                        underline: mmUnderline, strikethrough: mmStrikethrough, color: minMaxColor, fontSize: minMaxFontSize
+                    });
+                }
+                ctx.fillText(maxText, centerX + labelSpread, labelY);
+                if ((mmUnderline || mmStrikethrough) && mmFontUtils && mmFontUtils.drawCanvasTextDecoration) {
+                    mmFontUtils.drawCanvasTextDecoration(ctx, maxText, centerX + labelSpread, labelY, {
+                        underline: mmUnderline, strikethrough: mmStrikethrough, color: minMaxColor, fontSize: minMaxFontSize
+                    });
+                }
+            };
+            if (mmFontUtils && mmFontUtils.withCanvasLetterSpacing) {
+                mmFontUtils.withCanvasLetterSpacing(ctx, mmLetterSpacing, drawMinMaxPair);
+            } else {
+                drawMinMaxPair();
+            }
 
             // Zero Reference Marker
             var showZeroMarker = pluginOptions.showZeroMarker !== false;

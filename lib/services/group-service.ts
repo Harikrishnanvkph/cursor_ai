@@ -80,15 +80,20 @@ export const GroupService = {
             chartData?: ExtendedChartData;
             groupedModeData?: ExtendedChartData;
             chartTitle?: string | null;
+            currentSnapshotId?: string | null;
         }
     ) => {
         const outgoingGroupId = currentState.activeGroupId;
         const currentConfig = currentState.chartConfig;
 
-        // 1. Commit outgoing group's chartConfig
+        // 1. Commit outgoing group's chartConfig (and snapshot reference)
         let updatedGroups = currentState.groups.map(g => {
             if (g.id === outgoingGroupId && g.id !== id && currentConfig) {
-                return { ...g, chartConfig: JSON.parse(JSON.stringify(currentConfig)) };
+                return {
+                    ...g,
+                    chartConfig: JSON.parse(JSON.stringify(currentConfig)),
+                    sourceSnapshotId: g.sourceSnapshotId || (g.sourceId && currentState.currentSnapshotId ? currentState.currentSnapshotId : undefined)
+                };
             }
             return g;
         });
@@ -128,12 +133,18 @@ export const GroupService = {
             }).catch(() => {});
         }
 
+        const outgoingGroup = currentState.groups.find(g => g.id === outgoingGroupId);
+        const resolvedSnapshotId = incomingGroup?.sourceSnapshotId
+            || (incomingGroup?.sourceId && incomingGroup.sourceId === outgoingGroup?.sourceId ? currentState.currentSnapshotId : null)
+            || null;
+
         const result: any = {
             activeGroupId: id,
             chartType: newChartType,
             chartConfig: newConfig,
             groups: updatedGroups,
             chartTitle: incomingGroup?.name || incomingGroup?.sourceTitle || currentState.chartTitle,
+            currentSnapshotId: resolvedSnapshotId,
         };
 
         if (currentState.chartData) {

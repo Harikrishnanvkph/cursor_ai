@@ -26,7 +26,7 @@ import {
   normalizeFontWeight,
 } from '@/lib/typography-registry'
 import { cn } from '@/lib/utils'
-import { Search, X, Check, Type, ChevronDown, Globe, Loader2 } from 'lucide-react'
+import { Search, X, Check, Type, ChevronDown, Globe, Loader2, Bold } from 'lucide-react'
 
 // Curated font options from universal typography registry (excluding 'default')
 const FONT_OPTIONS = UNIFIED_FONT_FAMILIES.filter(f => f.value !== 'default')
@@ -512,6 +512,7 @@ export interface FontWeightSelectProps {
   className?: string
   triggerClassName?: string
   outputFormat?: 'numeric' | 'named' // 'numeric' = '400', '700'; 'named' = 'normal', 'bold'
+  iconOnly?: boolean
   disabled?: boolean
   id?: string
 }
@@ -523,12 +524,14 @@ export function FontWeightSelect({
   className,
   triggerClassName,
   outputFormat = 'numeric',
+  iconOnly = false,
   disabled = false,
   id,
 }: FontWeightSelectProps) {
   const activeNumericStr = normalizeFontWeight(value)
   const activeOption = FONT_WEIGHT_OPTIONS.find(opt => opt.value === activeNumericStr)
   const displayLabel = activeOption ? activeOption.label.replace(/\s*\(\d+\)/, '') : undefined
+  const isBoldWeight = Number(activeNumericStr) >= 600
 
   const handleSelect = (numericValue: string) => {
     if (outputFormat === 'named') {
@@ -542,15 +545,31 @@ export function FontWeightSelect({
   }
 
   return (
-    <div className={cn('relative w-full', className)}>
+    <div className={cn('relative', iconOnly ? 'w-auto' : 'w-full', className)}>
       <Select value={activeNumericStr} onValueChange={handleSelect} disabled={disabled}>
         <SelectTrigger
           id={id}
-          className={cn('h-8 text-xs bg-white px-2.5', triggerClassName)}
+          title={activeOption ? `Font Weight: ${activeOption.label}` : 'Font Weight'}
+          aria-label={activeOption ? `Font Weight: ${activeOption.label}` : 'Font Weight'}
+          className={cn(
+            'h-8 text-xs bg-white',
+            iconOnly ? 'w-auto px-2 gap-1 justify-center rounded-lg' : 'px-2.5',
+            iconOnly && isBoldWeight && 'bg-blue-50/70 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800',
+            triggerClassName
+          )}
         >
-          <SelectValue placeholder={placeholder}>
-            {displayLabel}
-          </SelectValue>
+          {iconOnly ? (
+            <Bold
+              className={cn(
+                'w-3.5 h-3.5 shrink-0',
+                isBoldWeight ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'
+              )}
+            />
+          ) : (
+            <SelectValue placeholder={placeholder}>
+              {displayLabel}
+            </SelectValue>
+          )}
         </SelectTrigger>
         <SelectContent className="max-h-60 z-[120]">
           {FONT_WEIGHT_OPTIONS.map(opt => (

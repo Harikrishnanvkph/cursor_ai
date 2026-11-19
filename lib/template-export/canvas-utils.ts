@@ -50,6 +50,8 @@ export async function renderBackgroundOnCanvas(
         opacity?: number
         imageUrl?: string
         imageFit?: string
+        imageWhiteBase?: boolean
+        imageBaseColor?: string
         patternType?: string
         patternColor?: string
         blur?: number
@@ -124,6 +126,12 @@ export async function renderBackgroundOnCanvas(
                 ctx.beginPath()
                 ctx.rect(x, y, width, height)
                 ctx.clip()
+
+                // Draw base color underneath image if enabled (defaults to white)
+                if (background.imageWhiteBase !== false) {
+                    ctx.fillStyle = background.imageBaseColor || '#ffffff'
+                    ctx.fillRect(x, y, width, height)
+                }
 
                 // Apply opacity by setting global alpha
                 if (opacity < 1) {

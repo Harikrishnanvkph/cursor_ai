@@ -456,6 +456,7 @@ export const useHistoryStore = create<HistoryStore>()(
                       ...ds,
                       ...snapDs,
                       sourceId: conv.id,
+                      sourceSnapshotId: snapshotId || ds.sourceSnapshotId,
                       sourceTitle: conv.title,
                       chartConfig: conv.snapshot!.chartConfig ? JSON.parse(JSON.stringify(conv.snapshot!.chartConfig)) : ds.chartConfig,
                       sliceLabels: conv.snapshot!.chartData?.labels ? [...conv.snapshot!.chartData.labels] : ds.sliceLabels
@@ -492,10 +493,17 @@ export const useHistoryStore = create<HistoryStore>()(
                   ...ds,
                   groupId: existingGroupId,
                   sourceId: conv.id,
+                  sourceSnapshotId: snapshotId || ds.sourceSnapshotId,
                   sourceTitle: conv.title
                 }));
                 updatedDatasets = [...updatedDatasets, ...groupSnapDatasets];
               }
+
+              const updatedGroups = (currentStore.groups || []).map((g: any) =>
+                g.id === existingGroupId
+                  ? { ...g, sourceId: conv.id, sourceSnapshotId: snapshotId || g.sourceSnapshotId, sourceTitle: conv.title }
+                  : g
+              );
 
               const updatedChartData = {
                 ...currentStore.chartData,
@@ -506,6 +514,7 @@ export const useHistoryStore = create<HistoryStore>()(
               useChartStore.setState({
                 chartData: updatedChartData,
                 groupedModeData: updatedChartData,
+                groups: updatedGroups,
                 chartConfig: conv.snapshot.chartConfig ? JSON.parse(JSON.stringify(conv.snapshot.chartConfig)) : currentStore.chartConfig,
                 chartType: conv.snapshot.chartType || currentStore.chartType,
                 chartTitle: conv.title || currentStore.chartTitle

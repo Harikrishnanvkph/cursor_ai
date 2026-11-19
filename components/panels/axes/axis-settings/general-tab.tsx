@@ -3,14 +3,17 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useRef, useEffect } from "react"
-import { FontFamilySelect, FontWeightSelect } from "@/components/ui/font-family-select"
+import { cn } from "@/lib/utils"
+import { ChevronDown } from "lucide-react"
 import { useChartData } from "@/lib/hooks/use-chart-state"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
-import { cn } from "@/lib/utils"
-import { toast } from "sonner"
-import { ChevronDown } from "lucide-react"
 import { PaddingControl } from "@/components/ui/padding-control"
 import { NumberFormattingSection } from "../number-formatting-section"
+import {
+    FontSettingSection,
+    mapChartJsFontValue,
+    applyChartJsFontPatch,
+} from "@/components/ui/font-setting-section"
 
 interface GeneralTabProps {
     axis: 'x' | 'y' | 'y1'
@@ -91,7 +94,6 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                         if (axis === 'y1') {
                             if (checked) {
                                 if (datasets.length < 2) {
-                                    toast.error('Right Y-Axis requires at least 2 datasets');
                                     return;
                                 }
                                 updateConfig('display', true);
@@ -99,9 +101,6 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                 if (y1Datasets.length === 0 && datasets.length > 1) {
                                     const targetIdx = 1;
                                     updateDataset(targetIdx, { yAxisID: 'y1' });
-                                    toast.success(`Assigned "${datasets[targetIdx].label || `Dataset ${targetIdx + 1}`}" to Right Y-Axis (Y2)`);
-                                } else {
-                                    toast.success('Right Y-Axis (Y2) enabled');
                                 }
                             } else {
                                 updateConfig('display', false);
@@ -111,7 +110,6 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                         updateDataset(idx, { yAxisID: 'y' });
                                     }
                                 });
-                                toast.info('Right Y-Axis (Y2) hidden');
                             }
                         } else {
                             updateConfig('display', checked);
@@ -176,7 +174,6 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                             onClick={() => {
                                                 if (isRight) {
                                                     updateDataset(idx, { yAxisID: 'y' });
-                                                    toast.info(`Moved "${ds.label || `Dataset ${idx + 1}`}" to Left Y-Axis`);
                                                 }
                                             }}
                                             className={cn(
@@ -193,7 +190,6 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                             disabled={datasets.length < 2}
                                             onClick={() => {
                                                 if (datasets.length < 2) {
-                                                    toast.error('Add a 2nd dataset to use the Right Y-Axis');
                                                     return;
                                                 }
                                                 if (!isRight) {
@@ -201,7 +197,6 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                                     if (config?.display === false) {
                                                         updateConfig('display', true);
                                                     }
-                                                    toast.success(`Moved "${ds.label || `Dataset ${idx + 1}`}" to Right Y2`);
                                                 }
                                             }}
                                             className={cn(
@@ -270,65 +265,23 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Font Family</Label>
-                                        <FontFamilySelect
-                                            value={config?.title?.font?.family || 'Arial'}
-                                            onValueChange={(value) => updateConfig('title.font.family', value)}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Font Weight</Label>
-                                        <FontWeightSelect
-                                            value={String(config?.title?.font?.weight || 'normal')}
-                                            onValueChange={(value) => updateConfig('title.font.weight', value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Font Size</Label>
-                                        <div className="flex items-center gap-1.5">
-                                            <Input
-                                                type="number"
-                                                value={config?.title?.font?.size || ''}
-                                                onChange={(e) => updateConfig('title.font.size', e.target.value ? Number(e.target.value) : undefined)}
-                                                placeholder="12"
-                                                className="h-8 text-xs bg-white flex-1 min-w-0"
-                                                min={8}
-                                                max={48}
-                                            />
-                                            <span className="text-xs text-slate-400 shrink-0">px</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Color</Label>
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="w-7 h-7 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
-                                                style={{ backgroundColor: config?.title?.color || '#374151' }}
-                                                onClick={() => document.getElementById(`title-color-${axis}`)?.click()}
-                                            />
-                                            <input
-                                                id={`title-color-${axis}`}
-                                                type="color"
-                                                value={config?.title?.color || '#374151'}
-                                                onChange={(e) => updateConfig('title.color', e.target.value)}
-                                                className="sr-only"
-                                            />
-                                            <Input
-                                                value={config?.title?.color || '#374151'}
-                                                onChange={(e) => updateConfig('title.color', e.target.value)}
-                                                className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
-                                                placeholder="#374151"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                                <FontSettingSection
+                                    idPrefix={`axis-title-${axis}`}
+                                    value={mapChartJsFontValue(config?.title?.font, config?.title?.color)}
+                                    defaultFamily="Arial"
+                                    defaultSize={12}
+                                    defaultWeight="400"
+                                    defaultColor="#374151"
+                                    sizeMin={8}
+                                    sizeMax={48}
+                                    onChange={(patch) =>
+                                        applyChartJsFontPatch(
+                                            patch,
+                                            (field, val) => updateConfig(`title.font.${field}`, val),
+                                            (color) => updateConfig('title.color', color)
+                                        )
+                                    }
+                                />
 
                                 <div className="space-y-1">
                                     <Label className="text-xs font-medium text-slate-700">Alignment</Label>
@@ -390,65 +343,23 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                         {/* Label Options */}
                         {labelAppearanceDropdownOpen && (
                             <div className="p-3.5 space-y-3.5 bg-white">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Font Family</Label>
-                                        <FontFamilySelect
-                                            value={config?.ticks?.font?.family || 'Arial'}
-                                            onValueChange={(value) => updateConfig('ticks.font.family', value)}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Font Weight</Label>
-                                        <FontWeightSelect
-                                            value={String(config?.ticks?.font?.weight || 'normal')}
-                                            onValueChange={(value) => updateConfig('ticks.font.weight', value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Font Size</Label>
-                                        <div className="flex items-center gap-1.5">
-                                            <Input
-                                                type="number"
-                                                value={config?.ticks?.font?.size || ''}
-                                                onChange={(e) => updateConfig('ticks.font.size', e.target.value ? Number(e.target.value) : undefined)}
-                                                placeholder="12"
-                                                className="h-8 text-xs bg-white flex-1 min-w-0"
-                                                min={8}
-                                                max={36}
-                                            />
-                                            <span className="text-xs text-slate-400 shrink-0">px</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-slate-700">Color</Label>
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="w-7 h-7 rounded-lg border border-slate-200/80 shadow-2xs cursor-pointer hover:scale-105 transition-transform shrink-0"
-                                                style={{ backgroundColor: config?.ticks?.color || '#6b7280' }}
-                                                onClick={() => document.getElementById(`tick-color-${axis}`)?.click()}
-                                            />
-                                            <input
-                                                id={`tick-color-${axis}`}
-                                                type="color"
-                                                value={config?.ticks?.color || '#6b7280'}
-                                                onChange={(e) => updateConfig('ticks.color', e.target.value)}
-                                                className="sr-only"
-                                            />
-                                            <Input
-                                                value={config?.ticks?.color || '#6b7280'}
-                                                onChange={(e) => updateConfig('ticks.color', e.target.value)}
-                                                className="h-8 text-xs font-mono uppercase bg-white flex-1 min-w-0"
-                                                placeholder="#6b7280"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                                <FontSettingSection
+                                    idPrefix={`axis-ticks-${axis}`}
+                                    value={mapChartJsFontValue(config?.ticks?.font, config?.ticks?.color)}
+                                    defaultFamily="Arial"
+                                    defaultSize={12}
+                                    defaultWeight="400"
+                                    defaultColor="#6b7280"
+                                    sizeMin={8}
+                                    sizeMax={36}
+                                    onChange={(patch) =>
+                                        applyChartJsFontPatch(
+                                            patch,
+                                            (field, val) => updateConfig(`ticks.font.${field}`, val),
+                                            (color) => updateConfig('ticks.color', color)
+                                        )
+                                    }
+                                />
 
                                 <div className="space-y-1">
                                     <Label className="text-xs font-medium text-slate-700">Rotation</Label>

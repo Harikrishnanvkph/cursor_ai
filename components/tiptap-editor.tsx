@@ -47,6 +47,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { AddImageModal, type AddImageResult } from '@/components/shared/add-image-modal'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FontFamilySelect } from '@/components/ui/font-family-select'
@@ -740,8 +741,7 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
         editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
     }, [editor])
 
-    const fileInputRef = useRef<HTMLInputElement>(null)
-    const [imageUrl, setImageUrl] = useState('')
+    const [isAddImageOpen, setIsAddImageOpen] = useState(false)
 
     // State for font size input to allow multi-digit typing
     const [fontSizeInput, setFontSizeInput] = useState('')
@@ -860,35 +860,27 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
         setSelectedImage(prev => prev ? { ...prev, width, height } : null)
     }, [editor, selectedImage])
 
-    const addImageFromUrl = useCallback(() => {
-        if (!editor || !imageUrl) return
-        // Use insertContent to avoid extra paragraph/newline
-        editor.chain().focus().insertContent({
-            type: 'image',
-            attrs: { src: imageUrl }
-        }).run()
-        setImageUrl('')
-    }, [editor, imageUrl])
-
-    const addImageFromFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAddImageSelect = useCallback((result: AddImageResult) => {
         if (!editor) return
-        const file = e.target.files?.[0]
-        if (!file) return
-
-        const reader = new FileReader()
-        reader.onload = () => {
-            const base64 = reader.result as string
-            // Use insertContent to avoid extra paragraph/newline
+        if (result.source === 'file' && result.file) {
+            const file = result.file
+            URL.revokeObjectURL(result.url)
+            const reader = new FileReader()
+            reader.onload = () => {
+                const base64 = reader.result as string
+                editor.chain().focus().insertContent({
+                    type: 'image',
+                    attrs: { src: base64 }
+                }).run()
+            }
+            reader.readAsDataURL(file)
+            return
+        }
+        if (result.url) {
             editor.chain().focus().insertContent({
                 type: 'image',
-                attrs: { src: base64 }
+                attrs: { src: result.url }
             }).run()
-        }
-        reader.readAsDataURL(file)
-
-        // Reset file input
-        if (fileInputRef.current) {
-            fileInputRef.current.value = ''
         }
     }, [editor])
 
@@ -1372,58 +1364,21 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                 </ToolbarButton>
 
                 {/* Image */}
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            title="Add Image"
-                        >
-                            <ImageIcon className="h-4 w-4" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64">
-                        <div className="space-y-3">
-                            <Label className="text-xs font-medium">Add Image</Label>
-
-                            {/* From URL */}
-                            <div className="space-y-2">
-                                <Label className="text-xs text-gray-500">From URL</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        type="text"
-                                        placeholder="https://..."
-                                        value={imageUrl}
-                                        onChange={(e) => setImageUrl(e.target.value)}
-                                        className="h-8 text-xs"
-                                    />
-                                    <Button
-                                        size="sm"
-                                        onClick={addImageFromUrl}
-                                        disabled={!imageUrl}
-                                        className="h-8 text-xs"
-                                    >
-                                        Add
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* From Local */}
-                            <div className="space-y-2">
-                                <Label className="text-xs text-gray-500">From Local</Label>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={addImageFromFile}
-                                    className="w-full text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
-                                />
-                            </div>
-                        </div>
-                    </PopoverContent>
-                </Popover>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsAddImageOpen(true)}
+                    className="h-8 w-8 p-0"
+                    title="Add Image"
+                >
+                    <ImageIcon className="h-4 w-4" />
+                </Button>
+                <AddImageModal
+                    open={isAddImageOpen}
+                    onOpenChange={setIsAddImageOpen}
+                    onSelectImage={handleAddImageSelect}
+                />
 
                 {/* Image Resize - Only show when image is selected */}
                 {selectedImage && (

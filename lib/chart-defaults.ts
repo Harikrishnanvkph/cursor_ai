@@ -29,6 +29,7 @@ export interface ChartGroup {
     isDefault?: boolean;                             // If true, cannot be deleted/renamed
     createdAt: number;
     sourceId?: string;                               // ID of the conversation this group originated from
+    sourceSnapshotId?: string;                       // Snapshot ID of the conversation this group originated from
     sourceTitle?: string;                            // Original title of the conversation
     chartConfig?: ExtendedChartOptions;              // Per-group chart config (axes, labels, legend, design)
 }
@@ -164,6 +165,7 @@ export type ExtendedChartDataset<T extends keyof ChartTypeRegistry = keyof Chart
     lastSliceColors?: string[]
     sourceTitle?: string // Title of the conversation/chart this dataset originated from
     sourceId?: string // ID of the conversation/chart this dataset originated from
+    sourceSnapshotId?: string // Snapshot ID of the conversation/chart this dataset originated from
 }
 
 // Define the chart data type with our extended dataset
@@ -203,6 +205,7 @@ export interface ExtendedChartOptions extends ChartOptions {
         imageUrl?: string;
         imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
         imageWhiteBase?: boolean;
+        imageBaseColor?: string;
         imageOpacity?: number;
     };
     decorationShapes?: any[];

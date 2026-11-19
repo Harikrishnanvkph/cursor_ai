@@ -7,7 +7,8 @@ import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { LayoutGrid, Type, Hash, BarChart3, Image, Sparkles, ExternalLink, FileEdit, Upload, Link, Eye, EyeOff, Trash2, Plus, Pencil, ArrowRight, Layers, Pipette, Ban, Maximize } from "lucide-react"
+import { LayoutGrid, Type, Hash, BarChart3, Image, Sparkles, ExternalLink, FileEdit, Eye, EyeOff, Trash2, Plus, Pencil, ArrowRight, Layers, Pipette, Ban, Maximize } from "lucide-react"
+import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
 import { useChartStore } from "@/lib/chart-store"
 import { ChartConfigService } from "@/lib/services/chart-config-service"
 import { Button } from "@/components/ui/button"
@@ -665,17 +666,23 @@ function BackgroundZoneEditor({
     onUpdateStyle({ type: 'image', imageUrl: newUrl, bgImageUrl: newUrl, bgType: 'image' })
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string
-      if (dataUrl) {
-        updateImageUrl(dataUrl)
+  const handleAddImageSelect = (result: AddImageResult) => {
+    if (result.source === 'file' && result.file) {
+      const file = result.file
+      URL.revokeObjectURL(result.url)
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string
+        if (dataUrl) {
+          updateImageUrl(dataUrl)
+        }
       }
+      reader.readAsDataURL(file)
+      return
     }
-    reader.readAsDataURL(file)
+    if (result.url) {
+      updateImageUrl(result.url)
+    }
   }
 
   return (
@@ -805,36 +812,23 @@ function BackgroundZoneEditor({
       {/* Image Controls */}
       {activeTab === 'image' && (
         <div className="space-y-3">
-          {/* Image Link Input */}
-          <div>
-            <Label className="text-[10px] text-gray-500 mb-1 flex items-center gap-1">
-              <Link className="w-3 h-3 text-blue-500" />
-              <span>Image URL Link</span>
-            </Label>
-            <Input
-              value={displayUrl}
-              onChange={(e) => updateImageUrl(e.target.value)}
-              placeholder="Paste image link https://..."
-              className="h-8 text-xs bg-white"
+          <div className="flex items-center gap-1.5">
+            <AddImageButton
+              onSelectImage={handleAddImageSelect}
+              className="flex-1 h-8 text-xs bg-white"
             />
-          </div>
-
-          {/* Upload Image Button */}
-          <div>
-            <Label className="text-[10px] text-gray-500 mb-1 flex items-center gap-1">
-              <Upload className="w-3 h-3 text-blue-500" />
-              <span>Or Upload Local Image</span>
-            </Label>
-            <label className="flex items-center justify-center gap-2 p-2 border border-dashed border-gray-300 rounded-lg hover:bg-blue-50/50 hover:border-blue-300 cursor-pointer transition-all text-xs text-gray-600">
-              <Upload className="w-4 h-4 text-blue-500" />
-              <span className="font-medium">Choose Image File</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </label>
+            {displayUrl && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0 shrink-0 text-gray-500 hover:text-red-600"
+                onClick={() => updateImageUrl('')}
+                title="Clear Image"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
 
           {/* Current Thumbnail Preview */}
@@ -1048,17 +1042,23 @@ function ImageZoneEditor({
     onUpdateStyle({ type: 'image', imageUrl: newUrl, bgImageUrl: newUrl })
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string
-      if (dataUrl) {
-        updateImageUrl(dataUrl)
+  const handleAddImageSelect = (result: AddImageResult) => {
+    if (result.source === 'file' && result.file) {
+      const file = result.file
+      URL.revokeObjectURL(result.url)
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string
+        if (dataUrl) {
+          updateImageUrl(dataUrl)
+        }
       }
+      reader.readAsDataURL(file)
+      return
     }
-    reader.readAsDataURL(file)
+    if (result.url) {
+      updateImageUrl(result.url)
+    }
   }
 
   const isTransparent = style.bgType === 'transparent' ||
@@ -1067,36 +1067,23 @@ function ImageZoneEditor({
 
   return (
     <div className="mt-2 space-y-3 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-      {/* Image Link Input */}
-      <div>
-        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-          <Link className="w-3 h-3 text-blue-500" />
-          <span>Image Link / URL</span>
-        </Label>
-        <Input
-          value={displayUrl}
-          onChange={(e) => updateImageUrl(e.target.value)}
-          placeholder="Paste image link https://..."
-          className="h-8 text-xs bg-white font-sans text-gray-800"
+      <div className="flex items-center gap-1.5">
+        <AddImageButton
+          onSelectImage={handleAddImageSelect}
+          className="flex-1 h-8 text-xs bg-white"
         />
-      </div>
-
-      {/* Upload Image File */}
-      <div>
-        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-          <Upload className="w-3 h-3 text-blue-500" />
-          <span>Upload Image</span>
-        </Label>
-        <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed border-gray-300 rounded-lg hover:bg-blue-50/50 hover:border-blue-400 cursor-pointer transition-all text-xs text-gray-700 bg-gray-50/50">
-          <Upload className="w-4 h-4 text-blue-500" />
-          <span className="font-medium">Choose file or drop image here</span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </label>
+        {displayUrl && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 w-8 p-0 shrink-0 text-gray-500 hover:text-red-600"
+            onClick={() => updateImageUrl('')}
+            title="Clear Image"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
 
       {/* Thumbnail Preview */}

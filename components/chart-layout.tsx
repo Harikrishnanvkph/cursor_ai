@@ -107,7 +107,6 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
     setShowDimensionDialog(false)
     setDimensionMismatchInfo(null)
     setEditorMode('template')
-    toast.info("Switched to Template Mode. You can now save with correct dimensions.")
   }
 
   // Handle "Save as Chart Only" - creates NEW standalone chart copy
@@ -349,7 +348,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       {/* Overlay Backdrop below 1152px when expanded — clicking outside collapses the sidebar */}
       {isBelow1152 && !isCollapsed && (
         <div
-          className="absolute inset-0 z-20 bg-slate-900/10 backdrop-blur-[0.5px] transition-opacity animate-in fade-in duration-200 cursor-pointer"
+          className="absolute inset-0 z-20 bg-slate-950/15 cursor-pointer"
           onClick={toggleSidebar}
           title="Click to collapse sidebar"
         />
@@ -358,19 +357,19 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       {/* Right Sidebar (Config Panel) - Collapsible (Overlays when expanded below 1152px) */}
       <div
         className={cn(
-          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l border-slate-200/80 shadow-md flex flex-col transition-all duration-200",
+          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l border-slate-200/80 dark:border-slate-800 flex flex-col",
           isCollapsed
-            ? "w-14 z-10 bg-slate-50/60 backdrop-blur-xl"
+            ? "w-14 z-10 bg-white dark:bg-slate-950"
             : isBelow1152
-            ? "w-[320px] z-30 shadow-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl"
-            : "w-[320px] z-10 bg-slate-50/60 backdrop-blur-xl"
+            ? "w-[320px] z-30 shadow-2xl bg-white dark:bg-slate-950"
+            : "w-[320px] z-10 bg-white dark:bg-slate-950"
         )}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
-        {isCollapsed ? (
+        {isCollapsed && (
           // Collapsed state: show profile, expand button, and action buttons
-          <div className="flex flex-col items-center h-full bg-slate-50/60 backdrop-blur-xl group">
+          <div className="flex flex-col items-center h-full bg-white dark:bg-slate-950 group">
             {/* Top header row - 52px aligned */}
             <div className="h-[52px] min-h-[52px] w-full flex items-center justify-center border-b border-slate-200/80 flex-shrink-0">
               <button
@@ -435,50 +434,50 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               </button>
             </div>
           </div>
-        ) : (
-          // Expanded state: show ConfigSidebar with top bar (expand, history, profile)
-          <>
-            <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200/80 bg-white/40 min-h-[52px] h-[52px] flex-shrink-0">
-              {/* Expand/Collapse Button */}
+        )}
+
+        {/* Expanded state: kept mounted while collapsed so re-expanding is instant without re-creating ConfigSidebar */}
+        <div className={cn("flex-col flex-1 min-h-0", isCollapsed ? "hidden" : "flex")}>
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-950 min-h-[52px] h-[52px] flex-shrink-0">
+            {/* Expand/Collapse Button */}
+            <button
+              onClick={toggleSidebar}
+              className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors flex-shrink-0"
+              title="Collapse Settings"
+            >
+              <PanelRight className="w-4 h-4" />
+            </button>
+
+            {/* Action Buttons: Save, Cancel, History */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
-                onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors flex-shrink-0"
-                title="Collapse Settings"
+                onClick={handleSaveClick}
+                disabled={!hasJSON || isSaving}
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
+                title="Save chart to online database"
               >
-                <PanelRight className="w-4 h-4" />
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
               </button>
+              <button
+                onClick={handleCancel}
+                disabled={!hasJSON}
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
+                title="Clear chart and start new"
+              >
+                <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+              </button>
+              <HistoryDropdown variant="inline" className="h-8 w-8 p-0 border-0 bg-transparent shadow-none hover:bg-slate-100 flex-shrink-0" />
 
-              {/* Action Buttons: Save, Cancel, History */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button
-                  onClick={handleSaveClick}
-                  disabled={!hasJSON || isSaving}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
-                  title="Save chart to online database"
-                >
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={!hasJSON}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
-                  title="Clear chart and start new"
-                >
-                  <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
-                </button>
-                <HistoryDropdown variant="inline" className="h-8 w-8 p-0 border-0 bg-transparent shadow-none hover:bg-slate-100 flex-shrink-0" />
-
-                {/* Profile Icon - Dropdown Menu - Always visible */}
-                <div className="flex-shrink-0">
-                  <SimpleProfileDropdown size="sm" />
-                </div>
+              {/* Profile Icon - Dropdown Menu - Always visible */}
+              <div className="flex-shrink-0">
+                <SimpleProfileDropdown size="sm" />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <ConfigSidebar />
-            </div>
-          </>
-        )}
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <ConfigSidebar />
+          </div>
+        </div>
       </div>
       {/* Dimension Mismatch Dialog */}
       {dimensionMismatchInfo && (

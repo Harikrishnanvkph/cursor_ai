@@ -8,7 +8,6 @@ import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
-import { toast } from "sonner"
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
 import { DEFAULT_CHART_WIDTH, DEFAULT_CHART_HEIGHT } from "@/lib/utils/dimension-utils"
 import { getDefaultConfigForType } from "@/lib/chart-defaults"
@@ -284,8 +283,6 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
       // Navigate to datasets tab
       if (onDatasetClick) {
         onDatasetClick()
-        const sizeLabel = dims.isResponsive ? 'Responsive' : `${dims.width}×${dims.height} px`
-        toast.info(`Chart initialized at ${sizeLabel}.`)
       }
     }
 

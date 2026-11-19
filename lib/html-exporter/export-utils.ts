@@ -1,5 +1,6 @@
 import { type ExtendedChartData, chartTypeMapping, useChartStore } from "../chart-store";
 import { buildExportConfig } from "../utils/font-scale-utils";
+import { applyTextTransform, buildCanvasFont } from "../utils/font-decoration";
 
 // Helper to map custom chart types to base Chart.js types
 function getMappedType(type: string): string {
@@ -441,6 +442,8 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             const fontSize = conditionalFontSize || customLabelsConfig.fontSize || 14;
             const fontWeight = conditionalFontWeight || customLabelsConfig.fontWeight || 'bold';
             const fontFamily = customLabelsConfig.fontFamily || 'Arial';
+            const fontStyle = customLabelsConfig.fontStyle || 'normal';
+            text = applyTextTransform(text, customLabelsConfig.textTransform);
 
             // Styling
             let color = conditionalColor || customLabelsConfig.color || '#222';
@@ -462,7 +465,10 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
                 borderWidth: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.borderWidth ?? 2),
                 borderRadius: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.borderRadius ?? 6),
                 padding: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.padding ?? 6),
-                font: `${fontWeight} ${fontSize}px ${fontFamily}`,
+                font: buildCanvasFont({ style: fontStyle, weight: fontWeight, size: fontSize, family: fontFamily }),
+                underline: Boolean(customLabelsConfig.underline),
+                strikethrough: Boolean(customLabelsConfig.strikethrough),
+                letterSpacing: typeof customLabelsConfig.letterSpacing === 'number' ? customLabelsConfig.letterSpacing : undefined,
                 // Enhanced callout properties
                 callout: customLabelsConfig.anchor === 'callout',
                 calloutColor: customLabelsConfig.calloutColor || '#333',

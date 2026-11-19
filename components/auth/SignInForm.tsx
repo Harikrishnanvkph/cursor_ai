@@ -130,6 +130,7 @@ export function SignInForm() {
       const ok = await sendOtp(email.trim(), 'signin')
       if (ok) {
         setResendCooldown(30)
+        toast.success('Verification code resent to your email.')
       }
     } finally {
       setIsPending(false)

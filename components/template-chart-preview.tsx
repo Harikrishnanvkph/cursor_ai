@@ -15,12 +15,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ZoomIn, ZoomOut, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search, Undo2, Redo2, Undo, Redo, Sparkles, ScanSearch } from "lucide-react"
+import { ZoomIn, ZoomOut, Ellipsis, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search, Undo2, Redo2, Sparkles, ScanSearch } from "lucide-react"
 import { useLoupeStore } from "@/lib/stores/loupe-store"
 import { ChartLoupeOverlay } from "@/components/chart-preview/chart-loupe-overlay"
 import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
-import { FileDown, FileImage, FileCode, Ban, Cloud, Camera, ImageIcon, RotateCcw, Info, FileText, Palette } from "lucide-react"
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+import { FileDown, FileImage, FileCode, Cloud, Camera, ImageIcon, RotateCcw, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useChartExport } from "@/lib/hooks/use-chart-export"
 import { useSnapStateStore } from "@/lib/stores/snap-state-store"
@@ -30,16 +29,12 @@ import { ChartBgColorPicker } from "./chart-preview/chart-bg-color-picker"
 import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
 import { useIsCompactDesktop } from "@/lib/hooks/use-screen-dimensions"
 import { ZoomMenuContent, ZOOM_VALUES, getClosestZoomIndex } from "@/components/chart-preview/zoom-menu-content"
+import { MoreOptionsMenuContent } from "@/components/chart-preview/more-options-menu-content"
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent 
 } from "@/components/ui/dropdown-menu"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Slider } from "@/components/ui/slider"
-import { Sidebar } from "@/components/sidebar"
-import { ConfigPanel } from "@/components/config-panel"
-import { SidebarPortalProvider } from "@/components/sidebar-portal-context"
-import { SidebarContainer } from "@/components/sidebar-container"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
 import {
@@ -92,7 +87,6 @@ export function TemplateChartPreview({
 }: TemplateChartPreviewProps) {
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
-  const setCanvasBg = useUIStore(s => s.setCanvasBg);
 
   const sidebarContext = useEditorSidebarContext();
   const effectiveLeftSidebarCollapsed = isLeftSidebarCollapsed !== undefined 
@@ -223,10 +217,6 @@ export function TemplateChartPreview({
   const { drawingMode } = useDecorationStore()
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const fullscreenContainerRef = useRef<HTMLDivElement>(null)
-  const pendingTabRef = useRef<string | null>(null)
-  const leftSidebarPanelRef = useRef<HTMLDivElement>(null)
-  const rightSidebarPanelRef = useRef<HTMLDivElement>(null)
   const exportCanvasRef = useRef<HTMLDivElement>(null)
 
   const [mobileExportQuality, setMobileExportQuality] = useState<number>(4)
@@ -276,13 +266,6 @@ export function TemplateChartPreview({
     return () => observer.disconnect()
   }, [])
 
-  // Fullscreen state
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isUpdatingDimensions, setIsUpdatingDimensions] = useState(false)
-  const [showLeftOverlay, setShowLeftOverlay] = useState(false)
-  const [showRightOverlay, setShowRightOverlay] = useState(false)
-  const [fullscreenActiveTab, setFullscreenActiveTab] = useState(activeTab || "templates")
-
   // Rename state
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState("")
@@ -302,13 +285,6 @@ export function TemplateChartPreview({
   const { undo: temporalUndo, redo: temporalRedo, pastStates, futureStates } = useStore(useChartStore.temporal)
   const canUndo = pastStates.length > 0;
   const canRedo = futureStates.length > 0;
-
-  // Sync fullscreenActiveTab with activeTab prop
-  useEffect(() => {
-    if (activeTab) {
-      setFullscreenActiveTab(activeTab)
-    }
-  }, [activeTab])
 
   // Focus input when entering rename mode
   useEffect(() => {
@@ -386,100 +362,6 @@ export function TemplateChartPreview({
     setPanOffset({ x: 0, y: 0 })
   }, [currentTemplate?.id, templateInBackground?.id, selectedFormatId])
 
-
-
-  // Handle fullscreen functionality
-  const handleFullscreen = async () => {
-    if (!fullscreenContainerRef.current) return
-
-    const container = fullscreenContainerRef.current
-
-    try {
-      if (!document.fullscreenElement) {
-        // Enter fullscreen
-        await container.requestFullscreen()
-        setIsFullscreen(true)
-
-        // Trigger chart dimension update after a delay to ensure fullscreen layout is complete
-        setTimeout(() => {
-          setIsUpdatingDimensions(true)
-
-          // If chart exists, adjust canvas for high-DPI
-          if (globalChartRef?.current) {
-            const canvas = globalChartRef.current.canvas
-            const dpr = window.devicePixelRatio || 1
-            const rect = container.getBoundingClientRect()
-
-            canvas.style.width = '100%'
-            canvas.style.height = '100%'
-            canvas.style.objectFit = 'contain'
-
-            canvas.width = rect.width * dpr
-            canvas.height = rect.height * dpr
-
-            globalChartRef.current.resize()
-            globalChartRef.current.render()
-          }
-
-          // Reset updating flag after chart has resized
-          setTimeout(() => {
-            setIsUpdatingDimensions(false)
-          }, 100)
-        }, 100)
-      } else {
-        // Exit fullscreen
-        await document.exitFullscreen()
-        setIsFullscreen(false)
-
-        // Trigger chart dimension update after a delay
-        setTimeout(() => {
-          setIsUpdatingDimensions(true)
-
-          // Reset chart canvas if it exists
-          if (globalChartRef?.current) {
-            const canvas = globalChartRef.current.canvas
-            canvas.style.width = ''
-            canvas.style.height = ''
-            canvas.style.objectFit = ''
-
-            globalChartRef.current.resize()
-            globalChartRef.current.render()
-          }
-
-          // Reset updating flag
-          setTimeout(() => {
-            setIsUpdatingDimensions(false)
-          }, 100)
-        }, 100)
-      }
-    } catch (err) {
-      console.error('Error toggling fullscreen:', err)
-    }
-  }
-
-  // Handle fullscreen change events
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isNowFullscreen = !!document.fullscreenElement
-      setIsFullscreen(isNowFullscreen)
-      // Close overlays when exiting fullscreen
-      if (!isNowFullscreen) {
-        setShowLeftOverlay(false)
-        setShowRightOverlay(false)
-      }
-    }
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  }, [])
-
-  // When exiting fullscreen, apply any pending tab change to parent
-  useEffect(() => {
-    if (!isFullscreen && pendingTabRef.current && onTabChange) {
-      onTabChange(pendingTabRef.current)
-      pendingTabRef.current = null
-    }
-  }, [isFullscreen, onTabChange])
 
 
   // --- Ctrl + mouse wheel/trackpad zoom handler ---
@@ -864,18 +746,6 @@ export function TemplateChartPreview({
       window.removeEventListener('triggerTemplateExport', handleGlobalExport);
     };
   }, [handleExport, handleExportCSV])
-
-  // Global event listener to trigger fullscreen in template mode
-  useEffect(() => {
-    const handleGlobalFullscreen = () => {
-      handleFullscreen();
-    };
-
-    window.addEventListener('triggerFullscreen', handleGlobalFullscreen);
-    return () => {
-      window.removeEventListener('triggerFullscreen', handleGlobalFullscreen);
-    };
-  }, [handleFullscreen]);
 
   const getTemplateDimensions = () => {
     const cWidth = containerSize.width || 800
@@ -1323,11 +1193,7 @@ export function TemplateChartPreview({
   })();
 
   return (
-    <div className="flex flex-col h-full w-full" ref={fullscreenContainerRef}>
-      {/* Fullscreen overlay */}
-      {isFullscreen && (
-        <div className="fixed inset-0 bg-white z-40" />
-      )}
+    <div className="flex flex-col h-full w-full">
 
       {/* Combined Mobile Float Toolbar */}
       {isMobile && !readOnly && (
@@ -1592,16 +1458,6 @@ export function TemplateChartPreview({
                   </div>
                 </div>
 
-                {/* Fullscreen Toggle */}
-                <DropdownMenuItem
-                  disabled={!hasData}
-                  onClick={handleFullscreen}
-                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-                >
-                  {isFullscreen ? <Minimize2 className="h-4 w-4 text-slate-500 shrink-0" /> : <Maximize2 className="h-4 w-4 text-slate-500 shrink-0" />}
-                  <span>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
-                </DropdownMenuItem>
-
                 {/* Loupe View (Inspect Details) */}
                 <DropdownMenuItem
                   disabled={!hasData}
@@ -1627,7 +1483,6 @@ export function TemplateChartPreview({
                   disabled={!hasData}
                   onClick={() => {
                     useSnapStateStore.getState().captureCurrentState('manual', null, 'Manual Snapshot');
-                    toast.success("Snapshot baseline saved!");
                   }}
                   className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
                 >
@@ -1639,12 +1494,7 @@ export function TemplateChartPreview({
                 <DropdownMenuItem
                   disabled={!hasData || !useSnapStateStore.getState().snapState}
                   onClick={() => {
-                    const success = useSnapStateStore.getState().restoreSnapState();
-                    if (success) {
-                      toast.success("Restored to baseline snapshot!");
-                    } else {
-                      toast.error("No snap state saved yet.");
-                    }
+                    useSnapStateStore.getState().restoreSnapState();
                   }}
                   className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -1966,301 +1816,44 @@ export function TemplateChartPreview({
                   <Ellipsis className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 p-1.5 z-[100]">
-                {/* 1. First: Undo and Redo */}
-                <div className="flex items-center px-1 py-0.5">
-                  <button
-                    type="button"
-                    disabled={!canUndo}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      temporalUndo();
-                    }}
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium text-slate-700",
-                      !canUndo && "opacity-40 cursor-not-allowed hover:bg-transparent text-slate-400"
-                    )}
-                    title="Undo (Ctrl+Z)"
-                  >
-                    <Undo className="h-4 w-4 shrink-0" />
-                    <span>Undo</span>
-                  </button>
-
-                  <div className="w-[1px] h-4 bg-slate-200 shrink-0 mx-1" />
-
-                  <button
-                    type="button"
-                    disabled={!canRedo}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      temporalRedo();
-                    }}
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium text-slate-700",
-                      !canRedo && "opacity-40 cursor-not-allowed hover:bg-transparent text-slate-400"
-                    )}
-                    title="Redo (Ctrl+Y)"
-                  >
-                    <Redo className="h-4 w-4 shrink-0" />
-                    <span>Redo</span>
-                  </button>
-                </div>
-
-                <DropdownMenuSeparator className="my-1" />
-
-                {/* 2. Full Screen and Loupe on same line */}
-                <div className="flex items-center px-1 py-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleFullscreen();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium text-slate-700 cursor-pointer"
-                    title="Fullscreen"
-                  >
-                    {isFullscreen ? (
-                      <Minimize2 className="h-4 w-4 text-slate-500 shrink-0" />
-                    ) : (
-                      <Maximize2 className="h-4 w-4 text-slate-500 shrink-0" />
-                    )}
-                    <span>{isFullscreen ? "Exit Fullscreen" : "Full Screen"}</span>
-                  </button>
-
-                  <div className="w-[1px] h-4 bg-slate-200 shrink-0 mx-1" />
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleLoupe();
-                    }}
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-md transition-colors text-xs font-medium cursor-pointer",
-                      isLoupeActive
-                        ? "bg-blue-100 text-blue-700 font-semibold"
-                        : "text-slate-700 hover:bg-slate-100"
-                    )}
-                    title={isLoupeActive ? "Disable Loupe View (Esc)" : "Amazon Loupe View (Inspect Details)"}
-                  >
-                    <ScanSearch className={cn("h-4 w-4 shrink-0", isLoupeActive ? "text-blue-700" : "text-slate-500")} />
-                    <span>Loupe</span>
-                  </button>
-                </div>
-
-                {/* 3. Zoom & Pan inside dropdown when between 1024px and 1151px and sidebar is expanded */}
-                {!showZoomPanOutside && (
-                  <>
-                    <DropdownMenuSeparator className="my-1" />
-
-                    {/* Zoom Submenu */}
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
-                        <div className="flex items-center gap-2.5">
-                          <Search className="h-4 w-4 text-slate-500" />
-                          <span>Zoom</span>
-                        </div>
-                        <span className="text-[11px] font-semibold text-slate-400 font-mono">
-                          {currentZoomPct}%
-                        </span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-56 p-2 z-[110]" onClick={(e) => e.stopPropagation()}>
-                        <ZoomMenuContent
-                          currentZoomPct={currentZoomPct}
-                          closestIndex={closestIndex}
-                          onSliderChange={handleSliderChange}
-                          onResetZoom={handleResetZoom}
-                          onFullDimension={handleFullDimension}
-                          hasFullDimension={!!(renderedFormat?.skeleton?.dimensions || currentTemplate || templateInBackground)}
-                          onZoomIn={handleZoomIn}
-                          onZoomOut={handleZoomOut}
-                        />
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-
-                    {/* Pan Mode */}
-                    <DropdownMenuItem
-                      onClick={() => setPanMode(!panMode)}
-                      className={cn(
-                        "flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md transition-colors",
-                        panMode
-                          ? "bg-slate-100 text-slate-900 font-semibold"
-                          : "hover:bg-slate-100 text-slate-700"
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Hand className={cn("h-4 w-4", panMode ? "text-slate-900" : "text-slate-500")} />
-                        <span>Pan Mode</span>
-                      </div>
-                      <span className={cn(
-                        "text-[10px] font-medium px-1.5 py-0.5 rounded",
-                        panMode ? "bg-slate-200 text-slate-800 font-semibold" : "text-slate-400"
-                      )}>
-                        {panMode ? "Active" : "Off"}
-                      </span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                <DropdownMenuSeparator className="my-1" />
-
-                {/* Dimensions */}
-                <DropdownMenuItem
-                  onSelect={(e) => e.preventDefault()}
-                  className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-default rounded-md hover:bg-slate-50"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <RulerDimensionLine className="h-4 w-4 text-slate-500" />
-                    <span>Dimensions</span>
-                  </div>
-                  <span className="text-[11px] font-semibold text-slate-400 font-mono">
-                    {renderedFormat
-                      ? `${renderedFormat.skeleton.dimensions.width} × ${renderedFormat.skeleton.dimensions.height}`
-                      : currentTemplate || templateInBackground
-                        ? `${(currentTemplate || templateInBackground)?.width} × ${(currentTemplate || templateInBackground)?.height}`
-                        : "Responsive"}
-                  </span>
-                </DropdownMenuItem>
-
-                {/* Background Color */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
-                    <div className="flex items-center gap-2.5">
-                      <Palette className="h-4 w-4 text-slate-500" />
-                      <span>Canvas Background</span>
-                    </div>
-                    <div
-                      className="w-3.5 h-3.5 rounded-full border border-slate-300 shadow-2xs mr-1"
-                      style={{ backgroundColor: canvasBgType === 'transparent' ? 'transparent' : (canvasBgColor || '#e5e7eb') }}
-                    />
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-[160px] p-2.5 z-[110]" onClick={(e) => e.stopPropagation()}>
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {['#ffffff', '#f9fafb', '#f3f4f6', '#e5e7eb', '#f0f9ff', '#212121', '#2d2d2d', '#1e293b', '#f5f3ff', '#fff1f2'].map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setCanvasBg('color', color)}
-                            className={`w-5 h-5 rounded border transition-all ${
-                              canvasBgType !== 'transparent' && canvasBgColor === color
-                                ? 'border-gray-900 ring-1 ring-gray-900 z-10'
-                                : 'border-gray-200 hover:border-gray-400'
-                            }`}
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
-                      </div>
-                      <div className="h-px bg-gray-100" />
-                      <div className="flex items-center justify-between px-0.5">
-                        <button
-                          onClick={() => setCanvasBg('transparent')}
-                          className={`flex items-center justify-center w-6 h-6 rounded border transition-colors ${
-                            canvasBgType === 'transparent' ? 'bg-gray-100 border-gray-300' : 'border-gray-200 hover:bg-gray-50'
-                          }`}
-                          title="Transparent"
-                        >
-                          <Ban className="w-4 h-4 text-red-500" />
-                        </button>
-                        <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-tight">Picker</div>
-                        <div className="relative">
-                          <div
-                            className="w-6 h-6 rounded border border-gray-300 shadow-sm cursor-pointer"
-                            style={{ backgroundColor: canvasBgType === 'transparent' ? '#ffffff' : (canvasBgColor || '#e5e7eb') }}
-                          />
-                          <input
-                            type="color"
-                            value={canvasBgType === 'transparent' ? '#ffffff' : (canvasBgColor || '#e5e7eb')}
-                            onChange={(e) => setCanvasBg('color', e.target.value)}
-                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                <DropdownMenuSeparator className="my-1" />
-
-                {/* Snap State */}
-                <DropdownMenuItem
-                  onClick={() => {
-                    useSnapStateStore.getState().captureCurrentState('manual', null, 'Manual Snapshot');
-                    toast.success("Snapshot baseline saved!");
-                  }}
-                  className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100 group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Camera className="h-4 w-4 text-indigo-500" />
-                    <span>Snap State</span>
-                  </div>
-                  <TooltipProvider delayDuration={100}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                          }}
-                          className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
-                        >
-                          <Info className="h-3.5 w-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" sideOffset={10} align="center" className="z-[150] max-w-[210px] p-2 text-xs font-normal text-slate-700 bg-white border border-slate-200 shadow-md">
-                        Saves current state as baseline snapshot. Only one baseline is stored.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </DropdownMenuItem>
-
-                {/* Reset State */}
-                <DropdownMenuItem
-                  onClick={() => {
-                    const success = useSnapStateStore.getState().restoreSnapState();
-                    if (success) {
-                      toast.success("Restored to baseline snapshot. Undo/redo history reset.");
-                    } else {
-                      toast.error("No snap state saved yet.");
-                    }
-                  }}
-                  disabled={!useSnapStateStore.getState().hasSnapState()}
-                  className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <RotateCcw className="h-4 w-4 text-amber-500" />
-                    <span>Reset State</span>
-                  </div>
-                  <TooltipProvider delayDuration={100}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                          }}
-                          className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
-                        >
-                          <Info className="h-3.5 w-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" sideOffset={10} align="center" className="z-[150] max-w-[210px] p-2 text-xs font-normal text-slate-700 bg-white border border-slate-200 shadow-md">
-                        Restores state to baseline snapshot and clears all undo and redo history.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </DropdownMenuItem>
-
+              <MoreOptionsMenuContent
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onUndo={temporalUndo}
+                onRedo={temporalRedo}
+                isLoupeActive={isLoupeActive}
+                onToggleLoupe={toggleLoupe}
+                showZoomPanOutside={showZoomPanOutside}
+                currentZoomPct={currentZoomPct}
+                closestIndex={closestIndex}
+                onSliderChange={handleSliderChange}
+                onResetZoom={handleResetZoom}
+                onFullDimension={handleFullDimension}
+                hasFullDimension={!!(renderedFormat?.skeleton?.dimensions || currentTemplate || templateInBackground)}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                panMode={panMode}
+                onTogglePanMode={() => setPanMode(!panMode)}
+                dimensionText={
+                  renderedFormat
+                    ? `${renderedFormat.skeleton.dimensions.width} × ${renderedFormat.skeleton.dimensions.height}`
+                    : currentTemplate || templateInBackground
+                      ? `${(currentTemplate || templateInBackground)?.width} × ${(currentTemplate || templateInBackground)?.height}`
+                      : "Responsive"
+                }
+                snapTooltip="Saves current state as baseline snapshot. Only one baseline is stored."
+                resetTooltip="Restores state to baseline snapshot and clears all undo and redo history."
+              >
                 {/* Content Bank (Format only) */}
                 {renderedFormat && (
                   <>
-                    <DropdownMenuSeparator className="my-1.5" />
+                    <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem
                       onClick={() => useFormatGalleryStore.getState().toggleContentBank()}
-                      className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-purple-50 text-purple-700 focus:bg-purple-50 focus:text-purple-700"
+                      className="flex items-center justify-between px-2 py-1.5 text-xs font-medium cursor-pointer rounded-md hover:bg-purple-50 text-purple-700 focus:bg-purple-50 focus:text-purple-700"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Sparkles className="h-4 w-4 text-purple-600" />
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 text-purple-600" />
                         <span>Content Bank</span>
                       </div>
                       {effectiveContentPackage?.contentBank && (
@@ -2271,7 +1864,7 @@ export function TemplateChartPreview({
                     </DropdownMenuItem>
                   </>
                 )}
-              </DropdownMenuContent>
+              </MoreOptionsMenuContent>
             </DropdownMenu>
           </div>
           </div>
@@ -2283,8 +1876,7 @@ export function TemplateChartPreview({
         const cardElement = (
           <Card className={cn(
             "w-full flex flex-col flex-1 min-h-[300px] rounded-lg bg-card text-card-foreground overflow-hidden transition-all duration-200",
-            readOnly ? "border-none shadow-none bg-transparent" : "border shadow-lg",
-            isFullscreen && "fixed inset-4 z-50 m-0"
+            readOnly ? "border-none shadow-none bg-transparent" : "border shadow-lg"
           )}>
             <CardContent className="p-0 flex-1 flex flex-col h-full w-full relative">
               <div
@@ -2419,389 +2011,6 @@ export function TemplateChartPreview({
           </div>
         );
       })()}
-
-      {/* Fullscreen Toolbar */}
-      {isFullscreen && (
-        <>
-          {/* Top Left Button - Open Left Sidebar */}
-          {activeTab && onTabChange && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowLeftOverlay(true)}
-              className="fixed top-4 left-4 z-50 bg-white rounded-xl shadow-xl border border-gray-300 hover:shadow-2xl hover:border-gray-400 transition-all duration-200 h-11 w-11"
-              title="Open Options"
-            >
-              <Menu className="h-5 w-5 text-gray-700" />
-            </Button>
-          )}
-
-          {/* Top Right Toolbar */}
-          <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
-            {/* Zoom Controls */}
-            <div className="flex items-center px-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title={`Zoom (${currentZoomPct}%)`}>
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52 p-2 z-[100]">
-                  <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                    <span className="flex-1">100% (Fit to View)</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator className="my-1" />
-
-                  <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                    <Slider
-                      min={0}
-                      max={ZOOM_VALUES.length - 1}
-                      step={1}
-                      value={[closestIndex]}
-                      onValueChange={handleSliderChange}
-                      className="cursor-pointer"
-                    />
-                  </div>
-
-                  <DropdownMenuSeparator className="my-1" />
-                  <div className="flex items-center justify-between gap-1 px-1 py-0.5">
-                    <DropdownMenuItem
-                      onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
-                      className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-                      title="Zoom Out"
-                    >
-                      <ZoomOut className="h-4 w-4" />
-                    </DropdownMenuItem>
-
-                    <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200 select-none px-2">
-                      {currentZoomPct}%
-                    </span>
-
-                    <DropdownMenuItem
-                      onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
-                      className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-                      title="Zoom In"
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </DropdownMenuItem>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {/* Pan Mode Toggle */}
-            <Button
-              variant={panMode ? "default" : "ghost"}
-              size="icon"
-              onClick={() => setPanMode(!panMode)}
-              title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
-              className="h-8 w-8"
-            >
-              <Hand className="h-4 w-4" />
-            </Button>
-            {/* Amazon Loupe Magnifier Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleLoupe}
-              className={`h-8 w-8 transition-all ${
-                isLoupeActive
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 ring-1 ring-blue-400 shadow-inner'
-                  : 'hover:bg-slate-100 text-slate-600'
-              }`}
-              title={isLoupeActive ? "Disable Loupe View (Esc)" : "Amazon Loupe View (Inspect Details)"}
-            >
-              <ScanSearch className="h-4 w-4" />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Export Format / Image"
-                  className="hover:bg-gray-100 h-8 w-8"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 p-1.5 z-[100]">
-                <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                  {renderedFormat ? "Export Format" : "Export Template"}
-                </div>
-
-                {/* PNG Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
-                    <FileImage className="h-4 w-4 text-indigo-600" />
-                    <span>PNG Image</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-64 p-1.5 z-[110]">
-                    <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      PNG Quality
-                    </div>
-                    <DropdownMenuItem
-                      onClick={() => handleExport('png', 'modern-screenshot', 4)}
-                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-indigo-50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-indigo-600 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs text-slate-900">Crystal Clear (4x)</span>
-                          <span className="text-[10px] text-slate-500">Maximum clarity · Print-ready</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded shrink-0">UHD</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => handleExport('png', 'modern-screenshot', 3)}
-                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-blue-50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileImage className="h-4 w-4 text-blue-600 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs text-slate-900">High Quality (3x)</span>
-                          <span className="text-[10px] text-slate-500">Very sharp · Presentations & 4K</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">3K</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => handleExport('png', 'modern-screenshot', 2)}
-                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileImage className="h-4 w-4 text-slate-600 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs text-slate-900">Enhanced (2x)</span>
-                          <span className="text-[10px] text-slate-500">Crisp · Web & social</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded shrink-0">2K</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => handleExport('png', 'modern-screenshot', 1)}
-                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileImage className="h-4 w-4 text-slate-400 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs text-slate-900">Normal (1x)</span>
-                          <span className="text-[10px] text-slate-500">Standard resolution · Light size</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shrink-0">1x</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                {/* JPEG Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
-                    <ImageIcon className="h-4 w-4 text-amber-600" />
-                    <span>JPEG Image</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-64 p-1.5 z-[110]">
-                    <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      JPEG Quality
-                    </div>
-                    <DropdownMenuItem
-                      onClick={() => handleExport('jpeg', 'modern-screenshot', 4)}
-                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-amber-50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs text-slate-900">Crystal Clear (4x)</span>
-                          <span className="text-[10px] text-slate-500">Maximum clarity · Print-ready</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded shrink-0">UHD</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => handleExport('jpeg', 'modern-screenshot', 3)}
-                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-blue-50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4 text-blue-600 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs text-slate-900">High Quality (3x)</span>
-                          <span className="text-[10px] text-slate-500">Very sharp · Presentations & 4K</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">3K</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => handleExport('jpeg', 'modern-screenshot', 2)}
-                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4 text-slate-600 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs text-slate-900">Enhanced (2x)</span>
-                          <span className="text-[10px] text-slate-500">Crisp · Web & email</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded shrink-0">2K</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => handleExport('jpeg', 'modern-screenshot', 1)}
-                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4 text-slate-400 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs text-slate-900">Normal (1x)</span>
-                          <span className="text-[10px] text-slate-500">Standard resolution · Small file</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shrink-0">1x</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                <DropdownMenuSeparator className="my-1" />
-
-                <DropdownMenuItem onClick={() => handleExport('html')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
-                  <FileCode className="h-4 w-4 text-emerald-600" />
-                  <span>{renderedFormat ? "Interactive HTML" : "HTML Template"}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportCSV} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
-                  <FileText className="h-4 w-4 text-slate-500" />
-                  <span>CSV Data</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleFullscreen}
-              title="Exit fullscreen"
-              className="hover:bg-gray-100 h-8 w-8"
-            >
-              <Minimize2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => document.exitFullscreen()}
-              title="Close"
-              className="hover:bg-gray-100 text-red-500 hover:bg-red-50 h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Left Sidebar Overlay */}
-          {showLeftOverlay && activeTab && onTabChange && (
-            <SidebarPortalProvider>
-              <SidebarContainer containerRef={leftSidebarPanelRef}>
-                <div className="fixed inset-0 z-[60] flex">
-                  {/* Sidebar Panel */}
-                  <div ref={leftSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full relative z-[61]">
-                    <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-                      <h2 className="text-lg font-semibold text-gray-900">Options</h2>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowLeftOverlay(false)}
-                        className="h-8 w-8"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                      <Sidebar
-                        activeTab={fullscreenActiveTab}
-                        onTabChange={(tab) => {
-                          setFullscreenActiveTab(tab)
-                          setShowRightOverlay(true) // Auto-open right panel when tab is selected
-
-                          if (isFullscreen) {
-                            pendingTabRef.current = tab
-                          } else if (onTabChange) {
-                            onTabChange(tab)
-                          }
-                        }}
-                        onToggleLeftSidebar={() => setShowLeftOverlay(false)}
-                        isLeftSidebarCollapsed={false}
-                      />
-                    </div>
-                  </div>
-                  {/* Backdrop */}
-                  <div
-                    className="flex-1 bg-black/50"
-                    onClick={() => setShowLeftOverlay(false)}
-                  />
-                </div>
-              </SidebarContainer>
-            </SidebarPortalProvider>
-          )}
-
-          {/* Right Tools Panel Overlay */}
-          {showRightOverlay && activeTab && onTabChange && (
-            <SidebarPortalProvider>
-              <SidebarContainer containerRef={rightSidebarPanelRef}>
-                <div className="fixed inset-0 z-[70] flex">
-                  {/* Tools Panel - Positioned on left, stacked on top of options sidebar */}
-                  <div ref={rightSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full relative z-[71]">
-                    <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-                      <h2 className="text-lg font-semibold text-gray-900">Tools</h2>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setShowRightOverlay(false)}
-                          className="h-8 w-8"
-                          title="Close Tools"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setShowRightOverlay(false)
-                            setShowLeftOverlay(false)
-                          }}
-                          className="h-8 w-8"
-                          title="Close All"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                      <ConfigPanel
-                        activeTab={fullscreenActiveTab}
-                        onTabChange={(tab) => {
-                          setFullscreenActiveTab(tab)
-                          if (isFullscreen) {
-                            pendingTabRef.current = tab
-                          } else if (onTabChange) {
-                            onTabChange(tab)
-                          }
-                        }}
-                        onNewChart={onNewChart}
-                      />
-                    </div>
-                  </div>
-                  {/* Backdrop */}
-                  <div
-                    className="flex-1 bg-black/50"
-                    onClick={() => setShowRightOverlay(false)}
-                  />
-                </div>
-              </SidebarContainer>
-            </SidebarPortalProvider>
-          )}
-        </>
-      )}
 
       {/* AI Content Bank Drawer - only rendered when a format layout is active */}
       {renderedFormat && <ContentBankDrawer />}

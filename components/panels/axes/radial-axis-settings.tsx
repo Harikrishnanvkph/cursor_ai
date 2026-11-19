@@ -4,10 +4,14 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FontFamilySelect, FontWeightSelect } from "@/components/ui/font-family-select"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { NumberFormattingSection } from "./number-formatting-section"
+import {
+  FontSettingSection,
+  mapChartJsFontValue,
+  applyChartJsFontPatch,
+} from "@/components/ui/font-setting-section"
 
 interface RadialAxisSettingsProps {
   config: any
@@ -214,35 +218,30 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
         <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
           {labelsDropdownOpen && (
             <div className={`px-3 py-3 space-y-3 ${(chartType === 'polarArea' ? config?.pointLabels?.display !== true : config?.pointLabels?.display === false) ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Color</Label>
-                  <Input
-                    type="color"
-                    value={config?.pointLabels?.color || '#666666'}
-                    onChange={(e) => updateConfig('pointLabels.color', e.target.value)}
-                    className="h-8 w-full cursor-pointer"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Font Size</Label>
-                  <Input
-                    type="number"
-                    value={config?.pointLabels?.font?.size ?? 12}
-                    onChange={(e) => updateConfig('pointLabels.font.size', e.target.value === '' ? 12 : Number(e.target.value))}
-                    className="h-8 text-xs"
-                    min={8}
-                    max={24}
-                  />
-                </div>
-              </div>
+              <FontSettingSection
+                idPrefix="radial-point-labels"
+                value={mapChartJsFontValue(config?.pointLabels?.font, config?.pointLabels?.color)}
+                defaultFamily="Arial"
+                defaultSize={12}
+                defaultWeight="400"
+                defaultColor="#666666"
+                sizeMin={8}
+                sizeMax={28}
+                onChange={(patch) =>
+                  applyChartJsFontPatch(
+                    patch,
+                    (field, val) => updateConfig(`pointLabels.font.${field}`, val),
+                    (color) => updateConfig('pointLabels.color', color)
+                  )
+                }
+              />
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Padding</Label>
                 <Input
                   type="number"
                   value={config?.pointLabels?.padding ?? 20}
                   onChange={(e) => updateConfig('pointLabels.padding', e.target.value === '' ? 20 : Number(e.target.value))}
-                  className="h-8 text-xs"
+                  className="h-8 text-xs bg-white"
                   min={0}
                   max={50}
                 />
@@ -303,17 +302,8 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
                 </div>
               </div>
 
-              {/* Row 1: Color and Backdrop Color */}
+              {/* Row 1: Backdrop Color and Backdrop Padding */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Color</Label>
-                  <Input
-                    type="color"
-                    value={config?.ticks?.color || '#666666'}
-                    onChange={(e) => updateConfig('ticks.color', e.target.value)}
-                    className="h-8 w-full cursor-pointer"
-                  />
-                </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Backdrop Color</Label>
                   <Input
@@ -323,81 +313,48 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
                     className="h-8 w-full cursor-pointer"
                   />
                 </div>
-              </div>
-
-              {/* Row 2: Backdrop Padding and Step Size */}
-              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Backdrop Padding</Label>
                   <Input
                     type="number"
                     value={config?.ticks?.backdropPadding ?? 4}
                     onChange={(e) => updateConfig('ticks.backdropPadding', e.target.value === '' ? 4 : Number(e.target.value))}
-                    className="h-8 text-xs"
+                    className="h-8 text-xs bg-white"
                     min={0}
                     max={20}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Step Size</Label>
-                  <Input
-                    type="number"
-                    value={config?.ticks?.stepSize || ''}
-                    onChange={(e) => updateConfig('ticks.stepSize', e.target.value === '' ? undefined : Number(e.target.value))}
-                    placeholder="Auto"
-                    className="h-8 text-xs"
-                  />
-                </div>
               </div>
 
-              {/* Row 3: Font Size and Font Family */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Font Size</Label>
-                  <Input
-                    type="number"
-                    value={config?.ticks?.font?.size ?? 12}
-                    onChange={(e) => updateConfig('ticks.font.size', e.target.value === '' ? 12 : Number(e.target.value))}
-                    className="h-8 text-xs"
-                    min={8}
-                    max={24}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Font Family</Label>
-                  <FontFamilySelect
-                    value={config?.ticks?.font?.family || 'Arial'}
-                    onValueChange={(value) => updateConfig('ticks.font.family', value)}
-                  />
-                </div>
+              {/* Row 2: Step Size */}
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Step Size</Label>
+                <Input
+                  type="number"
+                  value={config?.ticks?.stepSize || ''}
+                  onChange={(e) => updateConfig('ticks.stepSize', e.target.value === '' ? undefined : Number(e.target.value))}
+                  placeholder="Auto"
+                  className="h-8 text-xs bg-white"
+                />
               </div>
 
-              {/* Row 4: Font Weight and Font Style */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Font Weight</Label>
-                  <FontWeightSelect
-                    value={config?.ticks?.font?.weight?.toString() || '400'}
-                    onValueChange={(value) => updateConfig('ticks.font.weight', value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Font Style</Label>
-                  <Select
-                    value={config?.ticks?.font?.style || 'normal'}
-                    onValueChange={(value) => updateConfig('ticks.font.style', value)}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="italic">Italic</SelectItem>
-                      <SelectItem value="oblique">Oblique</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <FontSettingSection
+                idPrefix="radial-ticks"
+                value={mapChartJsFontValue(config?.ticks?.font, config?.ticks?.color)}
+                defaultFamily="Arial"
+                defaultSize={12}
+                defaultWeight="400"
+                defaultColor="#666666"
+                sizeMin={8}
+                sizeMax={28}
+                onChange={(patch) =>
+                  applyChartJsFontPatch(
+                    patch,
+                    (field, val) => updateConfig(`ticks.font.${field}`, val),
+                    (color) => updateConfig('ticks.color', color)
+                  )
+                }
+              />
             </div>
           )}
         </div>
