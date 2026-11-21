@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Layers, Info } from "lucide-react"
 import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
+import { compressImage, validateImageFile } from "@/lib/image-utils"
+import { toast } from "sonner"
 
 interface BackgroundTabProps {
     chartConfig: any
@@ -103,15 +105,21 @@ export function BackgroundTab({ chartConfig, handleConfigUpdate }: BackgroundTab
                             <Label className="text-xs font-medium mb-1.5 opacity-0 select-none">Image</Label>
                             <AddImageButton
                                 className="h-8 text-xs w-full bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
-                                onSelectImage={(result: AddImageResult) => {
+                                onSelectImage={async (result: AddImageResult) => {
                                     if (result.source === 'file' && result.file) {
                                         const file = result.file;
                                         URL.revokeObjectURL(result.url);
-                                        const reader = new FileReader();
-                                        reader.onload = (event) => {
-                                            handleConfigUpdate("background.imageUrl", event.target?.result as string);
-                                        };
-                                        reader.readAsDataURL(file);
+                                        if (!validateImageFile(file, 10)) {
+                                            toast.error("Invalid image file. Please select an image under 10MB.");
+                                            return;
+                                        }
+                                        try {
+                                            const compressed = await compressImage(file, 1600, 1600, 0.85, false, true);
+                                            handleConfigUpdate("background.imageUrl", compressed);
+                                        } catch (err) {
+                                            console.error("Failed to compress background image:", err);
+                                            toast.error("Failed to process image. Please try another file.");
+                                        }
                                         return;
                                     }
                                     if (result.url) {

@@ -8,10 +8,10 @@ import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Button } from "@/components/ui/button"
 
 export const authInputClassName =
-  "h-11 rounded-xl bg-slate-50/80 dark:bg-slate-950/60 border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:border-indigo-400 dark:focus-visible:border-indigo-500 focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:ring-offset-0 transition-all"
+  "h-11 rounded-xl bg-white dark:bg-slate-950 border-neutral-300/90 dark:border-slate-700 text-neutral-900 dark:text-slate-100 placeholder:text-neutral-500 dark:placeholder:text-slate-400 hover:border-neutral-400 dark:hover:border-slate-600 focus-visible:border-indigo-600 dark:focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/15 focus-visible:ring-offset-0 transition-colors"
 
 export const authPrimaryButtonClassName =
-  "w-full h-11 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-semibold tracking-tight shadow-md shadow-indigo-500/25 hover:shadow-lg hover:shadow-indigo-500/35 transition-all duration-200 active:scale-[0.98]"
+  "w-full h-11 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-semibold tracking-tight shadow-sm hover:shadow-md transition-colors"
 
 /**
  * Shared layout shell for auth pages (/signin, /signup) matching the
@@ -39,7 +39,7 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
         <div
           className="absolute inset-0 opacity-40"
           style={{
-            backgroundImage: `linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)`,
+            backgroundImage: `linear-gradient(rgba(120,120,128,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(120,120,128,0.05) 1px, transparent 1px)`,
             backgroundSize: "60px 60px",
           }}
         />
@@ -51,8 +51,8 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <footer className="relative z-10 border-t border-slate-200/70 dark:border-slate-800/70 bg-white/60 dark:bg-slate-950/60 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+      <footer className="relative z-10 border-t border-neutral-200/80 dark:border-slate-800/70 bg-white dark:bg-slate-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-neutral-600 dark:text-slate-400">
           <div className="flex items-center gap-4">
             <span>© {new Date().getFullYear()} AIChartor. All rights reserved.</span>
             <Link href="/privacy" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
@@ -64,7 +64,7 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             <span className="font-medium">Theme</span>
-            <ThemeToggle className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 shadow-sm transition-colors" />
+            <ThemeToggle className="h-8 w-8 rounded-lg border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 shadow-sm transition-colors" />
           </div>
         </div>
       </footer>
@@ -73,7 +73,7 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Glassmorphic card frame matching / hero & prompt surfaces.
+ * Crisp card frame for auth forms.
  */
 export function AuthCardFrame({
   title,
@@ -85,12 +85,12 @@ export function AuthCardFrame({
   children: React.ReactNode
 }) {
   return (
-    <div className="w-full max-w-md rounded-[24px] bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 ring-1 ring-slate-900/[0.03] dark:ring-white/[0.05] shadow-[0_12px_40px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)] p-6 sm:p-8">
+    <div className="w-full max-w-md rounded-[24px] bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.45)] p-6 sm:p-8">
       <div className="flex flex-col items-center text-center mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-950 dark:text-white">
           {title}
         </h1>
-        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1.5 text-sm text-neutral-600 dark:text-slate-400">
           {description}
         </p>
       </div>
@@ -100,13 +100,69 @@ export function AuthCardFrame({
 }
 
 /**
- * Matching loading card shown while session verification or post-auth redirect is in progress.
+ * Modern, frameless loading transition shown while session verification or post-auth redirect is in progress.
+ * Completely borderless and fluid — eliminates the awkward empty card box.
  */
-export function AuthLoadingCard({ message = "Verifying session..." }: { message?: string }) {
+export function AuthLoadingCard({
+  message = "Verifying session…",
+  description,
+}: {
+  message?: string
+  description?: string
+}) {
+  const isRedirecting = message.toLowerCase().includes("redirect")
+  const defaultDesc = isRedirecting
+    ? "Taking you to your workspace dashboard…"
+    : "Confirming your credentials with AIChartor…"
+
   return (
-    <div className="w-full max-w-md rounded-[24px] bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 ring-1 ring-slate-900/[0.03] dark:ring-white/[0.05] shadow-[0_12px_40px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)] p-8 flex flex-col items-center justify-center min-h-[320px]">
-      <div className="w-9 h-9 border-[3px] border-indigo-100 dark:border-indigo-950 border-t-indigo-600 dark:border-t-indigo-400 rounded-full animate-spin mb-4" />
-      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{message}</p>
+    <div className="w-full max-w-sm mx-auto flex flex-col items-center justify-center py-12 px-6 text-center animate-in fade-in zoom-in-95 duration-300">
+      {/* Brand Icon with ambient glow and smooth rotating accent ring */}
+      <div className="relative mb-6 flex items-center justify-center">
+        {/* Soft ambient gradient glow (GPU-composited, zero layout/reflow cost) */}
+        <div
+          aria-hidden="true"
+          className="absolute -inset-4 rounded-full bg-gradient-to-tr from-blue-600/20 via-indigo-600/25 to-violet-600/20 blur-xl animate-pulse pointer-events-none transform-gpu"
+        />
+
+        {/* Orbiting accent spinner ring (runs strictly on GPU compositor thread) */}
+        <div
+          aria-hidden="true"
+          className="absolute -inset-2.5 rounded-[22px] border-2 border-transparent border-t-indigo-600 dark:border-t-indigo-400 border-r-indigo-500/30 rounded-full animate-spin pointer-events-none transform-gpu"
+        />
+
+        {/* Brand Icon Container */}
+        <div className="relative w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border border-neutral-200/80 dark:border-slate-800/80 shadow-sm flex items-center justify-center p-2.5">
+          <img
+            src="/images/aichartor-icon-top-rounded.png"
+            alt="AIChartor"
+            width={40}
+            height={40}
+            className="w-full h-full object-contain"
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+      </div>
+
+      {/* Primary heading */}
+      <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-neutral-900 dark:text-white">
+        {message}
+      </h2>
+
+      {/* Descriptive subtitle */}
+      <p className="mt-1.5 text-xs sm:text-sm text-neutral-500 dark:text-slate-400 max-w-xs leading-relaxed">
+        {description || defaultDesc}
+      </p>
+
+      {/* Modern pulse indicator pill */}
+      <div className="mt-6 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neutral-100/90 dark:bg-slate-900/90 border border-neutral-200/80 dark:border-slate-800/80 text-xs font-medium text-neutral-600 dark:text-slate-300 shadow-sm">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600 dark:bg-indigo-400" />
+        </span>
+        <span>{isRedirecting ? "Launching workspace…" : "Securing session…"}</span>
+      </div>
     </div>
   )
 }
@@ -127,9 +183,9 @@ export function AuthGoogleSection({
     <>
       <div className="relative my-2">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-slate-200/80 dark:border-slate-800" />
+          <span className="w-full border-t border-neutral-200 dark:border-slate-800" />
         </div>
-        <div className="relative flex justify-center text-xs text-slate-400 dark:text-slate-500">
+        <div className="relative flex justify-center text-xs text-neutral-500 dark:text-slate-400">
           <span className="bg-white dark:bg-slate-900 px-2.5">or continue with</span>
         </div>
       </div>
@@ -137,7 +193,7 @@ export function AuthGoogleSection({
       <div className={onGitHubClick ? 'grid grid-cols-2 gap-3' : 'space-y-2.5'}>
         <Button
           variant="outline"
-          className="w-full h-11 rounded-full font-medium border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-2xs transition-all duration-150"
+          className="w-full h-11 rounded-full font-medium border-neutral-300/90 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-neutral-50 dark:hover:bg-slate-700 text-neutral-800 dark:text-slate-100 shadow-none transition-colors"
           onClick={onClick}
           disabled={disabled}
           type="button"
@@ -154,7 +210,7 @@ export function AuthGoogleSection({
         {onGitHubClick && (
           <Button
             variant="outline"
-            className="w-full h-11 rounded-full font-medium border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-2xs transition-all duration-150"
+            className="w-full h-11 rounded-full font-medium border-neutral-300/90 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-neutral-50 dark:hover:bg-slate-700 text-neutral-800 dark:text-slate-100 shadow-none transition-colors"
             onClick={onGitHubClick}
             disabled={disabled}
             type="button"

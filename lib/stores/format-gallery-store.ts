@@ -15,6 +15,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createExpiringStorage } from '@/lib/storage-utils'
+import { useFormatHoverStore } from '@/lib/stores/format-hover-store'
 import type { FormatCategory, FormatBlueprintRow, GalleryFilters, ZoneType } from '@/lib/format-types'
 import { dataService } from '@/lib/data-service'
 import { createZone } from '@/components/format-builder/format-builder-utils'
@@ -181,6 +182,9 @@ function applyZonePositionToFormat(
   return { ...format, skeleton: { ...skeleton, zones } }
 }
 
+// Coalesce concurrent mount-time loadFormats() calls across PromptTemplate, TemplateChartPreview, and FormatGallery
+let inFlightLoadFormats: Promise<void> | null = null
+
 export const useFormatGalleryStore = create<FormatGalleryStore>()(
   persist(
   (set, get) => ({
@@ -223,6 +227,7 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
           snapshot = JSON.parse(JSON.stringify(found))
         }
       }
+      useFormatHoverStore.getState().setHoveredZoneId(null)
       return {
         selectedFormatId: formatId,
         selectedChartType: chartType,
@@ -234,16 +239,19 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
         isGalleryOpen: false  // Close gallery when format is selected
       }
     }),
-    clearSelection: () => set({
-      selectedFormatId: null,
-      selectedChartType: null,
-      selectedFormatSnapshot: null,
-      selectedZoneId: null,
-      editingZoneId: null,
-      hoveredZoneId: null,
-      isResizeMode: false,
-      zoneContentOverrides: {}
-    }),
+    clearSelection: () => {
+      useFormatHoverStore.getState().setHoveredZoneId(null)
+      set({
+        selectedFormatId: null,
+        selectedChartType: null,
+        selectedFormatSnapshot: null,
+        selectedZoneId: null,
+        editingZoneId: null,
+        hoveredZoneId: null,
+        isResizeMode: false,
+        zoneContentOverrides: {}
+      })
+    },
 
     // Filters
     filters: {},
@@ -254,7 +262,7 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
 
     // Interactive Zone State
     hoveredZoneId: null,
-    setHoveredZoneId: (id) => set({ hoveredZoneId: id }),
+    setHoveredZoneId: (id) => useFormatHoverStore.getState().setHoveredZoneId(id),
     selectedZoneId: null,
     setSelectedZoneId: (id) => set({ selectedZoneId: id, editingZoneId: null }),
     editingZoneId: null,
@@ -434,55 +442,70 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
         return
       }
 
+      if (!force && inFlightLoadFormats) {
+        return inFlightLoadFormats
+      }
+
       const silent = state.formats.length > 0
       if (!silent) {
         set({ isLoadingFormats: true, isLoadingUserFormats: true })
       }
 
-      try {
-        const [officialRes, userRes] = await Promise.all([
-          dataService.getOfficialFormats(),
-          dataService.getUserFormats()
-        ])
+      const run = (async () => {
+        try {
+          const hasAuthHint =
+            typeof document !== 'undefined' &&
+            (document.cookie.includes('is_authenticated=true') || Boolean(localStorage.getItem('cached_auth_user')))
 
-        const updates: Partial<FormatGalleryStore> = {
-          lastFetchedAt: new Date().toISOString()
-        }
+          const [officialRes, userRes] = await Promise.all([
+            dataService.getOfficialFormats(),
+            hasAuthHint ? dataService.getUserFormats() : Promise.resolve({ data: [] as FormatBlueprintRow[], error: undefined })
+          ])
 
-        if (!officialRes.error && officialRes.data && officialRes.data.length > 0) {
-          // Merge official formats with any defaults not yet in the DB
-          const existingNames = new Set(officialRes.data.map((d: any) => d.name?.toLowerCase().trim()))
-          const missingDefaults = fallbackOfficialFormats.filter(
-            f => !existingNames.has(f.name.toLowerCase().trim())
-          )
-          updates.formats = [...officialRes.data, ...missingDefaults]
-        } else {
-          updates.formats = fallbackOfficialFormats
-        }
+          const updates: Partial<FormatGalleryStore> = {
+            lastFetchedAt: new Date().toISOString()
+          }
 
-        if (!userRes.error && userRes.data) {
-          updates.userFormats = userRes.data
-        }
+          if (!officialRes.error && officialRes.data && officialRes.data.length > 0) {
+            // Merge official formats with any defaults not yet in the DB
+            const existingNames = new Set(officialRes.data.map((d: any) => d.name?.toLowerCase().trim()))
+            const missingDefaults = fallbackOfficialFormats.filter(
+              f => !existingNames.has(f.name.toLowerCase().trim())
+            )
+            updates.formats = [...officialRes.data, ...missingDefaults]
+          } else {
+            updates.formats = fallbackOfficialFormats
+          }
 
-        // Keep active snapshot updated with latest format skeleton
-        if (state.selectedFormatId && updates.formats) {
-          const freshSelected = updates.formats.find(
-            f => f.id === state.selectedFormatId || f.name.toLowerCase() === (state.selectedFormatSnapshot?.name || '').toLowerCase()
-          )
-          if (freshSelected) {
-            updates.selectedFormatSnapshot = JSON.parse(JSON.stringify(freshSelected))
-            updates.selectedFormatId = freshSelected.id
+          if (!userRes.error && userRes.data) {
+            updates.userFormats = userRes.data
+          }
+
+          // Keep active snapshot updated with latest format skeleton
+          const latestState = get()
+          if (latestState.selectedFormatId && updates.formats) {
+            const freshSelected = updates.formats.find(
+              f => f.id === latestState.selectedFormatId || f.name.toLowerCase() === (latestState.selectedFormatSnapshot?.name || '').toLowerCase()
+            )
+            if (freshSelected) {
+              updates.selectedFormatSnapshot = JSON.parse(JSON.stringify(freshSelected))
+              updates.selectedFormatId = freshSelected.id
+            }
+          }
+
+          set(updates)
+        } catch (err) {
+          console.error('Failed to load formats in background:', err)
+        } finally {
+          inFlightLoadFormats = null
+          if (!silent) {
+            set({ isLoadingFormats: false, isLoadingUserFormats: false })
           }
         }
+      })()
 
-        set(updates)
-      } catch (err) {
-        console.error('Failed to load formats in background:', err)
-      } finally {
-        if (!silent) {
-          set({ isLoadingFormats: false, isLoadingUserFormats: false })
-        }
-      }
+      inFlightLoadFormats = run
+      return run
     },
 
     deleteFormat: async (id: string) => {
@@ -527,24 +550,27 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     },
 
     // Reset
-    resetGallery: () => set({
-      isGalleryOpen: false,
-      contentPackage: null,
-      selectedFormatId: null,
-      selectedChartType: null,
-      selectedFormatSnapshot: null,
-      filters: {},
-      isLoadingFormats: false,
-      isLoadingUserFormats: false,
-      contextualImageUrl: null,
-      hoveredZoneId: null,
-      selectedZoneId: null,
-      editingZoneId: null,
-      isResizeMode: false,
-      formatZoneNotes: {},
-      isContentBankOpen: false,
-      zoneContentOverrides: {}
-    })
+    resetGallery: () => {
+      useFormatHoverStore.getState().setHoveredZoneId(null)
+      set({
+        isGalleryOpen: false,
+        contentPackage: null,
+        selectedFormatId: null,
+        selectedChartType: null,
+        selectedFormatSnapshot: null,
+        filters: {},
+        isLoadingFormats: false,
+        isLoadingUserFormats: false,
+        contextualImageUrl: null,
+        hoveredZoneId: null,
+        selectedZoneId: null,
+        editingZoneId: null,
+        isResizeMode: false,
+        formatZoneNotes: {},
+        isContentBankOpen: false,
+        zoneContentOverrides: {}
+      })
+    }
   }),
   {
     name: 'format-gallery-store',

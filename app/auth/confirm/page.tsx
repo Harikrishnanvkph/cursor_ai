@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { AuthPageShell, AuthCardFrame, AuthLoadingCard } from '@/components/auth/AuthPageShell'
 import { useAuth } from '@/components/auth/AuthProvider'
@@ -9,8 +9,21 @@ import { authApi } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
+function getSafeRedirectPath(raw: string | null): string {
+  if (
+    raw &&
+    raw.startsWith('/') &&
+    !raw.startsWith('//') &&
+    !raw.startsWith('/signin') &&
+    !raw.startsWith('/signup') &&
+    !raw.startsWith('/admin/signin')
+  ) {
+    return raw
+  }
+  return '/board'
+}
+
 function ConfirmEmailContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading, refresh } = useAuth()
   const [status, setStatus] = useState<'verifying' | 'error'>('verifying')
@@ -20,11 +33,11 @@ function ConfirmEmailContent() {
   // If already signed in (e.g., verification succeeded), redirect to workspace
   useEffect(() => {
     if (!loading && user) {
-      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/board'
+      const redirectPath = getSafeRedirectPath(sessionStorage.getItem('redirectAfterSignIn'))
       sessionStorage.removeItem('redirectAfterSignIn')
-      router.replace(redirectPath)
+      window.location.replace(redirectPath)
     }
-  }, [user, loading, router])
+  }, [user, loading])
 
   useEffect(() => {
     if (hasAttemptedRef.current) return
@@ -70,9 +83,9 @@ function ConfirmEmailContent() {
         }
         await refresh()
         toast.success('Email verified! Welcome to AIChartor.')
-        const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/board'
+        const redirectPath = getSafeRedirectPath(sessionStorage.getItem('redirectAfterSignIn'))
         sessionStorage.removeItem('redirectAfterSignIn')
-        router.replace(redirectPath)
+        window.location.replace(redirectPath)
       } catch (err: any) {
         setErrorMessage(err?.message || 'Verification link is invalid or expired.')
         setStatus('error')
@@ -80,7 +93,7 @@ function ConfirmEmailContent() {
     }
 
     verifyFromUrl()
-  }, [loading, user, router, searchParams, refresh])
+  }, [loading, user, searchParams, refresh])
 
   if (status === 'verifying' || user) {
     return <AuthLoadingCard message="Verifying your email address…" />

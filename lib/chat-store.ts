@@ -387,11 +387,23 @@ export const useChatStore = create<ChatStore>()(
 
         // Build currentChartState from the LIVE chart store, not the stale chat store snapshot.
         // This ensures manual editor changes (e.g., user switched chart type from bar to line)
-        // are reflected in what gets sent to the AI.
+        // are reflected in what gets sent to the AI, while stripping oversized data: URI backgrounds/watermarks.
+        const rawLiveConfig = useChartStore.getState().chartConfig as any;
+        const sanitizedLiveConfig = rawLiveConfig
+          ? {
+              ...rawLiveConfig,
+              ...(rawLiveConfig.background?.imageUrl?.startsWith?.('data:')
+                ? { background: { ...rawLiveConfig.background, imageUrl: null } }
+                : {}),
+              ...(rawLiveConfig.watermark?.imageUrl?.startsWith?.('data:')
+                ? { watermark: { ...rawLiveConfig.watermark, imageUrl: null } }
+                : {}),
+            }
+          : rawLiveConfig;
         const liveChartState = currentChartState ? {
           chartType: useChartStore.getState().chartType,
           chartData: useChartStore.getState().chartData,
-          chartConfig: useChartStore.getState().chartConfig,
+          chartConfig: sanitizedLiveConfig,
         } : null;
 
         // Determine if this is template/format mode (2 credits) or standard chart mode (1 credit)
@@ -644,14 +656,43 @@ export const useChatStore = create<ChatStore>()(
               }
             }
 
-            chartStore.setFullChart({ ...assistantMsg.chartSnapshot, replaceMode: true });
+            // Preserve existing cloud identity & title on AI modify; use fresh title (no stale cloud ID) on AI create
+            const isModifyAction = result.action === 'modify';
+            let modifyCloudId: string | undefined;
+            let modifySnapshotId: string | undefined;
+            let modifyName: string | undefined;
+
+            if (isModifyAction) {
+              if (chartStore.chartMode === 'single') {
+                const activeDs = chartStore.chartData.datasets[chartStore.activeDatasetIndex];
+                modifyCloudId = activeDs?.sourceId || get().backendConversationId || undefined;
+                modifySnapshotId = activeDs?.sourceSnapshotId || chartStore.currentSnapshotId || undefined;
+                modifyName = activeDs?.sourceTitle || chartStore.chartTitle || undefined;
+              } else {
+                const activeGroup = chartStore.groups.find(g => g.id === chartStore.activeGroupId);
+                modifyCloudId = activeGroup?.sourceId || get().backendConversationId || undefined;
+                modifySnapshotId = activeGroup?.sourceSnapshotId || chartStore.currentSnapshotId || undefined;
+                modifyName = activeGroup?.name || activeGroup?.sourceTitle || chartStore.chartTitle || undefined;
+              }
+            }
+
+            const aiTitle = isModifyAction
+              ? modifyName
+              : (typeof result.title === 'string' && result.title.trim() ? result.title.trim() : 'Untitled Chart');
+
+            chartStore.setFullChart({
+              ...assistantMsg.chartSnapshot,
+              replaceMode: true,
+              name: aiTitle,
+              ...(isModifyAction ? { conversationId: modifyCloudId, id: modifySnapshotId } : {}),
+            });
             chartStore.setHasJSON(true);
 
             // Snap State: Capture initial state of newly created chart
             try {
               const { useSnapStateStore } = require('@/lib/stores/snap-state-store');
               useSnapStateStore.getState().captureFromSnapshot(assistantMsg.chartSnapshot, 'new', assistantMsg.chartSnapshot?.id, {
-                title: (assistantMsg.chartSnapshot as any)?.chartTitle || 'Generated Chart',
+                title: aiTitle || (assistantMsg.chartSnapshot as any)?.chartTitle || 'Generated Chart',
               });
             } catch (e) {}
 
@@ -842,6 +883,20 @@ export const useChatStore = create<ChatStore>()(
       migrate: (persistedState: any, version: number) => {
         return persistedState;
       },
+      onRehydrateStorage: () => (state, error) => {
+        if (!error && state && typeof window !== 'undefined') {
+          // Reconcile persisted backendConversationId against the active chart entity once chart store has datasets
+          const chartState = useChartStore.getState();
+          if (chartState.chartData?.datasets?.length > 0) {
+            const activeSourceId = chartState.chartMode === 'single'
+              ? (chartState.chartData.datasets[chartState.activeDatasetIndex]?.sourceId || null)
+              : (chartState.groups.find(g => g.id === chartState.activeGroupId)?.sourceId || null);
+            if (state.backendConversationId !== activeSourceId) {
+              useChatStore.setState({ backendConversationId: activeSourceId });
+            }
+          }
+        }
+      },
       partialize: (state) => ({
         messages: state.messages,
         currentConversationId: state.currentConversationId,
@@ -857,4 +912,32 @@ export const useChatStore = create<ChatStore>()(
     }
   )
 );
+
+// Synchronously keep backendConversationId locked to the active chart entity's sourceId.
+// Eliminates async dynamic-import race conditions and tab-mount-dependent syncing.
+if (typeof window !== 'undefined') {
+  useChartStore.subscribe((state, prevState) => {
+    const activeChanged =
+      state.chartMode !== prevState.chartMode ||
+      state.activeDatasetIndex !== prevState.activeDatasetIndex ||
+      state.activeGroupId !== prevState.activeGroupId ||
+      state.chartData.datasets !== prevState.chartData.datasets ||
+      state.groups !== prevState.groups;
+
+    if (!activeChanged) return;
+
+    let nextSourceId: string | null = null;
+    if (state.chartMode === 'single') {
+      const activeDs = state.chartData.datasets[state.activeDatasetIndex];
+      nextSourceId = activeDs?.sourceId || null;
+    } else {
+      const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
+      nextSourceId = activeGroup?.sourceId || null;
+    }
+
+    if (useChatStore.getState().backendConversationId !== nextSourceId) {
+      useChatStore.setState({ backendConversationId: nextSourceId });
+    }
+  });
+}
 

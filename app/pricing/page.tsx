@@ -101,6 +101,9 @@ export default function PricingPage() {
     }
   }
 
+  const litePriceLabel = `${currencySymbol}${isIndia ? 99 : 2}`
+  const proPriceLabel = `${currencySymbol}${isIndia ? 249 : 5}`
+
   const faqs = [
     {
       question: "What is included for free on every account?",
@@ -110,17 +113,17 @@ export default function PricingPage() {
     {
       question: "Do purchased AI Credits ever expire?",
       answer:
-        "No! Purchased AI Credits (+30 on the $2 Lite pack or +100 on the $5 Pro pack) never expire. Better yet, our system always consumes your 10 monthly free AI credits first before touching your purchased AI credits.",
+        `No! Purchased AI Credits (+30 on the ${litePriceLabel} Lite pack or +100 on the ${proPriceLabel} Pro pack) never expire. Better yet, our system always consumes your 10 monthly free AI credits first before touching your purchased AI credits.`,
     },
     {
       question: "How does the +5 Cloud Save bonus on AI Credit packs work?",
       answer:
-        "On your very first purchase of any AI Credits pack ($2 Lite or $5 Pro), we permanently add +5 Cloud Save Credits to your account (bringing your permanent cloud saves from 5 to 10, which never expire). Repeat purchases of AI Credit packs grant the AI credits (+30 or +100) without adding additional permanent cloud credits.",
+        `On your very first purchase of any AI Credits pack (${litePriceLabel} Lite or ${proPriceLabel} Pro), we permanently add +5 Cloud Save Credits to your account (bringing your permanent cloud saves from 5 to 10, which never expire). Repeat purchases of AI Credit packs grant the AI credits (+30 or +100) without adding additional permanent cloud credits.`,
     },
     {
       question: "How do the Cloud Credits packs work and what happens when they expire?",
       answer:
-        "Cloud Credits packs give you extra cloud chart storage when you need it: +10 cloud save credits for 2 months ($2 Lite) or +15 cloud save credits for 6 months ($5 Pro). If a time-limited cloud pack expires, your existing saved charts are never deleted—you simply won't be able to save new cloud charts above your active limit until you top up or remove older charts.",
+        `Cloud Credits packs give you extra cloud chart storage when you need it: +10 cloud save credits for 2 months (${litePriceLabel} Lite) or +15 cloud save credits for 6 months (${proPriceLabel} Pro). If a time-limited cloud pack expires, your existing saved charts are never deleted—you simply won't be able to save new cloud charts above your active limit until you top up or remove older charts.`,
     },
     {
       question: "Can I buy multiple credit packs?",
@@ -149,7 +152,7 @@ export default function PricingPage() {
       iconClass: "text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border-sky-200/60 dark:border-sky-800/50",
       title: "No Recurring Lock-In",
       description:
-        "Simple $2 and $5 one-time credit packs. Top up AI credits or cloud save slots whenever your workflow demands.",
+        `Simple ${litePriceLabel} and ${proPriceLabel} one-time credit packs. Top up AI credits or cloud save slots whenever your workflow demands.`,
     },
   ]
 

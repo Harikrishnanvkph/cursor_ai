@@ -273,7 +273,7 @@ export function prepareChartDataForSave(
         const activeDataset = cloned.datasets?.[targetIdx];
         if (activeDataset) {
             activeDataset.sourceTitle = savedTitle;
-            if (isNewSave) activeDataset.sourceId = conversationId;
+            activeDataset.sourceId = conversationId;
             // Replace all datasets with just the active one
             cloned.datasets = [activeDataset];
             // IMPORTANT: Set top-level labels from the dataset's sliceLabels
@@ -292,7 +292,7 @@ export function prepareChartDataForSave(
         );
         groupDatasets.forEach((ds: any) => {
             ds.sourceTitle = savedTitle;
-            if (isNewSave) ds.sourceId = conversationId;
+            ds.sourceId = conversationId;
             if (!ds.groupId && activeGroupId === 'default') {
                 ds.groupId = 'default';
             }

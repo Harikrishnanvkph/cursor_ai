@@ -160,46 +160,84 @@ export function FormatBuilderToolbar() {
   const uploadLocalImagesInSkeleton = async (skel: any): Promise<any> => {
     // Deep clone to avoid mutating local state
     const cleanSkeleton = JSON.parse(JSON.stringify(skel))
+    const uploadTasks: Promise<void>[] = []
 
-    // 1. Process zones
+    // 1. Collect zone image uploads to run concurrently
     if (cleanSkeleton.zones && Array.isArray(cleanSkeleton.zones)) {
       for (const zone of cleanSkeleton.zones) {
         // Background zone
         if (zone.type === 'background' && zone.style?.type === 'image' && isLocalImage(zone.style?.imageUrl)) {
-          const base64 = await resolveLocalImage(zone.style.imageUrl)
-          const res = await dataService.uploadImage(base64)
-          if (res.data?.publicUrl) {
-            zone.style.imageUrl = res.data.publicUrl
-          } else {
-            throw new Error(res.error || 'Failed to upload background image')
-          }
+          const originalUrl = zone.style.imageUrl
+          uploadTasks.push(
+            (async () => {
+              const base64 = await resolveLocalImage(originalUrl)
+              const res = await dataService.uploadImage(base64)
+              if (res.data?.publicUrl) {
+                zone.style.imageUrl = res.data.publicUrl
+              } else {
+                throw new Error(res.error || 'Failed to upload background image')
+              }
+            })()
+          )
         }
         // Image zone
-        if (zone.type === 'image' && isLocalImage(zone.imageUrl)) {
-          const base64 = await resolveLocalImage(zone.imageUrl)
-          const res = await dataService.uploadImage(base64)
-          if (res.data?.publicUrl) {
-            zone.imageUrl = res.data.publicUrl
-          } else {
-            throw new Error(res.error || 'Failed to upload image zone file')
-          }
+        if (zone.type === 'image' && isLocalImage(zone.imageUrl || zone.style?.imageUrl)) {
+          const originalUrl = zone.imageUrl || zone.style.imageUrl
+          uploadTasks.push(
+            (async () => {
+              const base64 = await resolveLocalImage(originalUrl)
+              const res = await dataService.uploadImage(base64)
+              if (res.data?.publicUrl) {
+                zone.imageUrl = res.data.publicUrl
+                if (zone.style) {
+                  zone.style.imageUrl = res.data.publicUrl
+                }
+              } else {
+                throw new Error(res.error || 'Failed to upload image zone file')
+              }
+            })()
+          )
+        }
+        // Decoration zone with image subtype
+        if (zone.type === 'decoration' && isLocalImage(zone.style?.imageUrl)) {
+          const originalUrl = zone.style.imageUrl
+          uploadTasks.push(
+            (async () => {
+              const base64 = await resolveLocalImage(originalUrl)
+              const res = await dataService.uploadImage(base64)
+              if (res.data?.publicUrl) {
+                zone.style.imageUrl = res.data.publicUrl
+              } else {
+                throw new Error(res.error || 'Failed to upload decoration zone image')
+              }
+            })()
+          )
         }
       }
     }
 
-    // 2. Process decorations
+    // 2. Collect decoration image uploads to run concurrently
     if (cleanSkeleton.decorations && Array.isArray(cleanSkeleton.decorations)) {
       for (const deco of cleanSkeleton.decorations) {
         if (isLocalImage(deco.imageUrl)) {
-          const base64 = await resolveLocalImage(deco.imageUrl)
-          const res = await dataService.uploadImage(base64)
-          if (res.data?.publicUrl) {
-            deco.imageUrl = res.data.publicUrl
-          } else {
-            throw new Error(res.error || 'Failed to upload decoration image')
-          }
+          const originalUrl = deco.imageUrl
+          uploadTasks.push(
+            (async () => {
+              const base64 = await resolveLocalImage(originalUrl)
+              const res = await dataService.uploadImage(base64)
+              if (res.data?.publicUrl) {
+                deco.imageUrl = res.data.publicUrl
+              } else {
+                throw new Error(res.error || 'Failed to upload decoration image')
+              }
+            })()
+          )
         }
       }
+    }
+
+    if (uploadTasks.length > 0) {
+      await Promise.all(uploadTasks)
     }
 
     return cleanSkeleton

@@ -2,15 +2,19 @@ import { NextResponse } from 'next/server';
 import { checkContentSafety } from '@/lib/safety/content-filter';
 import { withUnsplashUtm } from '@/lib/utils/unsplash-utils';
 import { forwardUnsplashDownloadTracking } from '@/lib/utils/unsplash-server-utils';
+import { guardApiRoute, clampInt, fetchWithTimeout } from '@/lib/utils/api-route-guard';
 
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || '';
 
 export async function GET(request: Request) {
+  const denied = guardApiRoute(request, { limit: 60 });
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('query')?.trim() || '';
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const perPage = Math.min(parseInt(searchParams.get('per_page') || '24', 10), 30);
+    const query = (searchParams.get('query')?.trim() || '').slice(0, 120);
+    const page = clampInt(searchParams.get('page'), 1, 1, 100);
+    const perPage = clampInt(searchParams.get('per_page'), 24, 1, 30);
     const orientation = searchParams.get('orientation'); // landscape, portrait, squarish
 
     // SafeSearch / Content moderation check
@@ -67,7 +71,7 @@ export async function GET(request: Request) {
       url = `https://api.unsplash.com/photos?${params.toString()}`;
     }
 
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers,
       next: { revalidate: 300 }, // Cache for 5 minutes to conserve quota
     });
@@ -76,7 +80,7 @@ export async function GET(request: Request) {
       const errorText = await res.text();
       console.error('Unsplash API error:', res.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to fetch images from Unsplash', details: errorText },
+        { error: 'Failed to fetch images from Unsplash' },
         { status: res.status }
       );
     }
@@ -144,11 +148,13 @@ export async function GET(request: Request) {
       unsplashLink: firstPhoto?.links?.html || withUnsplashUtm('https://unsplash.com/'),
       downloadLocation: firstPhoto?.links?.download_location || null,
       blurHash: firstPhoto?.blur_hash || null,
+    }, {
+      headers: { 'Cache-Control': 'private, max-age=300' },
     });
   } catch (error: any) {
     console.error('Error in Unsplash proxy route:', error);
     return NextResponse.json(
-      { error: 'Internal server error while calling Unsplash', message: error?.message },
+      { error: 'Internal server error while calling Unsplash' },
       { status: 500 }
     );
   }
@@ -160,13 +166,16 @@ export async function GET(request: Request) {
  * "When a photo is selected or downloaded, send a request to photo.links.download_location"
  */
 export async function POST(request: Request) {
+  const denied = guardApiRoute(request, { limit: 60 });
+  if (denied) return denied;
+
   try {
     const body = await request.json().catch(() => ({}));
     return await forwardUnsplashDownloadTracking(UNSPLASH_ACCESS_KEY, body);
   } catch (error: any) {
     console.error('Error tracking Unsplash download:', error);
     return NextResponse.json(
-      { error: 'Failed to record download event', message: error?.message },
+      { error: 'Failed to record download event' },
       { status: 500 }
     );
   }

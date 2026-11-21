@@ -87,17 +87,18 @@ export const DatasetService = {
             finalDataset.chartType = incomingChartType;
             newChartType = incomingChartType;
 
-            // Resolve isolated chartConfig for the new single dataset
+            // Resolve isolated chartConfig for the new single dataset (never inherit outgoing chart's dimensions)
             if (finalDataset.chartConfig) {
                 finalChartConfig = JSON.parse(JSON.stringify(finalDataset.chartConfig));
             } else {
                 const freshConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(incomingChartType)));
-                const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'responsive', 'width', 'height'];
-                keysToPreserve.forEach(key => {
-                    if (currentState.chartConfig && key in currentState.chartConfig) {
-                        freshConfig[key] = (currentState.chartConfig as any)[key];
-                    }
-                });
+                freshConfig.responsive = false;
+                freshConfig.manualDimensions = true;
+                freshConfig.dynamicDimension = false;
+                freshConfig.templateDimensions = false;
+                freshConfig.originalDimensions = false;
+                freshConfig.width = '800px';
+                freshConfig.height = '600px';
                 freshConfig.decorationShapes = [];
                 finalChartConfig = freshConfig;
             }
@@ -112,12 +113,6 @@ export const DatasetService = {
                 incomingLabels = ['Slice 1', 'Slice 2', 'Slice 3', 'Slice 4', 'Slice 5'];
             }
             finalDataset.sliceLabels = incomingLabels;
-
-            if (typeof window !== 'undefined') {
-                import('../chat-store').then(({ useChatStore }) => {
-                    useChatStore.getState().setBackendConversationId(finalDataset.sourceId || null);
-                }).catch(() => {});
-            }
         }
 
         const newChartData = {
@@ -143,6 +138,14 @@ export const DatasetService = {
             ...modeDataUpdate,
             hasJSON: true,
         };
+
+        if (currentState.chartMode === 'single') {
+            stateUpdate.chartTitle = finalDataset.sourceTitle || null;
+            stateUpdate.currentSnapshotId = finalDataset.sourceSnapshotId || null;
+            stateUpdate.originalCloudDimensions = finalDataset.sourceId && finalChartConfig?.width && finalChartConfig?.height
+                ? { width: String(finalChartConfig.width), height: String(finalChartConfig.height) }
+                : null;
+        }
 
         if (finalChartConfig) {
             stateUpdate.chartConfig = finalChartConfig;
@@ -207,18 +210,29 @@ export const DatasetService = {
             ...modeDataUpdate,
         };
 
-        if (currentState.chartMode === 'single' && newDatasets.length > 0) {
-            const nextActiveDs = newDatasets[newActiveDatasetIndex];
-            if (nextActiveDs) {
-                if (nextActiveDs.chartType) {
-                    stateUpdate.chartType = nextActiveDs.chartType;
+        if (currentState.chartMode === 'single') {
+            if (newDatasets.length > 0) {
+                const nextActiveDs = newDatasets[newActiveDatasetIndex];
+                if (nextActiveDs) {
+                    if (nextActiveDs.chartType) {
+                        stateUpdate.chartType = nextActiveDs.chartType;
+                    }
+                    if (nextActiveDs.chartConfig) {
+                        stateUpdate.chartConfig = JSON.parse(JSON.stringify(nextActiveDs.chartConfig));
+                    }
+                    if (nextActiveDs.sliceLabels && nextActiveDs.sliceLabels.length > 0) {
+                        newChartData.labels = [...nextActiveDs.sliceLabels];
+                    }
+                    stateUpdate.chartTitle = nextActiveDs.sourceTitle || null;
+                    stateUpdate.currentSnapshotId = nextActiveDs.sourceSnapshotId || null;
+                    stateUpdate.originalCloudDimensions = nextActiveDs.sourceId && nextActiveDs.chartConfig?.width && nextActiveDs.chartConfig?.height
+                        ? { width: String(nextActiveDs.chartConfig.width), height: String(nextActiveDs.chartConfig.height) }
+                        : null;
                 }
-                if (nextActiveDs.chartConfig) {
-                    stateUpdate.chartConfig = JSON.parse(JSON.stringify(nextActiveDs.chartConfig));
-                }
-                if (nextActiveDs.sliceLabels && nextActiveDs.sliceLabels.length > 0) {
-                    newChartData.labels = [...nextActiveDs.sliceLabels];
-                }
+            } else {
+                stateUpdate.chartTitle = null;
+                stateUpdate.currentSnapshotId = null;
+                stateUpdate.originalCloudDimensions = null;
             }
         }
 

@@ -605,7 +605,7 @@ export const ChartPreviewToolbar = memo(({
 
     return (
         <div className={cn(
-            isMobile ? 'py-0.5 px-1' : 'px-2 py-1 mb-1',
+            isMobile ? 'py-0.5 px-1' : 'px-3 h-[45px] min-h-[45px] border-b border-gray-200 bg-white',
             'flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0',
             className
         )}>

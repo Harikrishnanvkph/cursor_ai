@@ -391,7 +391,31 @@ export const universalImagePlugin = {
             })
         }
 
+        let dragRafId: number | null = null
+        const scheduleDragRedraw = () => {
+            if (dragRafId !== null) return
+            dragRafId = requestAnimationFrame(() => {
+                dragRafId = null
+                safeChartUpdate(chart, "none")
+            })
+        }
+        const cancelDragRedraw = () => {
+            if (dragRafId !== null) {
+                cancelAnimationFrame(dragRafId)
+                dragRafId = null
+            }
+        }
+
         const handleMouseMove = (event: MouseEvent) => {
+            if (!dragState.isDragging) {
+                // Fast-path guard BEFORE getBoundingClientRect() to avoid forced layout on every canvas hover
+                if (chart.config?.options?.visualSettings?.showImages === false) return
+                const hasCallouts = chart.data?.datasets?.some((ds: any) =>
+                    ds.pointImages && ds.pointImageConfig && ds.pointImages.some((img: any, i: number) => !!img && ds.pointImageConfig[i]?.position === "callout")
+                )
+                if (!hasCallouts) return
+            }
+
             const rect = canvas.getBoundingClientRect()
             const scaleX = canvas.width / rect.width
             const scaleY = canvas.height / rect.height
@@ -407,18 +431,10 @@ export const universalImagePlugin = {
                     config.calloutX = x - dragState.dragOffsetX
                     config.calloutY = y - dragState.dragOffsetY
 
-                    // Redraw chart
-                    safeChartUpdate(chart, "none")
+                    scheduleDragRedraw()
                 }
                 event.preventDefault()
             } else {
-                // Fast-path guard: if images are disabled or no callout images exist, skip distance calculations entirely
-                if (chart.config?.options?.visualSettings?.showImages === false) return;
-                const hasCallouts = chart.data?.datasets?.some((ds: any) =>
-                    ds.pointImages && ds.pointImageConfig && ds.pointImages.some((img: any, i: number) => !!img && ds.pointImageConfig[i]?.position === "callout")
-                );
-                if (!hasCallouts) return;
-
                 // Check if hovering over a callout
                 let isOverCallout = false
 
@@ -454,6 +470,7 @@ export const universalImagePlugin = {
         }
 
         const handleMouseUp = () => {
+            cancelDragRedraw()
             if (dragState.isDragging) {
                 // Dispatch event to persist the new position to the store
                 const dataset = chart.data.datasets[dragState.dragDatasetIndex]
@@ -481,6 +498,11 @@ export const universalImagePlugin = {
         // Touch event handlers for mobile/tablet support
         const handleTouchStart = (event: TouchEvent) => {
             if (event.touches.length !== 1) return
+            if (chart.config?.options?.visualSettings?.showImages === false) return
+            const hasCallouts = chart.data?.datasets?.some((ds: any) =>
+                ds.pointImages && ds.pointImageConfig && ds.pointImages.some((img: any, i: number) => !!img && ds.pointImageConfig[i]?.position === "callout")
+            )
+            if (!hasCallouts) return
             const touch = event.touches[0]
             const rect = canvas.getBoundingClientRect()
             const scaleX = canvas.width / rect.width
@@ -523,7 +545,7 @@ export const universalImagePlugin = {
         }
 
         const handleTouchMove = (event: TouchEvent) => {
-            if (event.touches.length !== 1) return
+            if (!dragState.isDragging || event.touches.length !== 1) return
             const touch = event.touches[0]
             const rect = canvas.getBoundingClientRect()
             const scaleX = canvas.width / rect.width
@@ -531,23 +553,21 @@ export const universalImagePlugin = {
             const x = (touch.clientX - rect.left) * scaleX
             const y = (touch.clientY - rect.top) * scaleY
 
-            if (dragState.isDragging) {
-                // Update callout position
-                const dataset = chart.data.datasets[dragState.dragDatasetIndex]
-                if (dataset && dataset.pointImageConfig && dataset.pointImageConfig[dragState.dragPointIndex]) {
-                    const config = dataset.pointImageConfig[dragState.dragPointIndex]
+            // Update callout position
+            const dataset = chart.data.datasets[dragState.dragDatasetIndex]
+            if (dataset && dataset.pointImageConfig && dataset.pointImageConfig[dragState.dragPointIndex]) {
+                const config = dataset.pointImageConfig[dragState.dragPointIndex]
 
-                    config.calloutX = x - dragState.dragOffsetX
-                    config.calloutY = y - dragState.dragOffsetY
+                config.calloutX = x - dragState.dragOffsetX
+                config.calloutY = y - dragState.dragOffsetY
 
-                    // Redraw chart
-                    safeChartUpdate(chart, "none")
-                }
-                event.preventDefault()
+                scheduleDragRedraw()
             }
+            event.preventDefault()
         }
 
         const handleTouchEnd = (event: TouchEvent) => {
+            cancelDragRedraw()
             if (dragState.isDragging) {
                 dragState.isDragging = false
                 dragState.dragDatasetIndex = -1
@@ -578,9 +598,14 @@ export const universalImagePlugin = {
             touchmove: handleTouchMove,
             touchend: handleTouchEnd,
         }
+        chart._cancelImageDragRedraw = cancelDragRedraw
     },
     beforeDestroy: (chart: any) => {
         activeCharts.delete(chart);
+        if (typeof chart._cancelImageDragRedraw === 'function') {
+            chart._cancelImageDragRedraw();
+            delete chart._cancelImageDragRedraw;
+        }
         // Clean up event listeners
         if (chart._imagePluginListeners) {
             const canvas = chart.canvas
@@ -1022,7 +1047,7 @@ function renderCalloutImage(
         let borderW = size
         let borderH = size
 
-        if (imageType === "regular") {
+        if (imageType === "regular" && img && img.naturalWidth > 0 && img.naturalHeight > 0) {
             // Calculate the actual rendered dimensions (preserving aspect ratio)
             const imgAspectRatio = img.naturalWidth / img.naturalHeight
             const targetAspectRatio = size / size

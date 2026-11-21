@@ -68,6 +68,11 @@ const nextConfig = {
   // output: 'standalone',
   outputFileTracingRoot: __dirname,
   async rewrites() {
+    // Only proxy /api, /auth, /payments to localhost:5000 during local development.
+    // In production, clients talk directly to NEXT_PUBLIC_SERVER_URL.
+    if (process.env.NODE_ENV === 'production') {
+      return [];
+    }
     return [
       {
         source: '/api/:path*',
@@ -81,7 +86,7 @@ const nextConfig = {
         source: '/payments/:path*',
         destination: 'http://localhost:5000/payments/:path*',
       },
-    ]
+    ];
   },
 }
 

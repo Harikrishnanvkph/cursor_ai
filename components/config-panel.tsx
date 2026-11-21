@@ -1,25 +1,32 @@
 "use client"
 
-import { DatasetPanel } from "./panels/dataset-panel"
-import { DesignPanel } from "./panels/design-settings"
-import { AxesPanel } from "./panels/axes/axes-panel"
-import { LabelsPanel } from "./panels/labels-panel"
-import { CombinedStylingPanel } from "./panels/combined-styling-panel"
-
-import { AdvancedPanel } from "./panels/advanced-panel"
-
+import dynamic from "next/dynamic"
 import { TypesTogglesPanel } from "./panels/types-toggles-panel"
-import { DatasetsSlicesPanel } from "./panels/datasets-slices-panel"
-import { TemplatesPanel, TemplateContentPanel } from "./panels/template-settings"
-import { TemplateChartZonePanel } from "./panels/template-panels/template-chart-zone-panel"
-import { FormatZonesPanel } from "./panels/template-panels/format-zones-panel"
-import { DecorationsPanel } from "./panels/template-panels/decorations-panel"
-import { BackgroundPanel } from "./panels/template-panels/background-panel"
+
+const PanelLoader = () => (
+  <div className="flex items-center justify-center py-10 text-xs text-slate-400">
+    Loading panel...
+  </div>
+)
+
+// Lazy-load secondary configuration panels so /editor only downloads & parses the active tab initially
+const DatasetPanel = dynamic(() => import("./panels/dataset-panel").then(m => m.DatasetPanel), { ssr: false, loading: PanelLoader })
+const AxesPanel = dynamic(() => import("./panels/axes/axes-panel").then(m => m.AxesPanel), { ssr: false, loading: PanelLoader })
+const CombinedStylingPanel = dynamic(() => import("./panels/combined-styling-panel").then(m => m.CombinedStylingPanel), { ssr: false, loading: PanelLoader })
+const AdvancedPanel = dynamic(() => import("./panels/advanced-panel").then(m => m.AdvancedPanel), { ssr: false, loading: PanelLoader })
+const DatasetsSlicesPanel = dynamic(() => import("./panels/datasets-slices-panel").then(m => m.DatasetsSlicesPanel), { ssr: false, loading: PanelLoader })
+const TemplatesPanel = dynamic(() => import("./panels/template-settings").then(m => m.TemplatesPanel), { ssr: false, loading: PanelLoader })
+const TemplateContentPanel = dynamic(() => import("./panels/template-settings").then(m => m.TemplateContentPanel), { ssr: false, loading: PanelLoader })
+const TemplateChartZonePanel = dynamic(() => import("./panels/template-panels/template-chart-zone-panel").then(m => m.TemplateChartZonePanel), { ssr: false, loading: PanelLoader })
+const FormatZonesPanel = dynamic(() => import("./panels/template-panels/format-zones-panel").then(m => m.FormatZonesPanel), { ssr: false, loading: PanelLoader })
+const DecorationsPanel = dynamic(() => import("./panels/template-panels/decorations-panel").then(m => m.DecorationsPanel), { ssr: false, loading: PanelLoader })
+const BackgroundPanel = dynamic(() => import("./panels/template-panels/background-panel").then(m => m.BackgroundPanel), { ssr: false, loading: PanelLoader })
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { PanelRight, Settings, Save, Trash2, Loader2, Share2, Copy, ExternalLink, SquarePen, BarChart2, Layers } from "lucide-react"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { useEffect, useState } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChartStore } from "@/lib/chart-store"
@@ -48,8 +55,21 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
   const [isSaving, setIsSaving] = useState(false);
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const { chartType, chartData, chartConfig, hasJSON, resetChart, setHasJSON, currentSnapshotId } = useChartStore();
-  const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore();
+  const { chartType, chartData, chartConfig, hasJSON, resetChart, setHasJSON, currentSnapshotId } = useChartStore(useShallow(s => ({
+    chartType: s.chartType,
+    chartData: s.chartData,
+    chartConfig: s.chartConfig,
+    hasJSON: s.hasJSON,
+    resetChart: s.resetChart,
+    setHasJSON: s.setHasJSON,
+    currentSnapshotId: s.currentSnapshotId,
+  })));
+  const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore(useShallow(s => ({
+    messages: s.messages,
+    clearMessages: s.clearMessages,
+    startNewConversation: s.startNewConversation,
+    setBackendConversationId: s.setBackendConversationId,
+  })));
 
   const [showClearDialog, setShowClearDialog] = useState(false)
   const [isSharingLink, setIsSharingLink] = useState(false);

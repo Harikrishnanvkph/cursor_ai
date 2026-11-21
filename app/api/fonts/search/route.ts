@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { guardApiRoute, clampInt, fetchWithTimeout } from '@/lib/utils/api-route-guard'
 
 interface CachedFont {
   id: string
@@ -43,7 +44,7 @@ async function getOrFetchGoogleFonts(): Promise<CachedFont[]> {
   }
 
   try {
-    const res = await fetch('https://fonts.google.com/metadata/fonts', {
+    const res = await fetchWithTimeout('https://fonts.google.com/metadata/fonts', {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
       },
@@ -89,15 +90,19 @@ async function getOrFetchGoogleFonts(): Promise<CachedFont[]> {
 }
 
 export async function GET(request: Request) {
+  const denied = guardApiRoute(request, { limit: 120 })
+  if (denied) return denied
+
   try {
     const { searchParams } = new URL(request.url)
-    const q = (searchParams.get('q') || '').trim().toLowerCase()
+    const q = (searchParams.get('q') || '').trim().toLowerCase().slice(0, 80)
     const category = searchParams.get('category') || 'all'
-    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '30', 10), 1), 60)
+    const limit = clampInt(searchParams.get('limit'), 30, 1, 100)
 
     const allFonts = await getOrFetchGoogleFonts()
 
-    let results = allFonts
+    // Shallow-copy before sorting so the shared cachedFonts array is never mutated in place
+    let results = [...allFonts]
 
     if (category && category !== 'all') {
       results = results.filter(f => f.category === category)
@@ -132,6 +137,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       fonts: results.slice(0, limit),
       total: results.length,
+    }, {
+      headers: { 'Cache-Control': 'private, max-age=300' },
     })
   } catch (error) {
     console.error('[Google Fonts Search API] Error:', error)

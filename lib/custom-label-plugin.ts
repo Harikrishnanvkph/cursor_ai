@@ -683,6 +683,36 @@ export const customLabelPlugin: Plugin = {
     let dragKey = '';
     let offsetX = 0;
     let offsetY = 0;
+    let dragRafId: number | null = null;
+
+    function scheduleLabelRedraw() {
+      if (dragRafId !== null) return;
+      dragRafId = requestAnimationFrame(() => {
+        dragRafId = null;
+        safeChartUpdate(chart, 'none');
+      });
+    }
+
+    function cancelLabelRedraw() {
+      if (dragRafId !== null) {
+        cancelAnimationFrame(dragRafId);
+        dragRafId = null;
+      }
+    }
+
+    function hasDraggableLabels(): boolean {
+      const opts: CustomLabelPluginOptions | undefined = (chart.options.plugins as any)?.customLabels;
+      if (!opts || opts.display === false || !Array.isArray(opts.labels)) return false;
+      for (let i = 0; i < opts.labels.length; i++) {
+        const arr = opts.labels[i];
+        if (!Array.isArray(arr)) continue;
+        for (let j = 0; j < arr.length; j++) {
+          const lbl = arr[j];
+          if (lbl && lbl.anchor === 'callout' && lbl.draggable) return true;
+        }
+      }
+      return false;
+    }
 
     function getLabelAt(x: number, y: number) {
       // Detect if 3D pie is active and get tilt for hit-testing
@@ -741,6 +771,7 @@ export const customLabelPlugin: Plugin = {
       return null;
     }
     function onMouseDown(e: MouseEvent) {
+      if (!hasDraggableLabels()) return;
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
@@ -757,6 +788,7 @@ export const customLabelPlugin: Plugin = {
       }
     }
     function onMouseMove(e: MouseEvent) {
+      if (!dragging && !hasDraggableLabels()) return;
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
@@ -764,7 +796,7 @@ export const customLabelPlugin: Plugin = {
       const y = (e.clientY - rect.top) * scaleY;
       if (dragging && dragKey) {
         dragState[dragKey] = { x: x - offsetX, y: y - offsetY };
-        safeChartUpdate(chart, 'none');
+        scheduleLabelRedraw();
       } else {
         // Hover effect
         const hit = getLabelAt(x, y);
@@ -778,6 +810,7 @@ export const customLabelPlugin: Plugin = {
       }
     }
     function onMouseUp() {
+      cancelLabelRedraw();
       dragging = false;
       isHovering = false;
       dragKey = '';
@@ -786,7 +819,7 @@ export const customLabelPlugin: Plugin = {
 
     // Touch event handlers for mobile/tablet support
     function onTouchStart(e: TouchEvent) {
-      if (e.touches.length !== 1) return;
+      if (e.touches.length !== 1 || !hasDraggableLabels()) return;
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
@@ -805,21 +838,20 @@ export const customLabelPlugin: Plugin = {
     }
 
     function onTouchMove(e: TouchEvent) {
-      if (e.touches.length !== 1) return;
+      if (!dragging || !dragKey || e.touches.length !== 1) return;
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       const x = (touch.clientX - rect.left) * scaleX;
       const y = (touch.clientY - rect.top) * scaleY;
-      if (dragging && dragKey) {
-        dragState[dragKey] = { x: x - offsetX, y: y - offsetY };
-        safeChartUpdate(chart, 'none');
-        e.preventDefault();
-      }
+      dragState[dragKey] = { x: x - offsetX, y: y - offsetY };
+      scheduleLabelRedraw();
+      e.preventDefault();
     }
 
     function onTouchEnd(e: TouchEvent) {
+      cancelLabelRedraw();
       if (dragging) {
         dragging = false;
         dragKey = '';
@@ -846,12 +878,14 @@ export const customLabelPlugin: Plugin = {
       onTouchStart,
       onTouchMove,
       onTouchEnd,
+      cancelLabelRedraw,
     };
   },
   beforeDestroy(chart) {
     const canvas = chart.canvas;
     const listeners = (chart as any)._customLabelListeners;
     if (listeners) {
+      listeners.cancelLabelRedraw?.();
       canvas.removeEventListener('mousedown', listeners.onMouseDown);
       canvas.removeEventListener('mousemove', listeners.onMouseMove);
       canvas.removeEventListener('mouseup', listeners.onMouseUp);

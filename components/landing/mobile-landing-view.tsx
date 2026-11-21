@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useMemo, useRef } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useRouter } from "next/navigation"
 import {
   Menu, SquarePen, MoreVertical, Pencil, Check, Loader2, Palette,
@@ -31,7 +32,7 @@ import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useChartRename } from "@/lib/hooks/use-chart-rename"
 import { useChartExport } from "@/lib/hooks/use-chart-export"
-import { useSidebarInputContext } from "@/components/landing/sidebar-context"
+import { useSidebarInputDispatch } from "@/components/landing/sidebar-context"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
 import {
@@ -137,7 +138,7 @@ export function MobileLandingView({
   handleSaveToCloudClick,
 }: MobileLandingViewProps) {
   const router = useRouter()
-  const sidebarContext = useSidebarInputContext()
+  const setChatInput = useSidebarInputDispatch()
   const rename = useChartRename()
   const exports = useChartExport()
 
@@ -148,7 +149,11 @@ export function MobileLandingView({
   const [shareExpanded, setShareExpanded] = useState(false)
   const [isSharingLink, setIsSharingLink] = useState(false)
 
-  const { editorMode, currentTemplate, templateInBackground } = useTemplateStore()
+  const { editorMode, currentTemplate, templateInBackground } = useTemplateStore(useShallow(s => ({
+    editorMode: s.editorMode,
+    currentTemplate: s.currentTemplate,
+    templateInBackground: s.templateInBackground,
+  })))
 
   const hasVisualContent = Boolean(
     (chartData?.datasets?.length > 0 && hasJSON) ||
@@ -649,7 +654,7 @@ export function MobileLandingView({
       <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden w-full bg-transparent">
         {/* Tab 1: Chart / Prompt */}
         {mobileActiveTab === 'chart' && (
-          <div className="flex-1 p-3 flex flex-col relative w-full h-full">
+          <div className={`flex-1 flex flex-col relative w-full h-full ${hasVisualContent ? 'p-0' : 'p-3'}`}>
             {(!storeHydrated || (!contentReady && hasJSON)) && (
               <div className="absolute inset-0 z-20 p-3 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-sm rounded-xl">
                 <ChartAreaSkeleton />
@@ -689,7 +694,7 @@ export function MobileLandingView({
                 size="compact"
                 onSampleClick={(template) => {
                   setInput(template)
-                  sidebarContext.setChatInput(template)
+                  setChatInput(template)
                   setMobileActiveTab('chat')
                 }}
                 isTemplateModalOpen={isTemplateModalOpen}
@@ -774,7 +779,7 @@ export function MobileLandingView({
                               type="button"
                               onClick={() => {
                                 setInput(item.prompt)
-                                sidebarContext.setChatInput(item.prompt)
+                                setChatInput(item.prompt)
                                 if (textareaRef.current) {
                                   textareaRef.current.focus()
                                 }
@@ -1140,8 +1145,8 @@ export function MobileLandingView({
             className="flex items-center gap-2 hover:opacity-85 transition-opacity cursor-pointer text-left"
             title="Go to Home"
           >
-            <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
-            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Chartography.in</span>
+            <img src="/logo.png" alt="AIChartor" className="h-6 w-6 object-contain" />
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">AIChartor</span>
           </button>
           <button
             onClick={() => setSandwichOpen(false)}

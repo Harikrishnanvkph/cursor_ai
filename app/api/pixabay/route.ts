@@ -1,17 +1,21 @@
 import { NextResponse } from 'next/server';
 import { checkContentSafety, isDisallowedContent } from '@/lib/safety/content-filter';
+import { guardApiRoute, clampInt, fetchWithTimeout } from '@/lib/utils/api-route-guard';
 
 const PIXABAY_API_KEY = process.env.PIXABAY_API_KEY;
 
 const ALLOWED_IMAGE_TYPES = new Set(['all', 'photo', 'illustration', 'vector']);
 
 export async function GET(request: Request) {
+  const denied = guardApiRoute(request, { limit: 60 });
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(request.url);
     const query = (searchParams.get('query')?.trim() || '').slice(0, 100);
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const page = clampInt(searchParams.get('page'), 1, 1, 100);
     // Pixabay API strictly requires per_page between 3 and 200
-    const perPage = Math.min(Math.max(3, parseInt(searchParams.get('per_page') || '24', 10) || 24), 50);
+    const perPage = clampInt(searchParams.get('per_page'), 24, 3, 50);
     const orientation = searchParams.get('orientation') || '';
     const requestedType = searchParams.get('image_type') || 'all';
     const imageType = ALLOWED_IMAGE_TYPES.has(requestedType) ? requestedType : 'all';
@@ -57,15 +61,14 @@ export async function GET(request: Request) {
 
     const url = `https://pixabay.com/api/?${params.toString()}`;
 
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       next: { revalidate: 86400 }, // Respect Pixabay caching guidelines (minimum 24h)
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      console.error('Pixabay API error:', res.status, errText);
+      console.error('Pixabay API error:', res.status);
       return NextResponse.json(
-        { error: 'Failed to fetch images from Pixabay', details: errText },
+        { error: 'Failed to fetch images from Pixabay' },
         { status: res.status }
       );
     }
@@ -100,11 +103,13 @@ export async function GET(request: Request) {
       per_page: perPage,
       photos,
       results: photos,
+    }, {
+      headers: { 'Cache-Control': 'private, max-age=300' },
     });
   } catch (error: any) {
     console.error('Error in Pixabay proxy route:', error);
     return NextResponse.json(
-      { error: 'Internal server error while calling Pixabay', message: error?.message },
+      { error: 'Internal server error while calling Pixabay' },
       { status: 500 }
     );
   }

@@ -30,12 +30,17 @@ export async function forwardUnsplashDownloadTracking(
     return NextResponse.json({ error: 'Invalid downloadLocation URL' }, { status: 400 });
   }
 
-  if (parsedTarget.protocol !== 'https:' || parsedTarget.hostname !== 'api.unsplash.com') {
+  if (
+    parsedTarget.protocol !== 'https:' ||
+    parsedTarget.hostname !== 'api.unsplash.com' ||
+    !/^\/photos\/[a-zA-Z0-9_-]+\/download$/.test(parsedTarget.pathname)
+  ) {
     return NextResponse.json({ error: 'Untrusted Unsplash download endpoint' }, { status: 400 });
   }
 
   const res = await fetch(parsedTarget.toString(), {
     cache: 'no-store',
+    signal: AbortSignal.timeout(8000),
     headers: {
       Authorization: `Client-ID ${accessKey}`,
       'Accept-Version': 'v1',
@@ -43,9 +48,8 @@ export async function forwardUnsplashDownloadTracking(
   });
 
   if (!res.ok) {
-    const errText = await res.text();
-    console.warn('Unsplash download track warning:', res.status, errText);
-    return NextResponse.json({ success: false, status: res.status, details: errText }, { status: 200 });
+    console.warn('Unsplash download track warning:', res.status);
+    return NextResponse.json({ success: false, status: res.status }, { status: 200 });
   }
 
   const data = await res.json().catch(() => ({}));

@@ -185,6 +185,40 @@ interface DecorationStore {
 
 const generateId = () => `deco-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
+export function collectDecorationBlobUrls(state: Pick<DecorationStore, 'shapes' | 'chartShapes' | 'templateShapes' | 'formatShapes' | 'pastShapes' | 'futureShapes'>): Set<string> {
+  const urls = new Set<string>();
+  const scan = (arr?: DecorationShape[]) => {
+    if (!Array.isArray(arr)) return;
+    for (const s of arr) {
+      if (s?.type === 'deco-image' && typeof s.imageUrl === 'string' && s.imageUrl.startsWith('blob:')) {
+        urls.add(s.imageUrl);
+      }
+    }
+  };
+  scan(state.shapes);
+  scan(state.chartShapes);
+  scan(state.templateShapes);
+  scan(state.formatShapes);
+  for (const hist of state.pastShapes || []) scan(hist);
+  for (const hist of state.futureShapes || []) scan(hist);
+  return urls;
+}
+
+function revokeUnreferencedBlobUrls(candidateUrls: string[], state: DecorationStore) {
+  if (!candidateUrls.length || typeof window === 'undefined') return;
+  const referenced = collectDecorationBlobUrls(state);
+  for (const url of candidateUrls) {
+    if (url && url.startsWith('blob:') && !referenced.has(url)) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Failed to revoke unreferenced blob URL:', e);
+      }
+      decorationFileRegistry.delete(url);
+    }
+  }
+}
+
 const syncShapes = (state: any, newShapes: DecorationShape[]) => {
   if (state.activeMode === 'template') return { shapes: newShapes, templateShapes: newShapes };
   if (state.activeMode === 'custom-format') return { shapes: newShapes, formatShapes: newShapes };
@@ -301,16 +335,30 @@ export const useDecorationStore = create<DecorationStore>()(
       isUndoing: false,
 
       commitHistory: () => {
+        let evictedUrls: string[] = [];
         set((state) => {
           if (state.isUndoing) return {}
           const clones = JSON.parse(JSON.stringify(state.shapes))
           const newPast = [...state.pastShapes, clones]
-          if (newPast.length > 30) newPast.shift()
+          if (newPast.length > 30) {
+            const shifted = newPast.shift() || [];
+            evictedUrls.push(...shifted.filter((s: DecorationShape) => s.type === 'deco-image' && s.imageUrl?.startsWith('blob:')).map((s: DecorationShape) => s.imageUrl!));
+          }
+          for (const redoSnapshot of state.futureShapes) {
+            for (const s of redoSnapshot) {
+              if (s.type === 'deco-image' && s.imageUrl?.startsWith('blob:')) {
+                evictedUrls.push(s.imageUrl);
+              }
+            }
+          }
           return {
             pastShapes: newPast,
             futureShapes: []
           }
         })
+        if (evictedUrls.length > 0) {
+          revokeUnreferencedBlobUrls(evictedUrls, get());
+        }
       },
 
       undoShapeAction: () => {
@@ -353,7 +401,21 @@ export const useDecorationStore = create<DecorationStore>()(
         setTimeout(() => set({ isUndoing: false }), 10)
       },
 
-      clearShapeHistory: () => set({ pastShapes: [], futureShapes: [], isUndoing: false }),
+      clearShapeHistory: () => {
+        const prevState = get();
+        const candidateUrls: string[] = [];
+        for (const snap of [...prevState.pastShapes, ...prevState.futureShapes]) {
+          for (const s of snap) {
+            if (s.type === 'deco-image' && s.imageUrl?.startsWith('blob:')) {
+              candidateUrls.push(s.imageUrl);
+            }
+          }
+        }
+        set({ pastShapes: [], futureShapes: [], isUndoing: false });
+        if (candidateUrls.length > 0) {
+          revokeUnreferencedBlobUrls(candidateUrls, get());
+        }
+      },
       canUndo: () => get().pastShapes.length > 0,
       canRedo: () => get().futureShapes.length > 0,
 
@@ -383,21 +445,22 @@ export const useDecorationStore = create<DecorationStore>()(
         if (!skipHistory) get().commitHistory()
 
         const shape = get().shapes.find(s => s.id === id)
-        if (shape?.type === 'deco-image' && updates.imageUrl !== undefined && updates.imageUrl !== shape.imageUrl) {
-          if (shape.imageUrl?.startsWith('blob:')) {
-            try {
-              URL.revokeObjectURL(shape.imageUrl)
-            } catch (e) {
-              console.error('Failed to revoke blob URL on update:', e)
-            }
-            decorationFileRegistry.delete(shape.imageUrl)
-          }
-        }
+        const replacedBlobUrl =
+          shape?.type === 'deco-image' &&
+          updates.imageUrl !== undefined &&
+          updates.imageUrl !== shape.imageUrl &&
+          shape.imageUrl?.startsWith('blob:')
+            ? shape.imageUrl
+            : null;
 
         set((state) => {
           const newShapes = state.shapes.map(s => s.id === id ? { ...s, ...updates } : s);
           return syncShapes(state, newShapes);
         })
+        if (replacedBlobUrl) {
+          // Only revoke if not referenced by any other shape or undo/redo history snapshot
+          revokeUnreferencedBlobUrls([replacedBlobUrl], get())
+        }
         if (!skipHistory) {
           syncShapesToActiveStore(get().shapes)
         }
@@ -419,14 +482,9 @@ export const useDecorationStore = create<DecorationStore>()(
         get().commitHistory()
 
         const shape = get().shapes.find(s => s.id === id)
-        if (shape?.type === 'deco-image' && shape.imageUrl?.startsWith('blob:')) {
-          try {
-            URL.revokeObjectURL(shape.imageUrl)
-          } catch (e) {
-            console.error('Failed to revoke blob URL on remove:', e)
-          }
-          decorationFileRegistry.delete(shape.imageUrl)
-        }
+        const candidateUrl = shape?.type === 'deco-image' && shape.imageUrl?.startsWith('blob:')
+          ? shape.imageUrl
+          : null
 
         set((state) => {
           const newShapes = state.shapes.filter(s => s.id !== id);
@@ -436,23 +494,18 @@ export const useDecorationStore = create<DecorationStore>()(
             selectedShapeIds: state.selectedShapeIds.filter(sid => sid !== id)
           }
         })
+        if (candidateUrl) {
+          revokeUnreferencedBlobUrls([candidateUrl], get())
+        }
         syncShapesToActiveStore(get().shapes)
       },
 
       clearShapes: () => {
         get().commitHistory()
 
-        // Revoke all blob URLs in shapes before clearing
-        get().shapes.forEach(shape => {
-          if (shape.type === 'deco-image' && shape.imageUrl?.startsWith('blob:')) {
-            try {
-              URL.revokeObjectURL(shape.imageUrl)
-            } catch (e) {
-              console.error('Failed to revoke blob URL on clear:', e)
-            }
-            decorationFileRegistry.delete(shape.imageUrl)
-          }
-        })
+        const candidateUrls = get().shapes
+          .filter(s => s.type === 'deco-image' && s.imageUrl?.startsWith('blob:'))
+          .map(s => s.imageUrl!)
 
         set((state) => ({ 
           ...syncShapes(state, []), 
@@ -467,6 +520,9 @@ export const useDecorationStore = create<DecorationStore>()(
             strokeDashPattern: ''
           }
         }))
+        if (candidateUrls.length > 0) {
+          revokeUnreferencedBlobUrls(candidateUrls, get())
+        }
         syncShapesToActiveStore([])
       },
 

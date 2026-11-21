@@ -59,7 +59,8 @@ export async function compressImage(
   maxWidth: number = 600,
   maxHeight: number = 600,
   quality: number = 0.7,
-  progressive: boolean = true
+  progressive: boolean = true,
+  preserveTransparency: boolean = false
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     // Check if file is an image
@@ -124,9 +125,9 @@ export async function compressImage(
         // Draw image on canvas
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to blob with compression
-        // Always convert PNG to JPEG for better compression
-        const outputType = 'image/jpeg';
+        // Preserve alpha transparency via WebP when requested for PNG/WebP/GIF uploads; otherwise JPEG
+        const mayHaveAlpha = file.type === 'image/png' || file.type === 'image/webp' || file.type === 'image/gif';
+        const outputType = preserveTransparency && mayHaveAlpha ? 'image/webp' : 'image/jpeg';
         canvas.toBlob(
           (blob) => {
             if (!blob) {

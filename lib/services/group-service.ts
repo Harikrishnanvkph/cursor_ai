@@ -39,14 +39,26 @@ export const GroupService = {
             chartData?: ExtendedChartData;
             groupedModeData?: ExtendedChartData;
         }
-    ): { groups: ChartGroup[]; activeGroupId: string; chartType: SupportedChartType } | null => {
+    ): {
+        groups: ChartGroup[];
+        activeGroupId: string;
+        chartType: SupportedChartType;
+        chartConfig?: any;
+        chartTitle?: string | null;
+        currentSnapshotId?: string | null;
+    } | null => {
         if (id === 'default') return null; // Cannot delete default group
 
         const newGroups = currentState.groups.filter(g => g.id !== id);
         let newActiveId = currentState.activeGroupId;
         let newChartType = currentState.chartType;
+        const result: any = {
+            groups: newGroups,
+            activeGroupId: newActiveId,
+            chartType: newChartType
+        };
 
-        // If active group is deleted, switch to default or first available
+        // If active group is deleted, switch to default or first available and sync its state
         if (currentState.activeGroupId === id) {
             newActiveId = newGroups.length > 0 ? newGroups[0].id : 'default';
             const activeGroup = newGroups.find(g => g.id === newActiveId);
@@ -61,13 +73,20 @@ export const GroupService = {
                     }
                 }
             }
+
+            result.activeGroupId = newActiveId;
+            result.chartType = newChartType;
+            result.chartTitle = activeGroup?.name || activeGroup?.sourceTitle || null;
+            result.currentSnapshotId = activeGroup?.sourceSnapshotId || null;
+            result.originalCloudDimensions = activeGroup?.sourceId && activeGroup?.chartConfig?.width && activeGroup?.chartConfig?.height
+                ? { width: String(activeGroup.chartConfig.width), height: String(activeGroup.chartConfig.height) }
+                : null;
+            if (activeGroup?.chartConfig) {
+                result.chartConfig = JSON.parse(JSON.stringify(activeGroup.chartConfig));
+            }
         }
 
-        return {
-            groups: newGroups,
-            activeGroupId: newActiveId,
-            chartType: newChartType
-        };
+        return result;
     },
 
     setActiveGroup: (
@@ -126,25 +145,22 @@ export const GroupService = {
             ? [...groupDatasets[0].sliceLabels]
             : (currentState.chartData?.labels || []);
 
-        // 5. Sync backendConversationId with incoming group's sourceId
-        if (typeof window !== 'undefined') {
-            import('../chat-store').then(({ useChatStore }) => {
-                useChatStore.getState().setBackendConversationId(incomingGroup?.sourceId || null);
-            }).catch(() => {});
-        }
-
         const outgoingGroup = currentState.groups.find(g => g.id === outgoingGroupId);
         const resolvedSnapshotId = incomingGroup?.sourceSnapshotId
             || (incomingGroup?.sourceId && incomingGroup.sourceId === outgoingGroup?.sourceId ? currentState.currentSnapshotId : null)
             || null;
+        const resolvedCloudDims = incomingGroup?.sourceId && newConfig?.width && newConfig?.height
+            ? { width: String(newConfig.width), height: String(newConfig.height) }
+            : null;
 
         const result: any = {
             activeGroupId: id,
             chartType: newChartType,
             chartConfig: newConfig,
             groups: updatedGroups,
-            chartTitle: incomingGroup?.name || incomingGroup?.sourceTitle || currentState.chartTitle,
+            chartTitle: incomingGroup?.name || incomingGroup?.sourceTitle || null,
             currentSnapshotId: resolvedSnapshotId,
+            originalCloudDimensions: resolvedCloudDims,
         };
 
         if (currentState.chartData) {

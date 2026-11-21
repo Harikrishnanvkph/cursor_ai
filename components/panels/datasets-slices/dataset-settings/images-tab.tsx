@@ -159,13 +159,24 @@ export function ImagesTab({
 
     const handleGlobalImageConfigChange = (keyOrUpdates: string | Record<string, any>, value?: any) => {
         const targetIndices = getTargetDatasetIndices();
+        const defaultCfg = getDefaultImageConfigFromStore(chartType as any);
         targetIndices.forEach(dsIdx => {
             const dataset = chartData.datasets[dsIdx];
-            if (dataset && dataset.data) {
-                dataset.data.forEach((_: any, pointIndex: number) => {
-                    handleImageConfigChange(dsIdx, pointIndex, keyOrUpdates, value);
-                });
-            }
+            if (!dataset || !dataset.data) return;
+
+            const newPointImageConfig = dataset.data.map((_: any, pointIndex: number) => {
+                const currentConfig = dataset.pointImageConfig?.[pointIndex] || defaultCfg;
+                if (typeof keyOrUpdates === 'string') {
+                    const nextCfg: any = { ...currentConfig, [keyOrUpdates]: value };
+                    if (keyOrUpdates === 'arrowLine' && value === false) {
+                        nextCfg.arrowHead = false;
+                    }
+                    return nextCfg;
+                }
+                return { ...currentConfig, ...keyOrUpdates };
+            });
+
+            updateDataset(dsIdx, { pointImageConfig: newPointImageConfig });
         });
     };
 
@@ -258,11 +269,13 @@ export function ImagesTab({
                                 className="h-8 px-2.5 text-xs border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 rounded-lg cursor-pointer shrink-0"
                                 onClick={() => {
                                     const targetIndices = getTargetDatasetIndices();
+                                    const defaultCfg = getDefaultImageConfigFromStore(chartType as any);
                                     targetIndices.forEach(dsIdx => {
                                         const dataset = chartData.datasets[dsIdx];
                                         if (dataset && dataset.data) {
-                                            dataset.data.forEach((_: any, pointIndex: number) => {
-                                                updatePointImage(dsIdx, pointIndex, '', getDefaultImageConfigFromStore(chartType as any));
+                                            updateDataset(dsIdx, {
+                                                pointImages: dataset.data.map(() => ''),
+                                                pointImageConfig: dataset.data.map(() => ({ ...defaultCfg })),
                                             });
                                         }
                                     });

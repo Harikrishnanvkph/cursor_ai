@@ -665,7 +665,11 @@ export function GeneralTab({
                         if (setIsEditModeModal) setIsEditModeModal(false)
                     }, 300)
                 }}
-                initialDimensions={memoizedDimensions}
+                initialDimensions={
+                    (isEditModeModal || (!isCreatingNewGroup && chartMode === 'grouped'))
+                        ? memoizedDimensions
+                        : undefined
+                }
                 onConfirm={async (dims, datasets, newChartType, newUniformityMode, groupName) => {
                     const store = useChartStore.getState();
                     const currentData = store.chartData;
@@ -701,6 +705,24 @@ export function GeneralTab({
                                 const firstDataset = datasets[0];
                                 const targetIdx = (activeDatasetIndex >= 0 && activeDatasetIndex < currentData.datasets.length) ? activeDatasetIndex : 0;
                                 const existingTarget = currentData.datasets[targetIdx] || {};
+                                const previousTitle = getEffectiveChartTitle();
+                                const trimmedGroupName = groupName?.trim();
+
+                                // Sync canvas title if it still matches the previous chart name or default "Chart 1"
+                                let updatedTargetConfig = existingTarget.chartConfig || store.getActiveChartConfig();
+                                if (trimmedGroupName && updatedTargetConfig?.plugins?.title) {
+                                    const currentCanvasText = String(updatedTargetConfig.plugins.title.text || '').trim();
+                                    if (!currentCanvasText || currentCanvasText === previousTitle || currentCanvasText === 'Chart 1') {
+                                        const clonedConfig = JSON.parse(JSON.stringify(updatedTargetConfig));
+                                        clonedConfig.plugins = clonedConfig.plugins || {};
+                                        clonedConfig.plugins.title = {
+                                            ...clonedConfig.plugins.title,
+                                            text: trimmedGroupName,
+                                        };
+                                        updatedTargetConfig = clonedConfig;
+                                    }
+                                }
+
                                 const updatedDatasets = [...currentData.datasets];
                                 updatedDatasets[targetIdx] = {
                                     ...existingTarget,
@@ -708,6 +730,7 @@ export function GeneralTab({
                                     label: firstDataset.name || firstDataset.label || existingTarget.label,
                                     chartType: newChartType || firstDataset.type || firstDataset.chartType || existingTarget.chartType,
                                     sliceLabels: firstDataset.sliceLabels || existingTarget.sliceLabels || currentData.labels,
+                                    chartConfig: updatedTargetConfig,
                                 };
                                 const newChartData = {
                                     ...currentData,
@@ -717,15 +740,16 @@ export function GeneralTab({
                                 useChartStore.setState({
                                     chartData: newChartData,
                                     singleModeData: newChartData,
+                                    chartConfig: updatedTargetConfig,
                                     ...(newChartType && targetIdx === activeDatasetIndex ? { chartType: newChartType as any } : {})
                                 });
                                 useChatStore.getState().updateChartState({
                                     chartType: newChartType || store.chartType,
                                     chartData: newChartData,
-                                    chartConfig: useChartStore.getState().getActiveChartConfig()
+                                    chartConfig: updatedTargetConfig
                                 });
-                                if (groupName) {
-                                    await saveChartTitle(groupName, { silent: true });
+                                if (trimmedGroupName) {
+                                    await saveChartTitle(trimmedGroupName, { silent: true });
                                 }
                             }
                         }
@@ -739,10 +763,14 @@ export function GeneralTab({
                     if (isCreatingNewGroup) {
                         const targetType = (newChartType || 'bar') as SupportedChartType;
                         const freshGroupConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(targetType)));
+                        freshGroupConfig.templateDimensions = false;
+                        freshGroupConfig.originalDimensions = false;
                         if (dims.isResponsive) {
                             freshGroupConfig.responsive = true;
                             freshGroupConfig.manualDimensions = false;
                             freshGroupConfig.dynamicDimension = false;
+                            freshGroupConfig.width = `${dims.width}px`;
+                            freshGroupConfig.height = `${dims.height}px`;
                         } else {
                             freshGroupConfig.responsive = false;
                             freshGroupConfig.manualDimensions = true;
@@ -774,9 +802,15 @@ export function GeneralTab({
                             chartConfig: freshGroupConfig
                         });
 
+                        // Switch to grouped mode FIRST so we never leak singleModeData datasets into groupedModeData
+                        const chartStoreBeforeAppend = useChartStore.getState();
+                        if (chartStoreBeforeAppend.chartMode !== 'grouped') {
+                            chartStoreBeforeAppend.setChartMode('grouped');
+                        }
+
                         if (datasets && datasets.length > 0) {
                             const store = useChartStore.getState();
-                            const currentData = store.chartData;
+                            const currentGroupedData = store.groupedModeData || { labels: [], datasets: [] };
                             const newGroupDatasets = datasets.map(dataset => ({
                                 ...dataset,
                                 groupId: newGroupId,
@@ -784,8 +818,8 @@ export function GeneralTab({
                                 chartConfig: freshGroupConfig
                             }));
                             const newChartData = {
-                                ...currentData,
-                                datasets: [...currentData.datasets, ...newGroupDatasets]
+                                ...currentGroupedData,
+                                datasets: [...(currentGroupedData.datasets || []), ...newGroupDatasets]
                             };
                             useChartStore.setState({
                                 chartData: newChartData,
@@ -794,13 +828,8 @@ export function GeneralTab({
                             });
                         }
 
+                        useChartStore.getState().setActiveGroupId(newGroupId);
                         updateChartConfig(freshGroupConfig);
-
-                        const chartStore = useChartStore.getState();
-                        if (chartStore.chartMode !== 'grouped') {
-                            chartStore.setChartMode('grouped');
-                        }
-                        chartStore.setActiveGroupId(newGroupId);
                         setGroupedTab('datasets');
 
                         useChatStore.getState().setBackendConversationId(null);
@@ -832,6 +861,9 @@ export function GeneralTab({
                         }
                         updateGroup(activeGroupId, updates);
                         updateChartConfig(existingGroupConfig);
+                        if (groupName && currentGroup && currentGroup.name !== groupName) {
+                            await saveChartTitle(groupName, { silent: true });
+                        }
 
                         if (datasets && datasets.length > 0) {
                             const store = useChartStore.getState();
@@ -857,10 +889,14 @@ export function GeneralTab({
                         // chartMode === 'single': adding new dataset/chart, completely isolated with clean default settings
                         const targetType = (newChartType || 'bar') as SupportedChartType;
                         const freshSingleConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(targetType)));
+                        freshSingleConfig.templateDimensions = false;
+                        freshSingleConfig.originalDimensions = false;
                         if (dims.isResponsive) {
                             freshSingleConfig.responsive = true;
                             freshSingleConfig.manualDimensions = false;
                             freshSingleConfig.dynamicDimension = false;
+                            freshSingleConfig.width = `${dims.width}px`;
+                            freshSingleConfig.height = `${dims.height}px`;
                         } else {
                             freshSingleConfig.responsive = false;
                             freshSingleConfig.manualDimensions = true;
@@ -879,12 +915,14 @@ export function GeneralTab({
                         freshSingleConfig.decorationShapes = [];
 
                         if (datasets && datasets.length > 0) {
+                            const trimmedName = groupName?.trim() || undefined;
                             datasets.forEach(dataset => {
                                 addDataset({
                                     ...dataset,
                                     chartType: targetType,
                                     chartConfig: freshSingleConfig,
-                                    mode: 'single'
+                                    mode: 'single',
+                                    ...(trimmedName ? { sourceTitle: trimmedName } : {})
                                 });
                             });
                         }
@@ -907,7 +945,15 @@ export function GeneralTab({
                 hideBackButton={isEditModeModal || (!isCreatingNewGroup && chartMode === 'grouped')}
                 initialExistingDatasets={memoizedExistingDatasets}
                 initialActiveDatasetIndex={chartMode === 'grouped' ? Math.max(0, filteredDatasets.findIndex(ds => chartData.datasets.indexOf(ds) === activeDatasetIndex)) : 0}
-                initialGroupName={isCreatingNewGroup ? `Group ${groups.length + 1}` : (chartMode === 'grouped' ? groups.find(g => g.id === activeGroupId)?.name : (getEffectiveChartTitle() || chartConfig?.plugins?.title?.text || `Chart 1`))}
+                initialGroupName={
+                    isCreatingNewGroup
+                        ? `Group ${groups.length + 1}`
+                        : chartMode === 'grouped'
+                            ? groups.find(g => g.id === activeGroupId)?.name
+                            : isEditModeModal
+                                ? (getEffectiveChartTitle() || chartConfig?.plugins?.title?.text || `Chart ${activeDatasetIndex + 1}`)
+                                : `Chart ${filteredDatasets.length + 1}`
+                }
                 initialUniformityMode={!isCreatingNewGroup && chartMode === 'grouped' ? (chartConfig?.visualSettings?.uniformityMode || 'uniform') : undefined}
                 confirmButtonText={isEditModeModal ? "Update Chart" : (isCreatingNewGroup ? "Create Group" : (chartMode === 'grouped' ? "Update Chart" : undefined))}
             />

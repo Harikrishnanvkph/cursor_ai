@@ -1,8 +1,8 @@
 "use client"
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
@@ -17,7 +17,6 @@ import { toast } from 'sonner'
 
 export function SignInForm() {
   const { user, loading, sendOtp, verifyOtp, signInWithGoogle, signInWithGitHub } = useAuth()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
@@ -25,6 +24,8 @@ export function SignInForm() {
   const [step, setStep] = useState<'email' | 'otp'>('email')
   const [resendCooldown, setResendCooldown] = useState(0)
   const [isPending, setIsPending] = useState(false)
+  const [isSendingCode, setIsSendingCode] = useState(false)
+  const sendSeqRef = useRef(0)
 
   useEffect(() => {
     const redirect = searchParams.get('redirect') || searchParams.get('returnUrl')
@@ -52,12 +53,30 @@ export function SignInForm() {
 
   useEffect(() => {
     if (!loading && user) {
-      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/board'
+      const rawRedirect =
+        searchParams.get('redirect') ||
+        searchParams.get('returnUrl') ||
+        sessionStorage.getItem('redirectAfterSignIn')
+      const redirectPath =
+        rawRedirect &&
+        rawRedirect.startsWith('/') &&
+        !rawRedirect.startsWith('//') &&
+        !rawRedirect.startsWith('/signin') &&
+        !rawRedirect.startsWith('/signup') &&
+        !rawRedirect.startsWith('/admin/signin')
+          ? rawRedirect
+          : '/board'
       sessionStorage.removeItem('redirectAfterSignIn')
       sessionStorage.removeItem('logged_out_from_oauth')
-      router.replace(redirectPath)
+      // Ensure middleware auth hint cookie is present before navigating
+      if (!document.cookie.includes('is_authenticated=true')) {
+        const secureAttr = window.location.protocol === 'https:' ? '; Secure' : ''
+        document.cookie = `is_authenticated=true; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax${secureAttr}`
+      }
+      // Full navigation bypasses any stale Next.js Client Router Cache redirect back to /signin
+      window.location.replace(redirectPath)
     }
-  }, [user, loading, router])
+  }, [user, loading, searchParams])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -93,17 +112,26 @@ export function SignInForm() {
     e.preventDefault()
     const trimmed = email.trim()
     if (!trimmed) return
-    setIsPending(true)
+
+    const seq = ++sendSeqRef.current
+    setOtp('')
+    setOtpError(null)
+    setResendCooldown(0)
+    setStep('otp')
+    setIsSendingCode(true)
+
     try {
       const ok = await sendOtp(trimmed, 'signin')
+      if (sendSeqRef.current !== seq) return
       if (ok) {
-        setOtp('')
-        setOtpError(null)
-        setStep('otp')
-        setResendCooldown(30)
+        setResendCooldown(60)
+      } else {
+        setStep('email')
       }
     } finally {
-      setIsPending(false)
+      if (sendSeqRef.current === seq) {
+        setIsSendingCode(false)
+      }
     }
   }
 
@@ -123,17 +151,21 @@ export function SignInForm() {
   }
 
   async function handleResend() {
-    if (resendCooldown > 0 || isPending) return
+    if (resendCooldown > 0 || isPending || isSendingCode) return
+    const seq = ++sendSeqRef.current
     setOtpError(null)
-    setIsPending(true)
+    setIsSendingCode(true)
     try {
       const ok = await sendOtp(email.trim(), 'signin')
+      if (sendSeqRef.current !== seq) return
       if (ok) {
-        setResendCooldown(30)
+        setResendCooldown(60)
         toast.success('Verification code resent to your email.')
       }
     } finally {
-      setIsPending(false)
+      if (sendSeqRef.current === seq) {
+        setIsSendingCode(false)
+      }
     }
   }
 
@@ -163,7 +195,9 @@ export function SignInForm() {
       description={
         step === 'email'
           ? 'Sign in to continue to your AIChartor workspace'
-          : `We sent a 6-digit verification code to ${email.trim()}`
+          : isSendingCode
+            ? `Sending a 6-digit verification code to ${email.trim()}…`
+            : `We sent a 6-digit verification code to ${email.trim()}`
       }
     >
       {step === 'email' ? (
@@ -178,7 +212,7 @@ export function SignInForm() {
               className={authInputClassName}
             />
 
-            <Button type="submit" className={authPrimaryButtonClassName} disabled={isPending || !email.trim()}>
+            <Button type="submit" className={authPrimaryButtonClassName} disabled={isPending}>
               {isPending ? 'Sending code…' : 'Continue with email'}
             </Button>
           </form>
@@ -191,6 +225,7 @@ export function SignInForm() {
             <div className="flex justify-center py-1">
               <InputOTP
                 maxLength={6}
+                autoFocus
                 value={otp}
                 onChange={(val) => {
                   setOtp(val.replace(/\D/g, ''))
@@ -203,10 +238,10 @@ export function SignInForm() {
                     <InputOTPSlot
                       key={index}
                       index={index}
-                      className={`h-12 w-11 rounded-xl border bg-slate-50/80 dark:bg-slate-950/60 text-base font-semibold text-slate-900 dark:text-slate-100 first:rounded-xl last:rounded-xl ${
+                      className={`h-12 w-11 rounded-xl border bg-white dark:bg-slate-950 text-base font-semibold text-neutral-900 dark:text-slate-100 first:rounded-xl last:rounded-xl ${
                         otpError
                           ? 'border-red-400 dark:border-red-500'
-                          : 'border-slate-200 dark:border-slate-700'
+                          : 'border-neutral-300 dark:border-slate-700'
                       }`}
                     />
                   ))}
@@ -228,6 +263,8 @@ export function SignInForm() {
             <button
               type="button"
               onClick={() => {
+                sendSeqRef.current++
+                setIsSendingCode(false)
                 setStep('email')
                 setOtp('')
               }}
@@ -240,10 +277,19 @@ export function SignInForm() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={resendCooldown > 0 || isPending}
-              className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline disabled:opacity-50 disabled:no-underline"
+              disabled={resendCooldown > 0 || isPending || isSendingCode}
+              className="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-medium hover:underline disabled:opacity-50 disabled:no-underline"
             >
-              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+              {isSendingCode ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Sending code…
+                </>
+              ) : resendCooldown > 0 ? (
+                `Resend in ${resendCooldown}s`
+              ) : (
+                'Resend code'
+              )}
             </button>
           </div>
         </form>

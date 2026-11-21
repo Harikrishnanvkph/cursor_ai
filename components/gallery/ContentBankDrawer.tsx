@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import {
   Sparkles,
@@ -161,7 +162,20 @@ export function ContentBankDrawer() {
     userFormats,
     selectedFormatId,
     setContextualImageUrl
-  } = useFormatGalleryStore()
+  } = useFormatGalleryStore(useShallow(s => ({
+    isContentBankOpen: s.isContentBankOpen,
+    closeContentBank: s.closeContentBank,
+    contentPackage: s.contentPackage,
+    selectedZoneId: s.selectedZoneId,
+    setSelectedZoneId: s.setSelectedZoneId,
+    setZoneContentOverride: s.setZoneContentOverride,
+    updateZoneContent: s.updateZoneContent,
+    selectedFormatSnapshot: s.selectedFormatSnapshot,
+    formats: s.formats,
+    userFormats: s.userFormats,
+    selectedFormatId: s.selectedFormatId,
+    setContextualImageUrl: s.setContextualImageUrl,
+  })))
 
   const [activeTab, setActiveTab] = useState<TabType>("all")
   const [copiedId, setCopiedId] = useState<string | null>(null)

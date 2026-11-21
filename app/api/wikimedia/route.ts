@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { checkContentSafety, isDisallowedContent } from '@/lib/safety/content-filter';
+import { guardApiRoute, clampInt, fetchWithTimeout } from '@/lib/utils/api-route-guard';
 
 export async function GET(request: Request) {
+  const denied = guardApiRoute(request, { limit: 60 });
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('query')?.trim() || '';
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
-    const perPage = Math.min(Math.max(1, parseInt(searchParams.get('per_page') || '24', 10) || 24), 40);
+    const query = (searchParams.get('query')?.trim() || '').slice(0, 120);
+    const page = clampInt(searchParams.get('page'), 1, 1, 100);
+    const perPage = clampInt(searchParams.get('per_page'), 24, 1, 40);
     // Use matching window size for gsroffset & gsrlimit so consecutive pages never overlap
     const gsrLimit = Math.min(perPage, 50);
     const offset = (page - 1) * gsrLimit;
@@ -46,7 +50,7 @@ export async function GET(request: Request) {
 
     const url = `https://commons.wikimedia.org/w/api.php?${params.toString()}`;
 
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'AIChartor/1.0 (contact@aichartor.com)',
       },
@@ -57,7 +61,7 @@ export async function GET(request: Request) {
       const errText = await res.text();
       console.error('Wikimedia API error:', res.status, errText);
       return NextResponse.json(
-        { error: 'Failed to fetch images from Wikimedia Commons', details: errText },
+        { error: 'Failed to fetch images from Wikimedia Commons' },
         { status: res.status }
       );
     }
@@ -136,11 +140,13 @@ export async function GET(request: Request) {
       per_page: perPage,
       photos,
       results: photos,
+    }, {
+      headers: { 'Cache-Control': 'private, max-age=300' },
     });
   } catch (error: any) {
     console.error('Error in Wikimedia proxy route:', error);
     return NextResponse.json(
-      { error: 'Internal server error while calling Wikimedia Commons', message: error?.message },
+      { error: 'Internal server error while calling Wikimedia Commons' },
       { status: 500 }
     );
   }

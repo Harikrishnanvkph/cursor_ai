@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useState, useCallback } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { Pencil, Check, Loader2, Hand, Search, ZoomIn, ZoomOut, Undo2, Redo2, ScanSearch, Ellipsis, Camera, RotateCcw, Download, Palette, Eye, EyeOff, RulerDimensionLine, Sparkles, FileImage, ImageIcon, FileCode, FileText } from "lucide-react"
 import { ChartBgColorPicker } from "./chart-bg-color-picker"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
@@ -81,15 +82,22 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const canUndo = pastStates.length > 0;
   const canRedo = futureStates.length > 0;
 
-  const { selectedFormatId } = useFormatGalleryStore();
+  const selectedFormatId = useFormatGalleryStore(s => s.selectedFormatId);
 
   const setHasJSON = useChartStore(s => s.setHasJSON);
-  const { shouldShowTemplate, editorMode, setEditorMode } = useTemplateStore();
+  const { shouldShowTemplate, editorMode, setEditorMode } = useTemplateStore(useShallow(s => ({
+    shouldShowTemplate: s.shouldShowTemplate,
+    editorMode: s.editorMode,
+    setEditorMode: s.setEditorMode,
+  })));
   const { setChartType, updateChartConfig } = useChartActions();
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
   const setCanvasBg = useUIStore(s => s.setCanvasBg);
-  const { isLoupeActive, toggleLoupe } = useLoupeStore();
+  const { isLoupeActive, toggleLoupe } = useLoupeStore(useShallow(s => ({
+    isLoupeActive: s.isLoupeActive,
+    toggleLoupe: s.toggleLoupe,
+  })));
 
   // --- Refs ---
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -682,7 +690,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               zoomPan={zoomPan}
               exports={exports}
               isLeftSidebarCollapsed={isLeftSidebarCollapsed}
-              className="px-0 py-0 mb-0 h-full"
+              className="px-0 py-0 mb-0 h-full min-h-0 border-b-0 bg-transparent"
             />
           </div>
         ) : (
@@ -707,7 +715,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       {/* Chart Container */}
       {(() => {
         const cardElement = (
-          <Card className="w-full flex flex-col flex-1 min-h-[300px] rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200">
+          <Card className="w-full flex flex-col flex-1 min-h-[300px] rounded-none border-0 bg-card text-card-foreground shadow-none overflow-hidden transition-all duration-200">
             <CardContent className="p-0 flex-1 flex flex-col h-full w-full relative">
               <div
                 ref={chartContainerRef}
@@ -752,7 +760,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         );
 
         return variant === 'landing' ? (
-          <div className="flex-1 p-4 overflow-auto min-h-0 flex flex-col">
+          <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
             {cardElement}
           </div>
         ) : cardElement;

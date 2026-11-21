@@ -68,7 +68,7 @@ export function ChatWindow({
   const { user } = useAuth()
   const userGreetingName = React.useMemo(() => {
     if (!user) return ""
-    const name = (user as any)?.name || (user as any)?.user_metadata?.full_name || (user as any)?.email?.split('@')[0]
+    const name = user.full_name || (user as any)?.name || user.user_metadata?.full_name || user.email?.split('@')[0]
     return name || ""
   }, [user])
 

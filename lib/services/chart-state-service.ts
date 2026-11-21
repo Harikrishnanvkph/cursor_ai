@@ -217,9 +217,10 @@ export class ChartStateService {
                 chartConfig: ds.chartConfig || JSON.parse(JSON.stringify(chartConfig)),
                 // Assign source title if provided
                 sourceTitle: (name !== undefined && name !== null && name.trim() !== "") ? name : (ds.sourceTitle || "Untitled Chart"),
-                // Assign source ID if provided
-                sourceId: ds.sourceId || conversationId || id,
-                sourceSnapshotId: ds.sourceSnapshotId || id,
+                // Explicit conversationId always wins over any stale ds.sourceId baked inside snapshot JSONB;
+                // on a fresh local replace (replaceMode without conversationId/id), strip stale cloud IDs.
+                sourceId: conversationId || (replaceMode && !id ? undefined : ds.sourceId) || id,
+                sourceSnapshotId: id || (replaceMode && !conversationId ? undefined : ds.sourceSnapshotId),
                 // Ensure the dataset owns its labels so they aren't lost
                 sliceLabels: ds.sliceLabels && ds.sliceLabels.length > 0 
                     ? ds.sliceLabels 
@@ -379,8 +380,10 @@ export class ChartStateService {
         }
 
         // The newly loaded chart becomes the active chart, so its active config and title are the incoming ones
+        // Never leak the previous chart's state.chartTitle when name is omitted
         const finalConfig = chartConfig ? JSON.parse(JSON.stringify(chartConfig)) : state.chartConfig;
-        const finalTitle = (name !== undefined && name !== null && name.trim() !== '') ? name : (state.chartTitle || "Untitled Chart");
+        const incomingFallbackTitle = processedDatasets[processedDatasets.length - 1]?.sourceTitle || "Untitled Chart";
+        const finalTitle = (name !== undefined && name !== null && name.trim() !== '') ? name : incomingFallbackTitle;
 
         return {
             chartType,

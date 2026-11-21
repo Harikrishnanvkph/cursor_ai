@@ -4,6 +4,7 @@ import { sanitizeHTML, sanitizeSVG } from "@/lib/utils/sanitize"
 import { isMulticolorSvg } from "@/lib/elements/elements-registry"
 
 import React, { useRef, useCallback, useEffect, useState } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useDecorationStore, type DecorationShape, type DrawingState, type GlobalShapeSettings } from "@/lib/stores/decoration-store"
 import { DecorationToolbar } from "./DecorationToolbar"
 import {
@@ -1016,7 +1017,20 @@ interface DecorationShapeRendererProps {
 }
 
 export const DecorationShapeRenderer = React.memo(function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0, readOnly = false, shapes: propsShapes, zoom = 1.0 }: DecorationShapeRendererProps) {
-  const storeState = useDecorationStore()
+  const storeState = useDecorationStore(useShallow(s => ({
+    shapes: s.shapes,
+    selectedShapeId: s.selectedShapeId,
+    selectedShapeIds: s.selectedShapeIds,
+    drawingMode: s.drawingMode,
+    globalShapeSettings: s.globalShapeSettings,
+    setSelectedShapeId: s.setSelectedShapeId,
+    setSelectedShapeIds: s.setSelectedShapeIds,
+    toggleShapeSelection: s.toggleShapeSelection,
+    clearMultiSelect: s.clearMultiSelect,
+    setDrawingMode: s.setDrawingMode,
+    addShape: s.addShape,
+    updateShape: s.updateShape,
+  })))
   const shapes = propsShapes || storeState.shapes
   const {
     selectedShapeId, selectedShapeIds, drawingMode, globalShapeSettings,
@@ -1045,17 +1059,83 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
     origShapes?: DecorationShape[]
     currentShape?: DecorationShape
     currentShapes?: Record<string, DecorationShape>
+    moveDx?: number
+    moveDy?: number
+    movingIds?: Set<string>
     handle?: HandlePosition
     endpointIndex?: number  // 0 = start, 1 = end (for line/arrow endpoint drag)
   } | null>(null)
 
+  // Per-gesture cache: avoids layout thrashing (getScreenCTM), snap recomputation, and >1 update per frame
+  const gestureRef = useRef<{
+    invCTM: DOMMatrix | null
+    snapTargets: { xs: number[]; ys: number[] } | null
+    snapNodes: { x: number; y: number }[] | null
+    rafId: number | null
+    pendingEvent: { clientX: number; clientY: number; altKey: boolean; shiftKey: boolean; preventDefault: () => void; stopPropagation: () => void } | null
+    drag: typeof dragState
+  }>({ invCTM: null, snapTargets: null, snapNodes: null, rafId: null, pendingEvent: null, drag: null })
+
+  const clearGestureCache = useCallback(() => {
+    const g = gestureRef.current
+    g.invCTM = null
+    g.snapTargets = null
+    g.snapNodes = null
+    if (g.rafId !== null) {
+      cancelAnimationFrame(g.rafId)
+      g.rafId = null
+    }
+    g.pendingEvent = null
+  }, [])
+
+  useEffect(() => clearGestureCache, [clearGestureCache])
+
+  const startDrag = useCallback((next: NonNullable<typeof dragState>) => {
+    const g = gestureRef.current
+    g.drag = next
+    const ctm = svgRef.current?.getScreenCTM()
+    g.invCTM = ctm ? ctm.inverse() : null
+    if (next.type === 'move') {
+      const xs = [containerWidth / 2]
+      const ys = [containerHeight / 2]
+      shapes.forEach(s => {
+        if (s.id === next.shapeId || next.movingIds?.has(s.id) || !s.visible) return
+        const b = getShapeBounds(s)
+        xs.push(b.x, b.x + b.width / 2, b.x + b.width)
+        ys.push(b.y, b.y + b.height / 2, b.y + b.height)
+      })
+      g.snapTargets = { xs, ys }
+    } else if (next.type === 'resize' || next.type === 'endpoint') {
+      g.snapNodes = getSnapNodes(shapes, next.shapeId)
+    }
+    setDragState(next)
+  }, [shapes, containerWidth, containerHeight])
+
+  const patchDrag = useCallback((patch: Partial<NonNullable<typeof dragState>>) => {
+    const cur = gestureRef.current.drag
+    if (!cur) return
+    const next = { ...cur, ...patch }
+    gestureRef.current.drag = next
+    setDragState(next)
+  }, [])
+
   // ── Coordinate helpers ─────────────────────────────
 
   const getSVGPoint = useCallback((e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent): { x: number; y: number } | null => {
-    const svg = svgRef.current
-    if (!svg) return null
     const clientX = 'touches' in e ? (e as TouchEvent).touches[0]?.clientX ?? (e as TouchEvent).changedTouches[0]?.clientX : (e as MouseEvent).clientX
     const clientY = 'touches' in e ? (e as TouchEvent).touches[0]?.clientY ?? (e as TouchEvent).changedTouches[0]?.clientY : (e as MouseEvent).clientY
+    if (clientX === undefined || clientY === undefined) return null
+
+    const inv = gestureRef.current.invCTM
+    if (inv) {
+      return {
+        x: inv.a * clientX + inv.c * clientY + inv.e,
+        y: inv.b * clientX + inv.d * clientY + inv.f
+      }
+    }
+
+    const svg = svgRef.current
+    if (!svg) return null
 
     // Use SVG's screen coordinate transform matrix to properly convert
     // screen coords → SVG-local coords. This automatically handles any
@@ -1182,7 +1262,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
       (!drawingInProgress && hasSnappableMode)
     )) {
       const excludeId = dragState ? dragState.shapeId : undefined
-      const snapNodes = getSnapNodes(shapes, excludeId)
+      const snapNodes = gestureRef.current.snapNodes ?? getSnapNodes(shapes, excludeId)
       let bestDist = 8 // Snap threshold
       let targetX = pt.x
       let targetY = pt.y
@@ -1200,9 +1280,9 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
       if (snappedNode) {
         pt.x = targetX
         pt.y = targetY
-        setNodeSnapGuide({ x: targetX, y: targetY })
+        setNodeSnapGuide(prev => (prev && prev.x === targetX && prev.y === targetY) ? prev : { x: targetX, y: targetY })
       } else {
-        setNodeSnapGuide(null)
+        setNodeSnapGuide(prev => prev === null ? prev : null)
         // Grid snap fallback for line drawing
         if (gridSize > 0 && drawingInProgress) {
           pt.x = snapToGrid(pt.x, gridSize)
@@ -1210,7 +1290,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
         }
       }
     } else {
-      setNodeSnapGuide(null)
+      setNodeSnapGuide(prev => prev === null ? prev : null)
       // Grid snap for non-line drawing modes
       if (gridSize > 0 && drawingInProgress) {
         pt.x = snapToGrid(pt.x, gridSize)
@@ -1219,9 +1299,6 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
     }
 
     const shiftKey = 'shiftKey' in e ? (e as React.MouseEvent).shiftKey : false
-
-    // Optionally record cursor position for some features like textbox
-    setCursorPos(pt)
 
     // Handle drag/resize/rotate/endpoint
     if (dragState) {
@@ -1262,14 +1339,20 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
             y: draggedBounds.y + draggedBounds.height / 2 + dy
           }
 
-          const targetXs = [containerWidth / 2]; const targetYs = [containerHeight / 2]
-
-          shapes.forEach(s => {
-            if (s.id === dragState.shapeId || !s.visible) return
-            const b = getShapeBounds(s)
-            targetXs.push(b.x, b.x + b.width / 2, b.x + b.width)
-            targetYs.push(b.y, b.y + b.height / 2, b.y + b.height)
-          })
+          let targetXs: number[]
+          let targetYs: number[]
+          if (gestureRef.current.snapTargets) {
+            targetXs = gestureRef.current.snapTargets.xs
+            targetYs = gestureRef.current.snapTargets.ys
+          } else {
+            targetXs = [containerWidth / 2]; targetYs = [containerHeight / 2]
+            shapes.forEach(s => {
+              if (s.id === dragState.shapeId || dragState.movingIds?.has(s.id) || !s.visible) return
+              const b = getShapeBounds(s)
+              targetXs.push(b.x, b.x + b.width / 2, b.x + b.width)
+              targetYs.push(b.y, b.y + b.height / 2, b.y + b.height)
+            })
+          }
 
           const candidateXs = [draggedBounds.x + dx, dCenter.x, draggedBounds.x + draggedBounds.width + dx]
           const candidateYs = [draggedBounds.y + dy, dCenter.y, draggedBounds.y + draggedBounds.height + dy]
@@ -1335,7 +1418,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
           finalClampedDy = clampedY - draggedBounds.y
         }
 
-        setSnapGuides({ x: snapX, y: snapY })
+        setSnapGuides(prev => (prev.x === snapX && prev.y === snapY) ? prev : { x: snapX, y: snapY })
 
         // Apply
         const draggingShapes = dragState.origShapes || [orig]
@@ -1354,7 +1437,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
           if (os.id === dragState.shapeId) mainMoved = moved
         })
 
-        setDragState(p => p ? { ...p, currentShapes: newCurrentShapes, currentShape: mainMoved } : null)
+        patchDrag({ moveDx: finalClampedDx, moveDy: finalClampedDy, currentShapes: newCurrentShapes, currentShape: mainMoved })
       } else if (dragState.type === 'endpoint' && dragState.endpointIndex !== undefined) {
         // Drag individual endpoint of line/arrow
         const newPoints = [...(orig.points || [])]
@@ -1387,15 +1470,15 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
           // Recompute bounding box from points
           const xs = newPoints.map(p => p.x)
           const ys = newPoints.map(p => p.y)
-          setDragState(p => p ? {
-            ...p, currentShape: {
-              ...p.origShape,
+          patchDrag({
+            currentShape: {
+              ...orig,
               points: newPoints,
               x: Math.min(...xs), y: Math.min(...ys),
               width: Math.max(Math.abs(Math.max(...xs) - Math.min(...xs)), 1),
               height: Math.max(Math.abs(Math.max(...ys) - Math.min(...ys)), 1)
             }
-          } : null)
+          })
         }
       } else if (dragState.type === 'rotate') {
         // Rotation: compute angle from center of shape to current mouse
@@ -1411,7 +1494,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
         if (shiftKey) {
           newRotation = Math.round(newRotation / 15) * 15
         }
-        setDragState(p => p ? { ...p, currentShape: { ...p.origShape, rotation: newRotation } } : null)
+        patchDrag({ currentShape: { ...orig, rotation: newRotation } })
       } else if (dragState.type === 'resize' && dragState.handle) {
         const h = dragState.handle
         const oBounds = getShapeBounds(orig)
@@ -1456,7 +1539,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
           // Proportionally scale the fontSize when resizing point text based on height scale
           const scaleRatio = newH / oBounds.height
           const newFontSize = Math.max(6, Math.min(240, (orig.fontSize || 14) * scaleRatio))
-          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: newX, y: newY, width: newW, height: newH, fontSize: newFontSize } } : null)
+          patchDrag({ currentShape: { ...orig, x: newX, y: newY, width: newW, height: newH, fontSize: newFontSize } })
         } else if (orig.points && orig.points.length > 0) {
           const prevW = oBounds.width
           const prevH = oBounds.height
@@ -1466,9 +1549,9 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
             x: newX + (p.x - oBounds.x) * scaleX,
             y: newY + (p.y - oBounds.y) * scaleY
           }))
-          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: newX, y: newY, width: newW, height: newH, points: newPoints } } : null)
+          patchDrag({ currentShape: { ...orig, x: newX, y: newY, width: newW, height: newH, points: newPoints } })
         } else {
-          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: newX, y: newY, width: newW, height: newH } } : null)
+          patchDrag({ currentShape: { ...orig, x: newX, y: newY, width: newW, height: newH } })
         }
       }
       return
@@ -1499,7 +1582,68 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
         })
       }
     }
-  }, [drawingMode, drawingInProgress, dragState, marqueeState, getSVGPoint, setDrawingInProgress])
+  }, [drawingMode, drawingInProgress, dragState, marqueeState, getSVGPoint, setDrawingInProgress, patchDrag, shapes, gridSize, containerWidth, containerHeight])
+
+  const moveHandlerRef = useRef(handleCanvasPointerMove)
+  moveHandlerRef.current = handleCanvasPointerMove
+
+  const flushPendingMove = useCallback(() => {
+    const g = gestureRef.current
+    if (g.rafId !== null) {
+      cancelAnimationFrame(g.rafId)
+      g.rafId = null
+    }
+    if (g.pendingEvent) {
+      const ev = g.pendingEvent
+      g.pendingEvent = null
+      moveHandlerRef.current(ev as any)
+    }
+  }, [])
+
+  const handlePointerMoveThrottled = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!dragState && !marqueeState && !drawingInProgress && (!drawingMode || drawingMode === 'freehand' || drawingMode === 'marquee-select')) return
+    if (dragState) { e.preventDefault(); e.stopPropagation() }
+    else if (drawingInProgress) { e.preventDefault() }
+    if (drawingInProgress?.mode === 'freehand') { handleCanvasPointerMove(e); return }
+
+    const clientX = 'touches' in e ? (e as React.TouchEvent).touches[0]?.clientX ?? (e as React.TouchEvent).changedTouches[0]?.clientX : (e as React.MouseEvent).clientX
+    const clientY = 'touches' in e ? (e as React.TouchEvent).touches[0]?.clientY ?? (e as React.TouchEvent).changedTouches[0]?.clientY : (e as React.MouseEvent).clientY
+    if (clientX === undefined || clientY === undefined) return
+
+    const g = gestureRef.current
+    g.pendingEvent = {
+      clientX, clientY,
+      altKey: 'altKey' in e ? Boolean((e as React.MouseEvent).altKey) : false,
+      shiftKey: 'shiftKey' in e ? Boolean((e as React.MouseEvent).shiftKey) : false,
+      preventDefault: () => {}, stopPropagation: () => {}
+    }
+    if (g.rafId === null) {
+      g.rafId = requestAnimationFrame(() => {
+        g.rafId = null
+        const ev = g.pendingEvent
+        if (ev) { g.pendingEvent = null; moveHandlerRef.current(ev as any) }
+      })
+    }
+  }, [handleCanvasPointerMove, dragState, marqueeState, drawingInProgress, drawingMode])
+
+  const commitActiveDrag = useCallback(() => {
+    flushPendingMove()
+    const activeDrag = gestureRef.current.drag
+    if (!activeDrag) return false
+    gestureRef.current.drag = null
+    if (activeDrag.currentShapes) {
+      useDecorationStore.getState().updateShapes(
+        Object.values(activeDrag.currentShapes).map(cs => ({ id: cs.id, updates: cs }))
+      )
+    } else if (activeDrag.currentShape) {
+      updateShape(activeDrag.shapeId, activeDrag.currentShape)
+    }
+    setDragState(null)
+    setSnapGuides(prev => (prev.x === null && prev.y === null) ? prev : { x: null, y: null })
+    setNodeSnapGuide(prev => prev === null ? prev : null)
+    clearGestureCache()
+    return true
+  }, [flushPendingMove, updateShape, clearGestureCache])
 
   const finalizeMarqueeSelection = useCallback(() => {
     if (!marqueeState) return
@@ -1528,31 +1672,22 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
       }
     }
     setMarqueeState(null)
-  }, [marqueeState, shapes, setSelectedShapeIds, clearMultiSelect])
+    clearGestureCache()
+  }, [marqueeState, shapes, setSelectedShapeIds, clearMultiSelect, clearGestureCache])
 
   const handleCanvasPointerUp = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     // ── Finish marquee selection ──
     if (marqueeState) {
+      flushPendingMove()
       finalizeMarqueeSelection()
       return
     }
 
     // Finish drag
-    if (dragState) {
-      if (dragState.currentShapes) {
-        useDecorationStore.getState().updateShapes(
-          Object.values(dragState.currentShapes).map(cs => ({ id: cs.id, updates: cs }))
-        )
-      } else if (dragState.currentShape) {
-        updateShape(dragState.shapeId, dragState.currentShape)
-      }
-      setDragState(null)
-      setSnapGuides({ x: null, y: null })
-      setNodeSnapGuide(null)
-      return
-    }
+    if (commitActiveDrag()) return
 
     if (!drawingInProgress) return
+    flushPendingMove()
     const pt = getSVGPoint(e as any)
 
     // For multi-point modes, don't finalize on mouse up
@@ -1677,7 +1812,8 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
 
     setDrawingInProgress(null)
     setNodeSnapGuide(null)
-  }, [drawingInProgress, dragState, getSVGPoint, addShape, shapes.length, setDrawingInProgress, setDrawingMode, setSelectedShapeId, setEditingShapeId])
+    clearGestureCache()
+  }, [drawingInProgress, marqueeState, flushPendingMove, finalizeMarqueeSelection, commitActiveDrag, getSVGPoint, addShape, shapes, gridSize, globalShapeSettings, setDrawingInProgress, setDrawingMode, setSelectedShapeId, setEditingShapeId, clearGestureCache])
 
   // Double-click to finalize polygon / connected-lines, or reset drawing mode
   const handleCanvasDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -1773,15 +1909,18 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
       draggingShapes = shapes.filter(s => selectedShapeIds.includes(s.id))
     }
 
-    setDragState({
+    startDrag({
       type: 'move',
       shapeId: shape.id,
       startX: pt.x,
       startY: pt.y,
       origShape: { ...shape },
-      origShapes: draggingShapes.map(s => ({ ...s }))
+      origShapes: draggingShapes.map(s => ({ ...s })),
+      moveDx: 0,
+      moveDy: 0,
+      movingIds: new Set(draggingShapes.map(s => s.id))
     })
-  }, [panMode, drawingMode, getSVGPoint, setSelectedShapeId, toggleShapeSelection, selectedShapeIds, shapes])
+  }, [panMode, drawingMode, getSVGPoint, setSelectedShapeId, toggleShapeSelection, selectedShapeIds, shapes, startDrag])
 
   const handleResizePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent, shape: DecorationShape, handle: HandlePosition) => {
     e.preventDefault()
@@ -1789,7 +1928,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
     const pt = getSVGPoint(e as any)
     if (!pt || shape.locked) return
 
-    setDragState({
+    startDrag({
       type: 'resize',
       shapeId: shape.id,
       startX: pt.x,
@@ -1797,7 +1936,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
       origShape: { ...shape },
       handle
     })
-  }, [getSVGPoint])
+  }, [getSVGPoint, startDrag])
 
   // ── Click on background to deselect ────────────────
 
@@ -1915,32 +2054,24 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
   }, [drawingMode, drawingInProgress, getSVGPoint, cursorPos])
 
   // ── Global mouse up (catch releases outside SVG) ──
+  const globalUpRef = useRef<() => void>(() => {})
+  globalUpRef.current = () => {
+    if (gestureRef.current.drag) commitActiveDrag()
+    if (marqueeState) {
+      flushPendingMove()
+      finalizeMarqueeSelection()
+    }
+  }
 
   useEffect(() => {
-    const handleGlobalUp = () => {
-      if (dragState) {
-        if (dragState.currentShapes) {
-          useDecorationStore.getState().updateShapes(
-            Object.values(dragState.currentShapes).map(cs => ({ id: cs.id, updates: cs }))
-          )
-        } else if (dragState.currentShape) {
-          updateShape(dragState.shapeId, dragState.currentShape)
-        }
-        setDragState(null)
-        setSnapGuides({ x: null, y: null })
-        setNodeSnapGuide(null)
-      }
-      if (marqueeState) {
-        finalizeMarqueeSelection()
-      }
-    }
+    const handleGlobalUp = () => globalUpRef.current()
     window.addEventListener('mouseup', handleGlobalUp)
     window.addEventListener('touchend', handleGlobalUp)
     return () => {
       window.removeEventListener('mouseup', handleGlobalUp)
       window.removeEventListener('touchend', handleGlobalUp)
     }
-  }, [dragState, marqueeState, finalizeMarqueeSelection, updateShape])
+  }, [])
 
   // ── Escape key to cancel drawing ──────────────────
 
@@ -1978,6 +2109,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
         setMarqueeState(null)
         state.setDrawingMode(null)
         setNodeSnapGuide(null)
+        clearGestureCache()
       }
 
       // ── Delete ────────────────────────────────────────
@@ -1996,7 +2128,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setDrawingInProgress])
+  }, [setDrawingInProgress, clearGestureCache])
 
   // Sync drawingMode -> clear drawingInProgress if cancelled externally
   useEffect(() => {
@@ -2019,7 +2151,13 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
 
   // ── Sort shapes by zIndex ─────────────────────────
 
-  // Merge drag state overrides down using purely local rendering
+  // Base sorted shapes: stays referentially stable during move drags so React.memo(ShapeSVG)
+  // doesn't re-render or mutate <clipPath>/<image> attributes while translating via SVG transform.
+  const baseSortedShapes = React.useMemo(() => {
+    return [...shapes].filter(s => s.visible).sort((a, b) => a.zIndex - b.zIndex)
+  }, [shapes])
+
+  // Merge drag state overrides for selection frame, handles, and non-move gestures
   const activeShapes = React.useMemo(() => {
     if (!dragState) return shapes
     if (dragState.type === 'move' && dragState.currentShapes) {
@@ -2030,10 +2168,6 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
     }
     return shapes
   }, [shapes, dragState])
-
-  const sortedShapes = React.useMemo(() => {
-    return [...activeShapes].filter(s => s.visible).sort((a, b) => a.zIndex - b.zIndex)
-  }, [activeShapes])
 
   const selectedShape = React.useMemo(() => {
     return activeShapes.find(s => s.id === selectedShapeId)
@@ -2054,12 +2188,12 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
       // These events will only fire on the SVG itself when drawingMode is true OR during drag
       onMouseDown={(!readOnly && (drawingMode || dragState || marqueeState)) ? (handleCanvasPointerDown as any) : undefined}
       onMouseDownCapture={!readOnly ? ((e) => { lastMouseDownTargetRef.current = e.target }) : undefined}
-      onMouseMove={!readOnly ? ((e: any) => { handleCursorTrack(e); (handleCanvasPointerMove as any)(e) }) : undefined}
+      onMouseMove={!readOnly ? ((e: any) => { if (drawingMode === 'textbox-auto' || cursorPos) handleCursorTrack(e); handlePointerMoveThrottled(e) }) : undefined}
       onMouseUp={!readOnly ? (handleCanvasPointerUp as any) : undefined}
-      onMouseLeave={!readOnly ? (() => { setCursorPos(null) }) : undefined}
+      onMouseLeave={!readOnly ? (() => { if (cursorPos !== null) setCursorPos(null) }) : undefined}
       onDoubleClick={(!readOnly && drawingMode) ? handleCanvasDoubleClick : undefined}
       onTouchStart={(!readOnly && (drawingMode || dragState || marqueeState)) ? (handleCanvasPointerDown as any) : undefined}
-      onTouchMove={!readOnly ? (handleCanvasPointerMove as any) : undefined}
+      onTouchMove={!readOnly ? (handlePointerMoveThrottled as any) : undefined}
       onTouchEnd={!readOnly ? (handleCanvasPointerUp as any) : undefined}
       onClick={!readOnly ? handleBackgroundClick : undefined}
     >
@@ -2077,38 +2211,49 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
       <text x="0" y="0" fontSize="1" fill="rgba(0,0,0,0.01)" style={{ pointerEvents: 'none' }} aria-hidden="true">.</text>
 
       {/* Shapes */}
-      {sortedShapes.map(shape => (
-        <g
-          key={shape.id}
-          style={{
-            opacity: shape.locked ? 0.8 : 1,
-            pointerEvents: readOnly ? 'none' : 'auto', // Important: shapes catch clicks even if SVG doesn't
-            cursor: readOnly ? 'default' : (drawingMode ? 'crosshair' : (shape.locked ? 'default' : 'move'))
-          }}
-          onMouseDown={!readOnly ? ((e) => handleShapePointerDown(e, shape)) : undefined}
-          onTouchStart={!readOnly ? ((e) => handleShapePointerDown(e, shape)) : undefined}
-          onMouseEnter={!readOnly ? (() => setHoveredShapeId(shape.id)) : undefined}
-          onMouseLeave={!readOnly ? (() => setHoveredShapeId(null)) : undefined}
-          onClick={!readOnly ? ((e) => e.stopPropagation()) : undefined}
-          onDoubleClick={!readOnly ? ((e) => handleTextboxDoubleClick(e, shape)) : undefined}
-        >
-          <ShapeSVG shape={shape} />
+      {baseSortedShapes.map(baseShape => {
+        const isMoving = dragState?.type === 'move' && (dragState.movingIds ? dragState.movingIds.has(baseShape.id) : dragState.shapeId === baseShape.id)
+        const moveTransform = isMoving && (dragState.moveDx || dragState.moveDy)
+          ? `translate(${dragState.moveDx || 0} ${dragState.moveDy || 0})`
+          : undefined
+        const shape = (!isMoving && dragState && dragState.type !== 'move' && dragState.shapeId === baseShape.id && dragState.currentShape)
+          ? dragState.currentShape
+          : baseShape
 
-          {/* Hover highlight — uses computed bounds */}
-          {!readOnly && hoveredShapeId === shape.id && selectedShapeId !== shape.id && (() => {
-            const hb = getShapeBounds(shape)
-            const effectiveZoom = zoom < 1.0 ? Math.max(0.01, Math.sqrt(zoom)) : zoom
-            return (
-              <rect
-                x={hb.x - 3 / effectiveZoom} y={hb.y - 3 / effectiveZoom}
-                width={hb.width + 6 / effectiveZoom} height={hb.height + 6 / effectiveZoom}
-                fill="none" stroke="#f59e0b" strokeWidth={2 / effectiveZoom} strokeDasharray={`${4 / effectiveZoom},${3 / effectiveZoom}`}
-                rx={3 / effectiveZoom} pointerEvents="none" opacity={0.7}
-              />
-            )
-          })()}
-        </g>
-      ))}
+        return (
+          <g
+            key={shape.id}
+            transform={moveTransform}
+            style={{
+              opacity: shape.locked ? 0.8 : 1,
+              pointerEvents: readOnly ? 'none' : 'auto', // Important: shapes catch clicks even if SVG doesn't
+              cursor: readOnly ? 'default' : (drawingMode ? 'crosshair' : (shape.locked ? 'default' : 'move'))
+            }}
+            onMouseDown={!readOnly ? ((e) => handleShapePointerDown(e, shape)) : undefined}
+            onTouchStart={!readOnly ? ((e) => handleShapePointerDown(e, shape)) : undefined}
+            onMouseEnter={!readOnly ? (() => { if (!dragState) setHoveredShapeId(shape.id) }) : undefined}
+            onMouseLeave={!readOnly ? (() => { if (!dragState) setHoveredShapeId(null) }) : undefined}
+            onClick={!readOnly ? ((e) => e.stopPropagation()) : undefined}
+            onDoubleClick={!readOnly ? ((e) => handleTextboxDoubleClick(e, shape)) : undefined}
+          >
+            <ShapeSVG shape={shape} />
+
+            {/* Hover highlight — uses computed bounds */}
+            {!readOnly && !dragState && hoveredShapeId === shape.id && selectedShapeId !== shape.id && (() => {
+              const hb = getShapeBounds(shape)
+              const effectiveZoom = zoom < 1.0 ? Math.max(0.01, Math.sqrt(zoom)) : zoom
+              return (
+                <rect
+                  x={hb.x - 3 / effectiveZoom} y={hb.y - 3 / effectiveZoom}
+                  width={hb.width + 6 / effectiveZoom} height={hb.height + 6 / effectiveZoom}
+                  fill="none" stroke="#f59e0b" strokeWidth={2 / effectiveZoom} strokeDasharray={`${4 / effectiveZoom},${3 / effectiveZoom}`}
+                  rx={3 / effectiveZoom} pointerEvents="none" opacity={0.7}
+                />
+              )
+            })()}
+          </g>
+        )
+      })}
 
       {/* Multi-select highlights */}
       {!readOnly && selectedShapeIds.length > 1 && selectedShapeIds.map(sid => {
@@ -2245,7 +2390,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
                       e.stopPropagation()
                       const rPt = getSVGPoint(e as any)
                       if (!rPt) return
-                      setDragState({
+                      startDrag({
                         type: 'rotate',
                         shapeId: selectedShape.id,
                         startX: rPt.x, startY: rPt.y,
@@ -2257,7 +2402,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
                       e.stopPropagation()
                       const rPt = getSVGPoint(e as any)
                       if (!rPt) return
-                      setDragState({
+                      startDrag({
                         type: 'rotate',
                         shapeId: selectedShape.id,
                         startX: rPt.x, startY: rPt.y,
@@ -2301,7 +2446,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
                         e.stopPropagation()
                         const ePt = getSVGPoint(e as any)
                         if (!ePt) return
-                        setDragState({
+                        startDrag({
                           type: 'endpoint',
                           shapeId: selectedShape.id,
                           startX: ePt.x, startY: ePt.y,
@@ -2314,7 +2459,7 @@ export const DecorationShapeRenderer = React.memo(function DecorationShapeRender
                         e.stopPropagation()
                         const ePt = getSVGPoint(e as any)
                         if (!ePt) return
-                        setDragState({
+                        startDrag({
                           type: 'endpoint',
                           shapeId: selectedShape.id,
                           startX: ePt.x, startY: ePt.y,

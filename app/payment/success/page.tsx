@@ -4,6 +4,7 @@ import React, { useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/auth/AuthProvider"
+import { useGeoLocation } from "@/hooks/useGeoLocation"
 import { useSubscriptionQuota } from "@/lib/hooks/use-subscription-quota"
 import { ALL_CREDIT_PACKS, type CreditPackId } from "@/lib/subscription-config"
 import { CheckCircle2, Sparkles, ArrowRight, Zap, Cloud } from "lucide-react"
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button"
 
 export default function PaymentSuccessPage() {
   const { refresh } = useAuth()
+  const { isIndia } = useGeoLocation()
   const {
     aiCreditsRemaining,
     freeAiCreditsRemaining,
@@ -24,6 +26,12 @@ export default function PaymentSuccessPage() {
   const gateway = searchParams.get("gateway") || "Payment"
   const rawPack = (searchParams.get("pack") || searchParams.get("plan") || "ai_pro") as CreditPackId
   const pack = ALL_CREDIT_PACKS[rawPack] || ALL_CREDIT_PACKS.ai_pro
+  const isRazorpay = gateway.toLowerCase() === "razorpay"
+  const showInr = isRazorpay || (gateway === "Payment" && isIndia)
+  const rawAmount = searchParams.get("amount")
+  const fallbackAmount = showInr ? (pack.priceInr || (pack.priceUsd === 2 ? 99 : 249)) : pack.priceUsd
+  const displayAmount = rawAmount && /^\d+(\.\d+)?$/.test(rawAmount) ? rawAmount : fallbackAmount
+  const displayCurrencySymbol = showInr ? "₹" : "$"
 
   // Verify payment immediately with server upon return and refresh user auth state
   useEffect(() => {
@@ -79,7 +87,7 @@ export default function PaymentSuccessPage() {
           {pack.headlineGrant} Added!
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">
-          Your <strong className="text-slate-700 dark:text-slate-200">${pack.priceUsd} {pack.userTitle} ({pack.category === "ai" ? "AI Credits" : "Cloud Credits"})</strong> purchase via <strong className="capitalize">{gateway}</strong> is active on your account.
+          Your <strong className="text-slate-700 dark:text-slate-200">{displayCurrencySymbol}{displayAmount} {pack.userTitle} ({pack.category === "ai" ? "AI Credits" : "Cloud Credits"})</strong> purchase via <strong className="capitalize">{gateway}</strong> is active on your account.
         </p>
 
         {/* Live Account Credit Balances */}

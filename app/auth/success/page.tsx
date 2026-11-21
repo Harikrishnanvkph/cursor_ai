@@ -1,12 +1,24 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { AuthPageShell, AuthLoadingCard, AuthCardFrame } from '@/components/auth/AuthPageShell'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, Loader2 } from 'lucide-react'
-import { authApi } from '@/lib/auth-client'
+
+function getSafeRedirectPath(raw: string | null): string {
+  if (
+    raw &&
+    raw.startsWith('/') &&
+    !raw.startsWith('//') &&
+    !raw.startsWith('/signin') &&
+    !raw.startsWith('/signup') &&
+    !raw.startsWith('/admin/signin')
+  ) {
+    return raw
+  }
+  return '/board'
+}
 
 export default function AuthSuccessPage() {
   const router = useRouter()
@@ -14,33 +26,32 @@ export default function AuthSuccessPage() {
   const { user, loading, refresh } = useAuth()
   const provider = searchParams.get('provider')
   const [refreshing, setRefreshing] = useState(true)
+  const hasRefreshedRef = useRef(false)
 
   useEffect(() => {
-    const refreshUserData = async () => {
-      try {
-        setRefreshing(true)
-        // Force refresh user data from backend in-memory (no hard reload)
-        await refresh()
-      } catch (error) {
-        console.error('Failed to refresh user data:', error)
-      } finally {
-        setRefreshing(false)
-      }
-    }
-
-    // If user is already authenticated, redirect to workspace
+    // If user is already authenticated, redirect cleanly with a full navigation
+    // to bypass any stale pre-login Next.js Client Router Cache redirects
     if (user) {
-      const savedRedirect = sessionStorage.getItem('redirectAfterSignIn')
+      const target = getSafeRedirectPath(sessionStorage.getItem('redirectAfterSignIn'))
       sessionStorage.removeItem('redirectAfterSignIn')
-      router.replace(savedRedirect || '/board')
+      sessionStorage.removeItem('logged_out_from_oauth')
+      window.location.replace(target)
       return
     }
 
-    // If not authenticated, try to refresh user data
-    if (!loading) {
-      refreshUserData()
+    // Trigger at most one refresh (shares AuthProvider's in-flight /auth/me promise on mount)
+    if (!hasRefreshedRef.current) {
+      hasRefreshedRef.current = true
+      setRefreshing(true)
+      refresh()
+        .catch((error) => {
+          console.error('Failed to refresh user data:', error)
+        })
+        .finally(() => {
+          setRefreshing(false)
+        })
     }
-  }, [user, loading, router, provider, refresh])
+  }, [user, refresh])
 
   // Auto-redirect after 5 seconds if still not authenticated
   useEffect(() => {
@@ -53,79 +64,44 @@ export default function AuthSuccessPage() {
     }
   }, [user, refreshing, router])
 
+  if (loading || refreshing || user) {
+    const providerName = provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : 'OAuth'
+    return (
+      <AuthPageShell>
+        <AuthLoadingCard
+          message="Redirecting to your workspace…"
+          description={`Signed in successfully with ${providerName}. Setting up your dashboard…`}
+        />
+      </AuthPageShell>
+    )
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle className="h-8 w-8 text-green-600" />
-          </div>
-          <CardTitle className="text-2xl">Authentication Successful!</CardTitle>
-          <CardDescription>
-            You have successfully signed in with {provider || 'OAuth'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-center">
-          {loading || refreshing ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-center space-x-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Setting up your session...</span>
-              </div>
-              <p className="text-sm text-gray-600">
-                Please wait while we complete your authentication.
-              </p>
-            </div>
-          ) : user ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-center space-x-3">
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt="Profile"
-                    className="w-12 h-12 rounded-full border-2 border-green-200"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center">
-                    <span className="text-white text-lg font-semibold">
-                      {user.full_name?.[0] || user.email?.[0] || 'U'}
-                    </span>
-                  </div>
-                )}
-                <div className="text-left">
-                  <p className="font-medium text-gray-900">
-                    Welcome back, {user.full_name || user.email}!
-                  </p>
-                  {user.provider && (
-                    <p className="text-sm text-gray-500">
-                      Signed in with {user.provider}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Button
-                onClick={() => {
-                  const savedRedirect = sessionStorage.getItem('redirectAfterSignIn')
-                  sessionStorage.removeItem('redirectAfterSignIn')
-                  router.replace(savedRedirect || '/board')
-                }}
-                className="w-full"
-              >
-                Continue to Dashboard
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Redirecting you to sign in...
-              </p>
-              <Button onClick={() => router.replace('/signin')} variant="outline" className="w-full">
-                Go to Sign In
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <AuthPageShell>
+      <AuthCardFrame
+        title="Session setup taking longer than expected"
+        description="We couldn't confirm your session automatically. Please click below to proceed to your workspace."
+      >
+        <div className="space-y-3 pt-2">
+          <Button
+            onClick={() => {
+              const target = getSafeRedirectPath(sessionStorage.getItem('redirectAfterSignIn'))
+              sessionStorage.removeItem('redirectAfterSignIn')
+              window.location.replace(target)
+            }}
+            className="w-full rounded-full"
+          >
+            Continue to Dashboard
+          </Button>
+          <Button
+            onClick={() => router.replace('/signin')}
+            variant="outline"
+            className="w-full rounded-full"
+          >
+            Go to Sign In
+          </Button>
+        </div>
+      </AuthCardFrame>
+    </AuthPageShell>
   )
 }

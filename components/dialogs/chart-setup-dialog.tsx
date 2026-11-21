@@ -410,7 +410,9 @@ export function ChartSetupDialog({
         setWidthInput(DEFAULT_CHART_WIDTH.toString())
         setHeightInput(DEFAULT_CHART_HEIGHT.toString())
         setIsResponsive(false)
+        setUnit('px')
         setSelectedPreset('Standard')
+        setExpandedCategory('Chart Defaults')
       }
 
       if (initialGroupName) {

@@ -54,7 +54,7 @@ export default function PrivacyPolicyPage() {
               Privacy Policy
             </h1>
             <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl">
-              This policy explains how Chartography collects, uses, and protects your information when you use our platform.
+              This policy explains how AIChartor collects, uses, and protects your information when you use our platform.
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-400 dark:text-slate-500">
               <span>Effective: August 1, 2026</span>
@@ -96,7 +96,7 @@ export default function PrivacyPolicyPage() {
               <SectionHeading number="01" icon={Database} color="blue" title="Information We Collect" />
 
               <H3>Account Information</H3>
-              <P>When you create a Chartography account, we collect:</P>
+              <P>When you create an AIChartor account, we collect:</P>
               <Ul>
                 <Li><strong>Full name</strong> and <strong>email address</strong> provided during registration.</Li>
                 <Li><strong>Password</strong> — securely hashed using industry-standard algorithms. We never store or have access to your plaintext password.</Li>
@@ -144,7 +144,7 @@ export default function PrivacyPolicyPage() {
             {/* ── 3. AI & Data Processing ──────────────────── */}
             <section id="ai-data-processing">
               <SectionHeading number="03" icon={Sparkles} color="violet" title="AI & Data Processing" />
-              <P>Chartography uses artificial intelligence models to generate and modify charts from your inputs. When you use our AI features, the following data may be transmitted to our AI service providers:</P>
+              <P>AIChartor uses artificial intelligence models to generate and modify charts from your inputs. When you use our AI features, the following data may be transmitted to our AI service providers:</P>
               <Ul>
                 <Li>Your <strong>prompt text</strong> (natural language instructions).</Li>
                 <Li><strong>Pasted raw data</strong> such as tables, CSV content, or text paragraphs.</Li>
@@ -171,7 +171,7 @@ export default function PrivacyPolicyPage() {
                 <Li><strong>Stock image providers</strong> — to supply optional background images for chart designs.</Li>
               </Ul>
               <P>Each service provider processes data in accordance with their own privacy policies and applicable data protection regulations. We share only the minimum data necessary for each provider to perform its function.</P>
-              <P>We do <strong>not</strong> integrate any third-party web analytics or advertising tracking services. Your browsing activity on Chartography is not monitored by external analytics providers.</P>
+              <P>We do <strong>not</strong> integrate any third-party web analytics or advertising tracking services. Your browsing activity on AIChartor is not monitored by external analytics providers.</P>
             </section>
 
             <Divider />
@@ -181,7 +181,7 @@ export default function PrivacyPolicyPage() {
               <SectionHeading number="05" icon={Cookie} color="amber" title="Cookies & Local Storage" />
 
               <H3>Cookies</H3>
-              <P>Chartography uses only <strong>essential, functional cookies</strong> required for the service to operate. We do not use advertising or tracking cookies.</P>
+              <P>AIChartor uses only <strong>essential, functional cookies</strong> required for the service to operate. We do not use advertising or tracking cookies.</P>
 
               <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
                 <table className="w-full text-sm">
@@ -265,7 +265,7 @@ export default function PrivacyPolicyPage() {
             {/* ── 8. File Uploads & Image Processing ────────── */}
             <section id="file-uploads">
               <SectionHeading number="08" icon={Upload} color="pink" title="File Uploads & Image Processing" />
-              <P>When you upload images (backgrounds, logos, icons) to Chartography:</P>
+              <P>When you upload images (backgrounds, logos, icons) to AIChartor:</P>
               <Ul>
                 <Li><strong>Supported formats</strong> include PNG, JPG, WebP, SVG, and GIF.</Li>
                 <Li><strong>Automatic optimization</strong> — large images may be resized and compressed on our servers before storage to ensure optimal performance.</Li>
@@ -307,7 +307,7 @@ export default function PrivacyPolicyPage() {
             {/* ── 11. Children's Privacy ───────────────────── */}
             <section id="childrens-privacy">
               <SectionHeading number="11" icon={Shield} color="rose" title="Children's Privacy" />
-              <P>Chartography is not intended for use by individuals under the age of 13. We do not knowingly collect personal information from children under 13. If you believe a child under 13 has provided us with personal data, please contact us and we will promptly delete the information.</P>
+              <P>AIChartor is not intended for use by individuals under the age of 13. We do not knowingly collect personal information from children under 13. If you believe a child under 13 has provided us with personal data, please contact us and we will promptly delete the information.</P>
             </section>
 
             <Divider />
@@ -325,17 +325,17 @@ export default function PrivacyPolicyPage() {
               <SectionHeading number="13" icon={Mail} color="indigo" title="Contact Us" />
               <P>If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:</P>
               <div className="mt-5 p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
-                <p className="font-semibold text-slate-900 dark:text-white text-sm mb-2">Chartography</p>
+                <p className="font-semibold text-slate-900 dark:text-white text-sm mb-2">AIChartor</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Email:{" "}
-                  <a href="mailto:support@chartography.in" className="text-indigo-600 dark:text-indigo-400 hover:underline">
-                    support@chartography.in
+                  <a href="mailto:support@aichartor.com" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                    support@aichartor.com
                   </a>
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   Website:{" "}
-                  <a href="https://chartography.in" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
-                    chartography.in
+                  <a href="https://aichartor.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                    aichartor.com
                   </a>
                 </p>
               </div>

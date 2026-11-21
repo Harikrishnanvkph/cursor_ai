@@ -332,47 +332,53 @@ export const useChartStore = create<ChartStore>()(
       setChartMode: (mode) => {
         set((state) => {
           const nextState = ChartStateService.setChartMode(mode, state);
-          
-          // Sync title and snapshot ID based on the new mode's data
+
+          // Sync title and snapshot ID strictly from the new mode's active entity
+          // (backendConversationId is synced synchronously via useChartStore.subscribe in chat-store.ts)
           const targetData = nextState.chartData || state.chartData;
           const targetActiveDatasetIndex = nextState.activeDatasetIndex !== undefined ? nextState.activeDatasetIndex : state.activeDatasetIndex;
+          const targetActiveGroupId = nextState.activeGroupId !== undefined ? nextState.activeGroupId : state.activeGroupId;
+          const targetGroups = nextState.groups || state.groups || [];
 
-          let nextChartTitle: string | null = state.chartTitle;
-          let nextSnapshotId: string | null = state.currentSnapshotId;
+          let nextChartTitle: string | null = null;
+          let nextSnapshotId: string | null = null;
+          let nextOriginalCloudDimensions: { width: string; height: string } | null = null;
 
           if (mode === 'single') {
             const datasets = targetData?.datasets || [];
             if (datasets.length > 0) {
               const activeDs = datasets[targetActiveDatasetIndex];
               if (activeDs) {
-                if (activeDs.sourceTitle) {
-                  nextChartTitle = activeDs.sourceTitle;
+                nextChartTitle = activeDs.sourceTitle || null;
+                nextSnapshotId = activeDs.sourceSnapshotId || null;
+                if (activeDs.sourceId && activeDs.chartConfig?.width && activeDs.chartConfig?.height) {
+                  nextOriginalCloudDimensions = {
+                    width: String(activeDs.chartConfig.width),
+                    height: String(activeDs.chartConfig.height),
+                  };
                 }
               }
-            } else {
-              // No datasets in single mode, clear title and snapshot ID
-              nextChartTitle = null;
-              nextSnapshotId = null;
             }
           } else {
             // Grouped mode: sync with the active group
-            const activeGroupId = state.activeGroupId;
-            const groups = state.groups || [];
-            const activeGroup = groups.find(g => g.id === activeGroupId);
+            const activeGroup = targetGroups.find(g => g.id === targetActiveGroupId);
             if (activeGroup) {
-              if (activeGroup.name) {
-                nextChartTitle = activeGroup.name;
+              nextChartTitle = activeGroup.name || activeGroup.sourceTitle || null;
+              nextSnapshotId = activeGroup.sourceSnapshotId || null;
+              if (activeGroup.sourceId && activeGroup.chartConfig?.width && activeGroup.chartConfig?.height) {
+                nextOriginalCloudDimensions = {
+                  width: String(activeGroup.chartConfig.width),
+                  height: String(activeGroup.chartConfig.height),
+                };
               }
-            } else {
-              nextChartTitle = null;
-              nextSnapshotId = null;
             }
           }
 
           return {
             ...nextState,
             chartTitle: nextChartTitle,
-            currentSnapshotId: nextSnapshotId
+            currentSnapshotId: nextSnapshotId,
+            originalCloudDimensions: nextOriginalCloudDimensions
           };
         });
       },
@@ -398,17 +404,18 @@ export const useChartStore = create<ChartStore>()(
         const targetDataset = commitDatasets[index] || dataset;
         const newType = targetDataset.chartType || (targetDataset.type as SupportedChartType) || 'bar';
 
-        // 2. Resolve incoming dataset's isolated chartConfig
+        // 2. Resolve incoming dataset's isolated chartConfig (never inherit outgoing chart's dimensions)
         const newConfig = targetDataset.chartConfig
           ? JSON.parse(JSON.stringify(targetDataset.chartConfig))
           : (() => {
               const freshConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(newType)));
-              const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'responsive', 'width', 'height'];
-              keysToPreserve.forEach(key => {
-                if (state.chartConfig && key in state.chartConfig) {
-                  freshConfig[key] = (state.chartConfig as any)[key];
-                }
-              });
+              freshConfig.responsive = false;
+              freshConfig.manualDimensions = true;
+              freshConfig.dynamicDimension = false;
+              freshConfig.templateDimensions = false;
+              freshConfig.originalDimensions = false;
+              freshConfig.width = '800px';
+              freshConfig.height = '600px';
               freshConfig.decorationShapes = [];
               return freshConfig;
             })();
@@ -424,25 +431,26 @@ export const useChartStore = create<ChartStore>()(
         );
         const newChartData = { ...state.chartData, labels: newLabels, datasets: finalDatasets };
 
-        // 5. Sync backendConversationId with incoming dataset's sourceId
-        if (typeof window !== 'undefined') {
-          import('./chat-store').then(({ useChatStore }) => {
-            useChatStore.getState().setBackendConversationId(targetDataset.sourceId || null);
-          }).catch(() => {});
-        }
-
         const outgoingDataset = commitDatasets[outgoingIndex];
         const resolvedSnapshotId = targetDataset.sourceSnapshotId
           || (targetDataset.sourceId && targetDataset.sourceId === outgoingDataset?.sourceId ? state.currentSnapshotId : null)
           || null;
+        const resolvedCloudDims = targetDataset.sourceId
+          ? (targetDataset.sourceId === outgoingDataset?.sourceId && state.originalCloudDimensions
+              ? state.originalCloudDimensions
+              : (newConfig?.width && newConfig?.height
+                  ? { width: String(newConfig.width), height: String(newConfig.height) }
+                  : null))
+          : null;
 
         return {
           activeDatasetIndex: index,
           chartType: newType,
           chartConfig: newConfig,
           chartData: newChartData,
-          chartTitle: targetDataset.sourceTitle || state.chartTitle,
+          chartTitle: targetDataset.sourceTitle || null,
           currentSnapshotId: resolvedSnapshotId,
+          originalCloudDimensions: resolvedCloudDims,
           ...(state.chartMode === 'single' ? { singleModeData: newChartData } : { groupedModeData: newChartData })
         } as any;
       }),

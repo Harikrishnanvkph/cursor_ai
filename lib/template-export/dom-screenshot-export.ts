@@ -2,6 +2,7 @@
 
 import html2canvas from 'html2canvas'
 import { toast } from 'sonner'
+import { clampExportScale } from './export-scale'
 
 export interface DOMScreenshotOptions {
   width: number
@@ -24,11 +25,12 @@ export async function exportDOMElementAsImage(
   const {
     width,
     height,
-    scale = 4,
+    scale: requestedScale = 4,
     format = 'png',
     quality = 1,
     fileName = `chart-export-${new Date().toISOString().slice(0, 10)}`
   } = options
+  const scale = clampExportScale(width, height, requestedScale)
 
   const toastId = 'dom-screenshot-export'
   toast.loading('Preparing image export...', { id: toastId })

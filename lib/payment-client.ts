@@ -107,7 +107,7 @@ export async function initiateCheckout({
             packId: effectivePackId,
             planTier,
             billingCycle,
-            region: "GLOBAL",
+            region: "IN",
             sessionId: data.orderId,
           }),
         })

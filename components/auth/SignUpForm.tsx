@@ -1,8 +1,8 @@
 "use client"
 import { useState, useEffect, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { ArrowLeft, Pencil, Check } from 'lucide-react'
+import { ArrowLeft, Pencil, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
@@ -27,7 +27,6 @@ function deriveNameFromEmail(email: string): string {
 
 export function SignUpForm() {
   const { user, loading, sendOtp, verifyOtp, signInWithGoogle, signInWithGitHub } = useAuth()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [userName, setUserName] = useState('')
   const [email, setEmail] = useState('')
@@ -40,6 +39,8 @@ export function SignUpForm() {
   const [userNameError, setUserNameError] = useState<string | null>(null)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [isPending, setIsPending] = useState(false)
+  const [isSendingCode, setIsSendingCode] = useState(false)
+  const sendSeqRef = useRef(0)
   const userNameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -56,11 +57,27 @@ export function SignUpForm() {
 
   useEffect(() => {
     if (!loading && user) {
-      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/board'
+      const rawRedirect =
+        searchParams.get('redirect') ||
+        searchParams.get('returnUrl') ||
+        sessionStorage.getItem('redirectAfterSignIn')
+      const redirectPath =
+        rawRedirect &&
+        rawRedirect.startsWith('/') &&
+        !rawRedirect.startsWith('//') &&
+        !rawRedirect.startsWith('/signin') &&
+        !rawRedirect.startsWith('/signup') &&
+        !rawRedirect.startsWith('/admin/signin')
+          ? rawRedirect
+          : '/board'
       sessionStorage.removeItem('redirectAfterSignIn')
-      router.replace(redirectPath)
+      if (!document.cookie.includes('is_authenticated=true')) {
+        const secureAttr = window.location.protocol === 'https:' ? '; Secure' : ''
+        document.cookie = `is_authenticated=true; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax${secureAttr}`
+      }
+      window.location.replace(redirectPath)
     }
-  }, [user, loading, router])
+  }, [user, loading, searchParams])
 
   useEffect(() => {
     if (resendCooldown <= 0) return
@@ -128,17 +145,25 @@ export function SignUpForm() {
     }
     setUserNameError(null)
 
-    setIsPending(true)
+    const seq = ++sendSeqRef.current
+    setOtp('')
+    setOtpError(null)
+    setResendCooldown(0)
+    setStep('otp')
+    setIsSendingCode(true)
+
     try {
       const ok = await sendOtp(trimmedEmail, 'signup', finalName)
+      if (sendSeqRef.current !== seq) return
       if (ok) {
-        setOtp('')
-        setOtpError(null)
-        setStep('otp')
-        setResendCooldown(30)
+        setResendCooldown(60)
+      } else {
+        setStep('details')
       }
     } finally {
-      setIsPending(false)
+      if (sendSeqRef.current === seq) {
+        setIsSendingCode(false)
+      }
     }
   }
 
@@ -158,18 +183,22 @@ export function SignUpForm() {
   }
 
   async function handleResend() {
-    if (resendCooldown > 0 || isPending) return
+    if (resendCooldown > 0 || isPending || isSendingCode) return
+    const seq = ++sendSeqRef.current
     setOtpError(null)
-    setIsPending(true)
+    setIsSendingCode(true)
     try {
       const finalName = userName.trim() || deriveNameFromEmail(email.trim())
       const ok = await sendOtp(email.trim(), 'signup', finalName)
+      if (sendSeqRef.current !== seq) return
       if (ok) {
-        setResendCooldown(30)
+        setResendCooldown(60)
         toast.success('Verification code resent to your email.')
       }
     } finally {
-      setIsPending(false)
+      if (sendSeqRef.current === seq) {
+        setIsSendingCode(false)
+      }
     }
   }
 
@@ -195,7 +224,7 @@ export function SignUpForm() {
 
   const userNameReadOnlyClassName = isEditingName
     ? ''
-    : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 cursor-default focus-visible:ring-0 focus-visible:border-slate-200 dark:focus-visible:border-slate-800'
+    : 'bg-neutral-50 dark:bg-slate-900/70 text-neutral-600 dark:text-slate-300 border-neutral-200 dark:border-slate-800 hover:border-neutral-200 dark:hover:border-slate-800 cursor-default focus-visible:ring-0 focus-visible:border-neutral-200 dark:focus-visible:border-slate-800'
 
   return (
     <AuthCardFrame
@@ -203,7 +232,9 @@ export function SignUpForm() {
       description={
         step === 'details'
           ? 'Start generating and styling charts with AI'
-          : `Enter the 6-digit code sent to ${email.trim()}`
+          : isSendingCode
+            ? `Sending a 6-digit code to ${email.trim()}…`
+            : `Enter the 6-digit code sent to ${email.trim()}`
       }
     >
       {step === 'details' ? (
@@ -251,7 +282,7 @@ export function SignUpForm() {
                 onClick={() => (isEditingName ? finishEditingName() : startEditingName())}
                 aria-label={isEditingName ? 'Save user name' : 'Edit user name'}
                 title={isEditingName ? 'Done' : 'Edit user name'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors"
               >
                 {isEditingName ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
               </button>
@@ -260,7 +291,7 @@ export function SignUpForm() {
             <Button
               type="submit"
               className={authPrimaryButtonClassName}
-              disabled={isPending || !email.trim() || Boolean(userNameError)}
+              disabled={isPending || Boolean(userNameError)}
             >
               {isPending ? 'Sending code…' : 'Continue with email'}
             </Button>
@@ -280,6 +311,7 @@ export function SignUpForm() {
             <div className="flex justify-center py-1">
               <InputOTP
                 maxLength={6}
+                autoFocus
                 value={otp}
                 onChange={(val) => {
                   setOtp(val.replace(/\D/g, ''))
@@ -292,10 +324,10 @@ export function SignUpForm() {
                     <InputOTPSlot
                       key={index}
                       index={index}
-                      className={`h-12 w-11 rounded-xl border bg-slate-50/80 dark:bg-slate-950/60 text-base font-semibold text-slate-900 dark:text-slate-100 first:rounded-xl last:rounded-xl ${
+                      className={`h-12 w-11 rounded-xl border bg-white dark:bg-slate-950 text-base font-semibold text-neutral-900 dark:text-slate-100 first:rounded-xl last:rounded-xl ${
                         otpError
                           ? 'border-red-400 dark:border-red-500'
-                          : 'border-slate-200 dark:border-slate-700'
+                          : 'border-neutral-300 dark:border-slate-700'
                       }`}
                     />
                   ))}
@@ -317,6 +349,8 @@ export function SignUpForm() {
             <button
               type="button"
               onClick={() => {
+                sendSeqRef.current++
+                setIsSendingCode(false)
                 setStep('details')
                 setOtp('')
               }}
@@ -329,10 +363,19 @@ export function SignUpForm() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={resendCooldown > 0 || isPending}
-              className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline disabled:opacity-50 disabled:no-underline"
+              disabled={resendCooldown > 0 || isPending || isSendingCode}
+              className="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-medium hover:underline disabled:opacity-50 disabled:no-underline"
             >
-              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+              {isSendingCode ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Sending code…
+                </>
+              ) : resendCooldown > 0 ? (
+                `Resend in ${resendCooldown}s`
+              ) : (
+                'Resend code'
+              )}
             </button>
           </div>
         </form>

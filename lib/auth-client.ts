@@ -35,6 +35,23 @@ export type AuthUser = {
 
 const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000'
 
+// Central barrier so protected data requests started during initial mount (e.g. child components
+// or Zustand stores) automatically wait for /auth/me to finish rotating an expired 1-hour JWT cookie
+// before sending their own credentials: 'include' requests.
+let activeSessionRefreshPromise: Promise<any> | null = null
+
+export function setActiveSessionRefreshPromise(p: Promise<any> | null) {
+  activeSessionRefreshPromise = p
+}
+
+export async function waitForActiveSessionRefresh(): Promise<void> {
+  if (activeSessionRefreshPromise) {
+    try {
+      await activeSessionRefreshPromise
+    } catch {}
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit & { timeoutMs?: number }): Promise<T> {
   // Add timeout to prevent hanging requests (12 seconds gives Supabase room for cold starts/refreshes)
   const { timeoutMs = 12000, ...fetchInit } = init || {}
@@ -136,7 +153,7 @@ export const authApi = {
     // Fallback
     return { user: null, isAuthError: false, isNetworkError: false }
   },
-  signIn: async (payload: { email: string; password: string }) => {
+  signIn: async (payload: { email: string; password: string; adminOnly?: boolean }) => {
     const response = await request<{ user: AuthUser } | { error: string; message: string }>(`/auth/signin`, {
       method: 'POST',
       body: JSON.stringify(payload)
@@ -185,9 +202,11 @@ export const authApi = {
     throw new Error('Invalid response format')
   },
   sendOtp: async (payload: { email: string; mode: 'signin' | 'signup'; fullName?: string }) => {
+    // 25s timeout: accommodates serverless cold start + synchronous GoTrue/SMTP handshake without false aborts
     const response = await request<{ success?: boolean; message?: string } | { error: string; message: string; code?: string }>(`/auth/otp/send`, {
       method: 'POST',
       body: JSON.stringify(payload),
+      timeoutMs: 25000,
     })
 
     if ('error' in response) {
@@ -223,16 +242,16 @@ export const authApi = {
     throw new Error('Invalid response format')
   },
   signOut: async () => {
-    const response = await request<{ success: boolean } | { error: string; message: string }>(`/auth/signout`, { method: 'POST' })
+    const response = await request<{ success?: boolean; message?: string } | { error: string; message: string }>(`/auth/signout`, { method: 'POST' })
 
     // Check if this is any error response (network, timeout, unknown) - DON'T THROW, return null
     if ('error' in response) {
       return null
     }
 
-    // TypeScript guard to ensure response has success
-    if ('success' in response) {
-      return response
+    // Accept both { success: true } and legacy { message: 'Signed out successfully' }
+    if ('success' in response || 'message' in response) {
+      return { success: true, ...response }
     }
 
     // Fallback - this shouldn't happen but satisfies TypeScript

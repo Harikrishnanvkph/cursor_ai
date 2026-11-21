@@ -17,6 +17,7 @@ import { GroupService } from './services/group-service';
 import { useFormatGalleryStore } from './stores/format-gallery-store';
 import { useDecorationStore } from './stores/decoration-store';
 import { decorationFileRegistry } from './stores/decoration-file-registry';
+import { resolveActiveCloudConversationId } from './hooks/use-chart-rename';
 
 export interface SaveChartOptions {
     /** Custom chart name (used for new saves or renaming) */
@@ -115,7 +116,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
 
     try {
         const chatMessages = useChatStore.getState().messages;
-        const existingBackendId = useChatStore.getState().backendConversationId;
+        const existingBackendId = resolveActiveCloudConversationId(store, useChatStore.getState().backendConversationId);
 
         let conversationId: string;
         let isUpdate = false;
@@ -142,7 +143,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             if (response.error || !response.data) {
                 const isLimitError = response.code === 'CLOUD_SAVE_LIMIT_REACHED' || response.error?.toLowerCase().includes('limit');
                 const errorMessage = isLimitError
-                    ? `Cloud save limit reached. Upgrade to Pro for up to 30 saves, or delete existing charts in your Board.`
+                    ? `Cloud save limit reached. Purchase a Cloud Credits pack or delete existing charts in your Board.`
                     : (response.error || 'Failed to create conversation');
 
                 const result: SaveChartResult = {
@@ -155,7 +156,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                     toast.error(errorMessage, {
                         duration: 8000,
                         action: {
-                            label: 'Upgrade ($5/mo)',
+                            label: 'Buy Credits',
                             onClick: () => {
                                 if (typeof window !== 'undefined') {
                                     window.location.href = '/pricing';
@@ -178,48 +179,57 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         const normalizedConfig = normalizeChartConfig(activeConfig);
 
 
-        // Process and upload any decoration images loaded via blob URLs
+        // Process and upload any decoration images loaded via blob/data URLs in parallel
         const decorationShapes = useDecorationStore.getState().shapes;
         const updatedShapes = [...decorationShapes];
 
+        const pendingUploads: Array<{ index: number; shape: typeof updatedShapes[number] }> = [];
         for (let i = 0; i < updatedShapes.length; i++) {
             const shape = updatedShapes[i];
             if (shape.type === 'deco-image' && shape.imageUrl && (shape.imageUrl.startsWith('blob:') || shape.imageUrl.startsWith('data:'))) {
-                let file = decorationFileRegistry.get(shape.imageUrl);
-                
-                // Handle data: URLs (e.g., pasted images) - convert to File for upload
-                if (!file && shape.imageUrl.startsWith('data:')) {
-                    const response = await fetch(shape.imageUrl);
-                    const blob = await response.blob();
-                    file = new File([blob], `decoration-${shape.id}.png`, { type: blob.type });
-                }
-                
-                if (file) {
+                pendingUploads.push({ index: i, shape });
+            }
+        }
+
+        if (pendingUploads.length > 0) {
+            await Promise.all(
+                pendingUploads.map(async ({ index, shape }) => {
+                    const originalUrl = shape.imageUrl!;
+                    let file = decorationFileRegistry.get(originalUrl);
+
+                    // Handle data: URLs (e.g., pasted images) - convert to File for upload
+                    if (!file && originalUrl.startsWith('data:')) {
+                        const response = await fetch(originalUrl);
+                        const blob = await response.blob();
+                        file = new File([blob], `decoration-${shape.id}.png`, { type: blob.type });
+                    }
+
+                    if (!file) return;
+
                     const base64 = await fileToBase64(file);
                     const res = await dataService.uploadImage(base64, file.name);
                     if (res.data?.publicUrl) {
-                        // Create updated shape
                         const updatedShape = {
                             ...shape,
                             imageUrl: res.data.publicUrl
                         };
-                        updatedShapes[i] = updatedShape;
-                        
+                        updatedShapes[index] = updatedShape;
+
                         // Update the store so the active editing session uses the public URL
                         useDecorationStore.getState().updateShape(shape.id, { imageUrl: res.data.publicUrl }, true);
-                        
+
                         // Revoke blob URL and remove from registry
                         try {
-                            URL.revokeObjectURL(shape.imageUrl);
+                            URL.revokeObjectURL(originalUrl);
                         } catch (e) {
                             console.error('Failed to revoke blob URL during save:', e);
                         }
-                        decorationFileRegistry.delete(shape.imageUrl);
+                        decorationFileRegistry.delete(originalUrl);
                     } else {
                         throw new Error(res.error || 'Failed to upload decoration image');
                     }
-                }
-            }
+                })
+            );
         }
 
         // Inject decorations into config so it's persisted in the snapshot
@@ -400,23 +410,23 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
 
         if (shouldSaveMessages) {
             const newMessages = messagesToSave.slice(startIndex);
-            for (let i = 0; i < newMessages.length; i++) {
-                const msg = newMessages[i];
+            if (newMessages.length > 0) {
                 try {
-                    const chartSnapshotId = (msg.role === 'assistant' && msg.chartSnapshot)
-                        ? snapshotId
-                        : undefined;
-
-                    await dataService.addMessage(
-                        conversationId,
-                        msg.role,
-                        msg.content,
-                        chartSnapshotId,
-                        msg.action || undefined,
-                        msg.changes || undefined
-                    );
+                    const batchPayload = newMessages.map((msg) => ({
+                        role: msg.role,
+                        content: msg.content,
+                        chartSnapshotId: (msg.role === 'assistant' && msg.chartSnapshot)
+                            ? snapshotId
+                            : undefined,
+                        action: msg.action || undefined,
+                        changes: msg.changes || undefined,
+                    }));
+                    const batchRes = await dataService.addMessagesBatch(conversationId, batchPayload);
+                    if (batchRes.error) {
+                        console.error('Failed to batch save messages:', batchRes.error);
+                    }
                 } catch (msgError) {
-                    console.error(`Failed to save message ${startIndex + i}:`, msgError);
+                    console.error('Failed to batch save messages:', msgError);
                 }
             }
         }
@@ -427,13 +437,6 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
 
         // Update backend conversation ID
         useChatStore.getState().setBackendConversationId(conversationId);
-
-        // Refresh history store immediately so newly saved chart appears in Recents / History
-        try {
-            await useHistoryStore.getState().loadConversationsFromBackend(true);
-        } catch (refreshErr) {
-            console.warn('Failed to refresh history store after save:', refreshErr);
-        }
 
         // If in template mode, mark template as saved to cloud
         if (editorMode === 'template') {
@@ -491,24 +494,34 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         // Keep chartTitle in sync in the store
         useChartStore.getState().setChartTitle(savedTitle);
 
-        // Update history store conversation snapshot so subsequent pulls don't load stale data
+        // Update history store conversation + snapshotCache immediately so Board/Recents reflect the save without blocking
         const historyStore = useHistoryStore.getState();
+        const savedSnapshotObj: any = {
+            id: snapshotId,
+            conversationId,
+            chartType,
+            chartData: JSON.parse(JSON.stringify(chartDataToSave)),
+            chartConfig: JSON.parse(JSON.stringify(normalizedConfig)),
+            template_structure: templateStructure,
+            template_content: templateContent,
+            is_template_mode: editorMode === 'template'
+        };
+        historyStore.setCachedSnapshot(conversationId, savedSnapshotObj);
+
         const existingConv = historyStore.conversations.find(c => c.id === conversationId);
         if (existingConv) {
             historyStore.updateConversation(conversationId, {
                 title: savedTitle,
-                snapshot: {
-                    id: snapshotId,
-                    conversationId,
-                    chartType,
-                    chartData: JSON.parse(JSON.stringify(chartDataToSave)),
-                    chartConfig: JSON.parse(JSON.stringify(normalizedConfig)),
-                    template_structure: templateStructure,
-                    template_content: templateContent,
-                    is_template_mode: editorMode === 'template'
-                } as any
+                is_template_mode: editorMode === 'template',
+                chart_mode: chartMode,
+                snapshot: savedSnapshotObj
             });
         }
+
+        // Refresh history list from backend in the background (non-blocking) so newly created charts appear in Recents/History
+        useHistoryStore.getState().loadConversationsFromBackend(true).catch((refreshErr) => {
+            console.warn('Failed to refresh history store after save:', refreshErr);
+        });
 
         // CRITICAL: Always sync chatStore.currentChartState with the live chart store
         // This ensures both stores stay in sync, preventing stale state overwrite on save/navigation

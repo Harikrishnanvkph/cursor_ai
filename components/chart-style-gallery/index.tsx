@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useCallback, useState } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { useChartStore } from "@/lib/chart-store"
 import { X, Palette, SlidersHorizontal, Sparkles, ChevronDown, RefreshCw, Check } from "lucide-react"
@@ -17,6 +18,12 @@ import { useChatStore } from "@/lib/chat-store"
 const PAGE_SIZE = 12
 
 export function ChartStyleGallery() {
+  const isGalleryOpen = useChartStyleStore(s => s.isGalleryOpen)
+  if (!isGalleryOpen) return null
+  return <ChartStyleGalleryContent />
+}
+
+function ChartStyleGalleryContent() {
   const {
     isGalleryOpen,
     closeGallery,
@@ -28,9 +35,25 @@ export function ChartStyleGallery() {
     getFilteredPresets,
     selectedPresetId,
     applyPreset,
-  } = useChartStyleStore()
+  } = useChartStyleStore(useShallow(s => ({
+    isGalleryOpen: s.isGalleryOpen,
+    closeGallery: s.closeGallery,
+    isLoading: s.isLoading,
+    loadPresets: s.loadPresets,
+    officialPresets: s.officialPresets,
+    filters: s.filters,
+    setFilters: s.setFilters,
+    getFilteredPresets: s.getFilteredPresets,
+    selectedPresetId: s.selectedPresetId,
+    applyPreset: s.applyPreset,
+  })))
 
-  const { chartData, chartConfig, chartType, hasJSON } = useChartStore()
+  const { chartData, chartConfig, chartType, hasJSON } = useChartStore(useShallow(s => ({
+    chartData: s.chartData,
+    chartConfig: s.chartConfig,
+    chartType: s.chartType,
+    hasJSON: s.hasJSON,
+  })))
   const hasChartData = hasJSON && chartData?.datasets?.length > 0
   const panelRef = useRef<HTMLDivElement>(null)
 

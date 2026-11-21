@@ -98,7 +98,7 @@ export default function BoardPage() {
 }
 
 function BoardPageContent() {
-  const { user } = useAuth()
+  const { user, sessionReady } = useAuth()
   const router = useRouter()
   const conversations = useHistoryStore((s) => s.conversations)
   const snapshotCache = useHistoryStore((s) => s.snapshotCache)
@@ -142,14 +142,16 @@ function BoardPageContent() {
     }
   }, [isMobileMenuOpen])
 
-  // Load conversations from backend on mount
+  // Load conversations from backend on mount (keyed on user?.id + sessionReady so /auth/me
+  // completes any expired-JWT refresh before parallel data requests fan out)
+  const userId = user?.id
   useEffect(() => {
-    if (user) {
+    if (userId && sessionReady) {
       inFlightBatchIdsRef.current.clear()
       setBatchAttemptedIds(new Set())
       loadConversationsFromBackend(true)
     }
-  }, [user, loadConversationsFromBackend])
+  }, [userId, sessionReady, loadConversationsFromBackend])
 
   // Reset pagination visible count when filters or tab switches
   useEffect(() => {

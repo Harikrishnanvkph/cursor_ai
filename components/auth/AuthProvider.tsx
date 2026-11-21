@@ -1,7 +1,7 @@
 "use client"
 import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react'
-import { authApi, type AuthUser } from '@/lib/auth-client'
-import { useRouter } from 'next/navigation'
+import { authApi, setActiveSessionRefreshPromise, type AuthUser } from '@/lib/auth-client'
+import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 
 type SignInOptions = {
@@ -13,6 +13,8 @@ type AuthContextValue = {
   user: AuthUser | null
   loading: boolean
   sessionVerified: boolean
+  /** True when protected data queries may safely fire without racing an expired JWT refresh */
+  sessionReady: boolean
   signIn: (email: string, password: string, options?: SignInOptions) => Promise<boolean>
   signUp: (
     email: string,
@@ -31,40 +33,67 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+// Align UI hint cookie with the 30-day refresh_token lifetime
+const AUTH_HINT_COOKIE_MAX_AGE_SEC = 30 * 24 * 60 * 60
+// Supabase access JWTs expire after 60 minutes; consider cached JWT sessions fresh for 45 minutes
+const JWT_CACHE_FRESH_WINDOW_MS = 45 * 60 * 1000
+
+const PUBLIC_SKIP_ME_PATHS = new Set([
+  '/',
+  '/pricing',
+  '/about',
+  '/docs',
+  '/documentation',
+  '/privacy',
+  '/terms',
+])
+
+function isPublicSkipAuthPath(pathname: string | null): boolean {
+  if (!pathname) return false
+  return PUBLIC_SKIP_ME_PATHS.has(pathname) || pathname.startsWith('/share/')
+}
+
 const setAuthCookie = (isAuthenticated: boolean) => {
   if (typeof document !== 'undefined') {
+    const secureAttr = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''
     if (isAuthenticated) {
-      document.cookie = `is_authenticated=true; path=/; max-age=${15 * 24 * 60 * 60}; SameSite=Lax`
+      document.cookie = `is_authenticated=true; path=/; max-age=${AUTH_HINT_COOKIE_MAX_AGE_SEC}; SameSite=Lax${secureAttr}`
     } else {
-      document.cookie = `is_authenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
+      document.cookie = `is_authenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureAttr}`
     }
   }
 }
 
 // Synchronously read the "was signed in" hint (client cookie + cached profile) so the very first
 // client paint can already show the signed-in UI instead of waiting for the /auth/me round-trip.
-function readCachedSession(): AuthUser | null {
+function readCachedSession(): { user: AuthUser; isFresh: boolean } | null {
   try {
     const hasCookie = document.cookie.includes('is_authenticated=true')
     const cachedUser = localStorage.getItem('cached_auth_user')
     if (hasCookie && cachedUser) {
       const parsed = JSON.parse(cachedUser) as AuthUser
+      // OAuth opaque sessions last 15 days without 1h JWT rotation; Supabase JWTs expire after 1h.
+      const isOAuth = parsed.provider === 'google' || parsed.provider === 'github'
+      const verifiedAt = Number(localStorage.getItem('cached_auth_verified_at') || '0')
+      const isFresh = isOAuth || (verifiedAt > 0 && Date.now() - verifiedAt < JWT_CACHE_FRESH_WINDOW_MS)
       // Security: Never trust client-cached is_admin claim optimistically.
       // Wait for server authApi.me() to confirm before granting any admin status.
-      return { ...parsed, is_admin: false }
+      return {
+        user: { ...parsed, is_admin: false },
+        isFresh,
+      }
     }
   } catch {}
   return null
 }
 
-// Persist every successful authentication the same way, wherever it came from (me / sign-in / guest).
-// Previously only refresh() wrote `cached_auth_user`, so right after an email sign-in the next page
-// load had no hint to render from and showed the signed-out UI until /auth/me answered.
+// Persist every successful authentication the same way, wherever it came from (me / sign-in / otp).
 function persistSession(user: AuthUser) {
   if (typeof window !== 'undefined') {
     try {
       if (user.id) localStorage.setItem('user-id', user.id)
       localStorage.setItem('cached_auth_user', JSON.stringify(user))
+      localStorage.setItem('cached_auth_verified_at', String(Date.now()))
     } catch {}
   }
   setAuthCookie(true)
@@ -75,6 +104,7 @@ function clearPersistedSession() {
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem('cached_auth_user')
+      localStorage.removeItem('cached_auth_verified_at')
       localStorage.removeItem('user-id')
     } catch {}
   }
@@ -87,18 +117,33 @@ const ME_RETRY_DELAYS_MS = [600, 1800]
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
 
   // Must start as null/true so server HTML and the first client render match (no hydration mismatch).
   // The cached session is applied in a layout effect below, i.e. after hydration but BEFORE first paint.
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [sessionVerified, setSessionVerified] = useState(false)
+  const [cachedSessionFresh, setCachedSessionFresh] = useState(false)
+  const [initialCheckSettled, setInitialCheckSettled] = useState(false)
 
   // Bumped by every explicit auth action (sign-in / sign-out / guest). A /auth/me request that was
   // started before the bump is stale and must not overwrite the newer state.
   const authEpochRef = useRef(0)
+  // Track whether we have performed at least one server /auth/me verification in this tab lifecycle
+  const hasCheckedServerRef = useRef(false)
   // Share one in-flight verification between mount, auth:refresh events, the OAuth success page, etc.
   const inFlightRefreshRef = useRef<{ promise: Promise<void>; epoch: number } | null>(null)
+  // Resolves the pre-mount stale-JWT barrier armed in useLayoutEffect once the first /auth/me settles
+  const initialBarrierResolveRef = useRef<(() => void) | null>(null)
+
+  const releaseInitialBarrier = useCallback(() => {
+    if (initialBarrierResolveRef.current) {
+      initialBarrierResolveRef.current()
+      initialBarrierResolveRef.current = null
+    }
+    setActiveSessionRefreshPromise(null)
+  }, [])
 
   const runRefresh = useCallback(async () => {
     const epoch = authEpochRef.current
@@ -142,11 +187,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.warn('Unexpected error during refresh (preserving active session):', error)
     } finally {
+      releaseInitialBarrier()
       if (!isStale()) {
         setLoading(false)
+        setInitialCheckSettled(true)
       }
     }
-  }, [])
+  }, [releaseInitialBarrier])
 
   const refresh = useCallback((): Promise<void> => {
     const current = inFlightRefreshRef.current
@@ -167,14 +214,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useLayoutEffect(() => {
     const cached = readCachedSession()
     if (cached) {
-      setUser(cached)
+      setUser(cached.user)
+      setCachedSessionFresh(cached.isFresh)
       setLoading(false)
+      // If the cached JWT session is >= 45m old, arm the refresh barrier BEFORE any child
+      // component useEffect runs so all protected dataService requests wait for /auth/me to
+      // rotate the access_token cookie first.
+      if (!cached.isFresh) {
+        const barrier = new Promise<void>((resolve) => {
+          initialBarrierResolveRef.current = resolve
+        })
+        setActiveSessionRefreshPromise(barrier)
+      }
     }
   }, [])
 
   useEffect(() => {
+    if (hasCheckedServerRef.current) return
+
+    const hasAuthHint =
+      typeof document !== 'undefined' &&
+      (document.cookie.includes('is_authenticated=true') || Boolean(localStorage.getItem('cached_auth_user')))
+
+    // Skip guaranteed-401 GET /auth/me for anonymous visitors on public/share pages so viral shares
+    // and landing-page traffic never hammer /auth/me or delay the navbar Sign-In CTA.
+    // Navigating later to /signin, /signup, /auth/*, or any protected route triggers refresh() below.
+    if (!hasAuthHint && isPublicSkipAuthPath(pathname)) {
+      releaseInitialBarrier()
+      setLoading(false)
+      setInitialCheckSettled(true)
+      return
+    }
+
+    if (!hasAuthHint) {
+      setLoading(true)
+    }
+    hasCheckedServerRef.current = true
     refresh()
-  }, [refresh])
+  }, [pathname, refresh, releaseInitialBarrier])
 
   useEffect(() => {
     // Quota-changing actions (create/delete chart, AI generation) fire `auth:refresh` in bursts;
@@ -201,13 +278,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (e.newValue) {
           try {
             const parsed = JSON.parse(e.newValue) as AuthUser
-            setUser({
-              ...parsed,
-              is_admin: false
+            setUser((prev) => {
+              // Preserve already server-verified is_admin for the same user so activity in another
+              // tab doesn't strip is_admin and kick an admin out of open /admin/* tabs.
+              const preservedAdmin = prev && prev.id === parsed.id ? Boolean(prev.is_admin) : false
+              return {
+                ...parsed,
+                is_admin: preservedAdmin,
+              }
             })
           } catch {}
         } else {
           setUser(null)
+          setSessionVerified(false)
+          setCachedSessionFresh(false)
           setAuthCookie(false)
         }
       }
@@ -240,7 +324,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string, options?: SignInOptions): Promise<boolean> => {
     try {
-      const res = await authApi.signIn({ email, password })
+      const res = await authApi.signIn({ email, password, adminOnly: options?.adminOnly })
 
       // Check if this is a network failure response
       if (!res) {
@@ -254,6 +338,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (options?.adminOnly && !res.user?.is_admin) {
+        // Defense-in-depth: ensure no non-admin cookies linger if server didn't reject earlier
+        await authApi.signOut().catch(() => {})
         toast.error('This account does not have admin privileges.')
         return false
       }
@@ -262,6 +348,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // check that returned 401 because the user had not signed in yet) - otherwise that late 401
       // would wipe the brand-new session.
       authEpochRef.current++
+      releaseInitialBarrier()
       setUser(res.user)
       setSessionVerified(true)
 
@@ -269,30 +356,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       persistSession(res.user)
 
       // Handle redirect after successful sign-in
+      // Use full browser navigation (window.location.replace) rather than router.replace so Next.js's
+      // client Router Cache doesn't retain stale pre-login middleware 307 redirects for prefetched
+      // protected routes (/landing, /editor, /board, /admin).
       if (typeof window !== 'undefined') {
         if (options?.adminOnly) {
           sessionStorage.removeItem('redirectAfterSignIn')
           const adminTarget = options.redirectTo && options.redirectTo.startsWith('/') && !options.redirectTo.startsWith('//')
             ? options.redirectTo
             : '/admin'
-          router.replace(adminTarget)
+          window.location.replace(adminTarget)
           return true
         }
 
         const rawRedirect = options?.redirectTo || sessionStorage.getItem('redirectAfterSignIn')
         const redirectPath =
-          rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+          rawRedirect &&
+          rawRedirect.startsWith('/') &&
+          !rawRedirect.startsWith('//') &&
+          !rawRedirect.startsWith('/signin') &&
+          !rawRedirect.startsWith('/signup')
             ? rawRedirect
-            : null
+            : '/board'
 
-        if (redirectPath) {
-          console.log(`🔄 SignIn successful, redirecting to: ${redirectPath}`)
-          sessionStorage.removeItem('redirectAfterSignIn')
-          router.replace(redirectPath)
-        } else {
-          // Default redirect for normal /signin
-          router.replace('/board')
-        }
+        sessionStorage.removeItem('redirectAfterSignIn')
+        window.location.replace(redirectPath)
       }
 
       return true // Success
@@ -303,6 +391,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Handle other errors (not network failures)
       if (m.includes('request timed out')) {
         toast.error('Request timed out. Please try again.')
+      } else if (m.includes('admin privileges')) {
+        toast.error('This account does not have admin privileges.')
       } else if (m.includes('email not confirmed')) {
         toast.error('Please verify your email address before signing in. Check your inbox or spam folder.')
       } else if (m.includes('invalid email or password') || m.includes('invalid login')) {
@@ -415,14 +505,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       authEpochRef.current++
+      releaseInitialBarrier()
       setUser(res.user)
       setSessionVerified(true)
       persistSession(res.user)
 
       if (typeof window !== 'undefined') {
-        const redirectPath = options?.redirectTo || sessionStorage.getItem('redirectAfterSignIn') || '/board'
+        const rawRedirect = options?.redirectTo || sessionStorage.getItem('redirectAfterSignIn')
+        const redirectPath =
+          rawRedirect &&
+          rawRedirect.startsWith('/') &&
+          !rawRedirect.startsWith('//') &&
+          !rawRedirect.startsWith('/signin') &&
+          !rawRedirect.startsWith('/signup')
+            ? rawRedirect
+            : '/board'
         sessionStorage.removeItem('redirectAfterSignIn')
-        router.replace(redirectPath)
+        // Full navigation clears any stale pre-login Next.js Client Router Cache redirects
+        // (e.g., /landing or /editor prefetched while logged out -> 307 /signin?redirect=...)
+        window.location.replace(redirectPath)
       }
       return { ok: true }
     } catch (e: any) {
@@ -438,6 +539,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     //    has to wait on the network for that to take effect.
     const userId = typeof window !== 'undefined' ? (localStorage.getItem('user-id') || user?.id || null) : null
     authEpochRef.current++ // a /auth/me started before now must not resurrect the session
+    releaseInitialBarrier()
     setUser(null)
     setSessionVerified(true)
     const isOAuthUser = user?.provider === 'google' || user?.provider === 'github'
@@ -595,8 +697,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refresh])
 
+  const sessionReady = sessionVerified || cachedSessionFresh || initialCheckSettled
+
   return (
-    <AuthContext.Provider value={{ user, loading, sessionVerified, signIn, signUp, sendOtp, verifyOtp, signOut, signInWithGoogle, signInWithGitHub, refresh, upgradeToPro, downgradeToFree }}>
+    <AuthContext.Provider value={{ user, loading, sessionVerified, sessionReady, signIn, signUp, sendOtp, verifyOtp, signOut, signInWithGoogle, signInWithGitHub, refresh, upgradeToPro, downgradeToFree }}>
       {children}
     </AuthContext.Provider>
   )

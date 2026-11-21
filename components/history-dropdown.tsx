@@ -71,7 +71,7 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
 
   const { conversations, restoreConversation, clearAllConversations, deleteConversation, loadConversationsFromBackend, loading } = useHistoryStore()
   const { startNewConversation, historyConversationId, backendConversationId } = useChatStore()
-  const { user } = useAuth()
+  const { user, sessionReady } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const { setActiveTab, setSidebarView, setLeftSidebarCollapsed } = useEditorSidebarContext()
@@ -83,12 +83,14 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
     }
   }, [open, historyConversationId, variant])
 
-  // Load conversations from backend when user is authenticated
+  // Load conversations from backend when user is authenticated (uses dataService cache when nothing changed,
+  // and keyed on user?.id + sessionReady so stale JWTs finish single-flight /auth/me refresh first)
+  const userId = user?.id
   useEffect(() => {
-    if (user && (open || variant === 'sidebar')) {
-      loadConversationsFromBackend(true)
+    if (userId && sessionReady && (open || variant === 'sidebar')) {
+      loadConversationsFromBackend(false)
     }
-  }, [user, open, variant, loadConversationsFromBackend])
+  }, [userId, sessionReady, open, variant, loadConversationsFromBackend])
 
   // Add null check and provide default empty array
   const safeConversations = conversations || []

@@ -36,7 +36,8 @@ interface HistoryStore {
   restoreConversation: (id: string) => Promise<void>;
   clearAllConversations: () => Promise<void>;
   updateConversation: (id: string, updates: Partial<Omit<Conversation, 'id' | 'timestamp'>>) => void;
-  loadConversationsFromBackend: (forceRefresh?: boolean) => Promise<void>;
+  setCachedSnapshot: (conversationId: string, snapshot: ChartSnapshot) => void;
+  loadConversationsFromBackend: (forceRefresh?: boolean, options?: { clearSnapshotCache?: boolean }) => Promise<void>;
   hydrateSnapshots: (conversationIds: string[]) => Promise<void>;
 }
 
@@ -501,7 +502,7 @@ export const useHistoryStore = create<HistoryStore>()(
 
               const updatedGroups = (currentStore.groups || []).map((g: any) =>
                 g.id === existingGroupId
-                  ? { ...g, sourceId: conv.id, sourceSnapshotId: snapshotId || g.sourceSnapshotId, sourceTitle: conv.title }
+                  ? { ...g, name: conv.title || g.name, sourceId: conv.id, sourceSnapshotId: snapshotId || g.sourceSnapshotId, sourceTitle: conv.title }
                   : g
               );
 
@@ -614,10 +615,20 @@ export const useHistoryStore = create<HistoryStore>()(
           )
         });
       },
-      loadConversationsFromBackend: async (forceRefresh = false) => {
+      setCachedSnapshot: (conversationId, snapshot) => {
+        if (!conversationId || !snapshot) return;
+        set((prev) => ({
+          snapshotCache: {
+            ...prev.snapshotCache,
+            [conversationId]: snapshot,
+          },
+        }));
+      },
+      loadConversationsFromBackend: async (forceRefresh = false, options) => {
+        const shouldClearSnapshotCache = options?.clearSnapshotCache === true;
         set({
           loading: true,
-          ...(forceRefresh ? { snapshotCache: {} } : {}),
+          ...(shouldClearSnapshotCache ? { snapshotCache: {} } : {}),
         });
         try {
           const response = await dataService.getConversations(50, forceRefresh);
@@ -656,13 +667,24 @@ export const useHistoryStore = create<HistoryStore>()(
               };
             });
 
+            // Prune snapshotCache entries for conversations that no longer exist, while preserving valid cached snapshots
+            const validIds = new Set(lightweightConversations.map(c => c.id));
+            const currentCache = get().snapshotCache;
+            const prunedCache: Record<string, ChartSnapshot> = {};
+            for (const [cid, snap] of Object.entries(currentCache)) {
+              if (validIds.has(cid)) {
+                prunedCache[cid] = snap;
+              }
+            }
+
             set({
               conversations: lightweightConversations,
+              snapshotCache: prunedCache,
               loading: false
             });
             console.log(`✅ Loaded ${lightweightConversations.length} conversations from backend`);
           } else {
-            set({ conversations: [], loading: false });
+            set({ conversations: [], snapshotCache: {}, loading: false });
             console.log('No conversations found in backend');
           }
         } catch (error) {

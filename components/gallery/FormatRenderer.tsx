@@ -17,6 +17,7 @@ import { sanitizeHTML, sanitizeSVG } from "@/lib/utils/sanitize"
  */
 
 import React, { useMemo, useRef, useCallback, useEffect, useState } from "react"
+import { useShallow } from "zustand/react/shallow"
 
 import type {
   RenderedFormat,
@@ -30,11 +31,12 @@ import type {
   FormatColorPalette,
 } from "@/lib/format-types"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useFormatHoverStore } from "@/lib/stores/format-hover-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { FormatZoneToolbar } from "@/components/format/FormatZoneToolbar"
 import { ChartGenerator } from "@/lib/chart_generator"
 import { getPatternCSS } from "@/lib/utils"
-import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
+import { getProxiedImageUrl, quantizeImageWidth } from "@/lib/utils/image-proxy-utils"
 import { Maximize2, X, Move } from "lucide-react"
 
 // ========================================
@@ -344,8 +346,17 @@ export const FormatRenderer = React.memo(function FormatRenderer({
     setEditingZoneId,
     isResizeMode,
     setResizeMode
-  } = useFormatGalleryStore()
-  const { setSelectedShapeId, drawingMode } = useDecorationStore()
+  } = useFormatGalleryStore(useShallow(s => ({
+    selectedZoneId: s.selectedZoneId,
+    setSelectedZoneId: s.setSelectedZoneId,
+    setEditingZoneId: s.setEditingZoneId,
+    isResizeMode: s.isResizeMode,
+    setResizeMode: s.setResizeMode,
+  })))
+  const { setSelectedShapeId, drawingMode } = useDecorationStore(useShallow(s => ({
+    setSelectedShapeId: s.setSelectedShapeId,
+    drawingMode: s.drawingMode,
+  })))
 
   const scaledW = width * scale
   const scaledH = height * scale
@@ -651,16 +662,26 @@ function InteractiveZoneWrapper({
   children: React.ReactNode
 }) {
   const {
-    hoveredZoneId, setHoveredZoneId,
     selectedZoneId, setSelectedZoneId,
     editingZoneId, setEditingZoneId,
     isResizeMode, updateZonePosition,
     setZoneContentOverride, updateZoneContent
-  } = useFormatGalleryStore()
+  } = useFormatGalleryStore(useShallow(s => ({
+    selectedZoneId: s.selectedZoneId,
+    setSelectedZoneId: s.setSelectedZoneId,
+    editingZoneId: s.editingZoneId,
+    setEditingZoneId: s.setEditingZoneId,
+    isResizeMode: s.isResizeMode,
+    updateZonePosition: s.updateZonePosition,
+    setZoneContentOverride: s.setZoneContentOverride,
+    updateZoneContent: s.updateZoneContent,
+  })))
 
   const [isDragOver, setIsDragOver] = useState(false)
 
-  const isHovered = hoveredZoneId === zoneId
+  // Atomic boolean selector: only the zone losing or gaining hover re-renders
+  const isHovered = useFormatHoverStore(s => s.hoveredZoneId === zoneId)
+  const setHoveredZoneId = useFormatHoverStore(s => s.setHoveredZoneId)
   const isSelected = selectedZoneId === zoneId
   const isEditing = editingZoneId === zoneId
   const isEditable = zoneType === 'text' || zoneType === 'stat'
@@ -1229,7 +1250,13 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
     editingZoneId, setEditingZoneId,
     contentPackage, setContentPackage,
     updateZoneContent
-  } = useFormatGalleryStore()
+  } = useFormatGalleryStore(useShallow(s => ({
+    editingZoneId: s.editingZoneId,
+    setEditingZoneId: s.setEditingZoneId,
+    contentPackage: s.contentPackage,
+    setContentPackage: s.setContentPackage,
+    updateZoneContent: s.updateZoneContent,
+  })))
 
   const isEditing = interactive && editingZoneId === zone.id
 
@@ -1402,7 +1429,12 @@ function StatZoneContent({ renderedZone, scale, interactive }: {
   const {
     editingZoneId, setEditingZoneId,
     contentPackage, setContentPackage
-  } = useFormatGalleryStore()
+  } = useFormatGalleryStore(useShallow(s => ({
+    editingZoneId: s.editingZoneId,
+    setEditingZoneId: s.setEditingZoneId,
+    contentPackage: s.contentPackage,
+    setContentPackage: s.setContentPackage,
+  })))
 
   const isEditing = interactive && editingZoneId === zone.id
   const valueRef = useRef<HTMLSpanElement>(null)
@@ -1753,7 +1785,7 @@ function BackgroundZoneView({ renderedZone, scale, canvasWidth }: {
   const isImageBg = zone.style.type === 'image' || (zone.style as any)?.bgType === 'image'
   const rawBgUrl = renderedZone.resolvedImageUrl || zone.style.imageUrl || (zone.style as any)?.bgImageUrl || (zone as any)?.imageUrl
   if (isImageBg && rawBgUrl) {
-    const imageWidth = canvasWidth ? Math.round(canvasWidth * scale) : undefined
+    const imageWidth = canvasWidth ? quantizeImageWidth(Math.round(canvasWidth * scale)) : undefined
     const imageUrl = getProxiedImageUrl(rawBgUrl, imageWidth ? { width: imageWidth, format: 'webp' } : undefined)
     
     const isBaseTrans = (zone.style as any)?.baseColorType === 'transparent' ||
@@ -1935,9 +1967,9 @@ function ImageZoneContent({ renderedZone, scale, zoneWidth }: {
   zoneWidth: number
 }) {
   const zone = renderedZone.zone as ImageZone
-  const rawUrl = renderedZone.resolvedImageUrl || zone.imageUrl || (zone.style as any)?.imageUrl || (zone.style as any)?.bgImageUrl || (zone as any)?.url
+  const rawUrl = (zone.style as any)?.imageUrl || (zone.style as any)?.bgImageUrl || renderedZone.resolvedImageUrl || zone.imageUrl || (zone as any)?.url
   
-  const reqWidth = Math.round(zoneWidth * scale)
+  const reqWidth = quantizeImageWidth(Math.round(zoneWidth * scale))
   const imageUrl = rawUrl ? getProxiedImageUrl(rawUrl, { width: reqWidth, format: 'webp' }) : ''
 
   const isTransparent = (zone.style as any)?.bgType === 'transparent' ||

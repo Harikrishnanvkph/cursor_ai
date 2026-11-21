@@ -823,6 +823,8 @@ export const ChartGenerator = memo(function ChartGenerator({
   // The explicit resize(finalWidth, finalHeight) IS necessary here for DPR changes
   // so the canvas buffer is sized correctly at high zoom levels (e.g. 350%+
   // where DPR reaches 6, requiring a 4800px-wide canvas buffer).
+  const cappedDevicePixelRatio = Math.min(4, Math.max(1, Math.ceil(browserDpr * devicePixelRatioMultiplier)));
+
   useEffect(() => {
     if (chartRef.current) {
       if (useFixedDimensions && finalWidth && finalHeight) {
@@ -831,7 +833,7 @@ export const ChartGenerator = memo(function ChartGenerator({
         chartRef.current.resize();
       }
     }
-  }, [devicePixelRatioMultiplier, useFixedDimensions, finalWidth, finalHeight]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cappedDevicePixelRatio, useFixedDimensions, finalWidth, finalHeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-render chart content when fixed chart dimensions change.
   // react-chartjs-2 does not detect canvas size changes from width/height props,
@@ -2821,7 +2823,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                   }}
                   options={{
                     ...appliedOptions,
-                    devicePixelRatio: Math.max(1, Math.ceil(browserDpr * devicePixelRatioMultiplier)),
+                    devicePixelRatio: cappedDevicePixelRatio,
                     circumference: chartType === 'gauge' ? (appliedOptions.circumference ?? 180) : appliedOptions.circumference,
                     rotation: chartType === 'gauge' ? (appliedOptions.rotation ?? 270) : appliedOptions.rotation,
                     responsive: responsiveOptionForZoom,

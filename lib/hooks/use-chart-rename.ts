@@ -14,33 +14,65 @@ import {
 } from "@/lib/hooks/use-chart-state"
 
 /**
+ * Resolves the cloud conversation ID for the currently active chart entity.
+ * Prefers the active dataset/group's own sourceId so Read, Write, and Save always
+ * target the exact same conversation (and never leak a stale backendConversationId).
+ */
+export function resolveActiveCloudConversationId(
+    chartState: ReturnType<typeof useChartStore.getState> = useChartStore.getState(),
+    backendConversationId: string | null = useChatStore.getState().backendConversationId
+): string | null {
+    if (chartState.chartMode === 'single' && chartState.chartData.datasets.length > 0) {
+        const activeDs = chartState.chartData.datasets[chartState.activeDatasetIndex];
+        return activeDs?.sourceId || null;
+    }
+    if (chartState.chartMode === 'grouped' && chartState.activeGroupId && chartState.groups) {
+        const activeGroup = chartState.groups.find(g => g.id === chartState.activeGroupId);
+        if (activeGroup) {
+            return activeGroup.sourceId || null;
+        }
+    }
+    return backendConversationId || null;
+}
+
+/**
+ * Resolves the local (non-cloud) display title strictly from the active dataset or group.
+ * Never falls back to global chartTitle when an active entity exists (prevents cross-chart leakage).
+ */
+function resolveLocalEntityTitle(s: ReturnType<typeof useChartStore.getState>): string {
+    if (s.chartMode === 'grouped' && s.activeGroupId && s.groups) {
+        const activeGroup = s.groups.find(g => g.id === s.activeGroupId);
+        if (activeGroup) {
+            return activeGroup.name || activeGroup.sourceTitle || "Untitled Chart";
+        }
+    }
+    if (s.chartMode === 'single' && s.chartData.datasets.length > 0) {
+        const activeDs = s.chartData.datasets[s.activeDatasetIndex];
+        if (activeDs) {
+            if (activeDs.sourceTitle) return activeDs.sourceTitle;
+            if (activeDs.label && activeDs.label !== 'Sample Dataset') return activeDs.label;
+            return "Untitled Chart";
+        }
+    }
+    return s.chartTitle || "Untitled Chart";
+}
+
+/**
  * Retrieves the effective chart title across conversations, groups, and dataset metadata.
  */
 export function getEffectiveChartTitle(): string {
+    const s = useChartStore.getState();
     const backendConversationId = useChatStore.getState().backendConversationId;
-    if (backendConversationId) {
-        const conv = useHistoryStore.getState().conversations.find(c => c.id === backendConversationId);
+    const activeCloudId = resolveActiveCloudConversationId(s, backendConversationId);
+
+    if (activeCloudId) {
+        const conv = useHistoryStore.getState().conversations.find(c => c.id === activeCloudId);
         if (conv?.title) {
             return conv.title;
         }
     }
 
-    const s = useChartStore.getState();
-    if (s.chartMode === 'grouped' && s.activeGroupId && s.groups) {
-        const activeGroup = s.groups.find(g => g.id === s.activeGroupId);
-        const title = activeGroup?.name || activeGroup?.sourceTitle;
-        if (title) {
-            return title;
-        }
-    }
-    if (s.chartMode === 'single' && s.chartData.datasets.length > 0) {
-        const activeDs = s.chartData.datasets[s.activeDatasetIndex];
-        const title = activeDs?.sourceTitle;
-        if (title) {
-            return title;
-        }
-    }
-    return s.chartTitle || "Untitled Chart";
+    return resolveLocalEntityTitle(s);
 }
 
 /**
@@ -50,17 +82,15 @@ export async function saveChartTitle(newTitle: string, options?: { silent?: bool
     const trimmed = newTitle.trim();
     if (!trimmed) return false;
 
-    let saveTargetId = useChatStore.getState().backendConversationId;
     const state = useChartStore.getState();
+    const backendConversationId = useChatStore.getState().backendConversationId;
+    const saveTargetId = resolveActiveCloudConversationId(state, backendConversationId);
 
-    if (state.chartMode === 'single' && state.chartData.datasets?.[state.activeDatasetIndex]?.sourceId) {
-        saveTargetId = state.chartData.datasets[state.activeDatasetIndex].sourceId || null;
-    } else if (state.chartMode === 'grouped' && state.activeGroupId && state.groups) {
-        const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
-        if (activeGroup?.sourceId) {
-            saveTargetId = activeGroup.sourceId || null;
-        }
-    }
+    // Snapshot previous titles for rollback if backend update fails
+    const prevStoreTitle = getEffectiveChartTitle();
+    const prevConvTitle = saveTargetId
+        ? useHistoryStore.getState().conversations.find(c => c.id === saveTargetId)?.title
+        : undefined;
 
     // 1. Update live Zustand store
     useChartStore.getState().setChartTitle(trimmed);
@@ -77,6 +107,11 @@ export async function saveChartTitle(newTitle: string, options?: { silent?: bool
             return true;
         } catch (error) {
             console.error("Rename error:", error);
+            // Roll back optimistic local updates so UI stays consistent with backend
+            useChartStore.getState().setChartTitle(prevStoreTitle);
+            if (prevConvTitle !== undefined) {
+                useHistoryStore.getState().updateConversation(saveTargetId, { title: prevConvTitle });
+            }
             toast.error("Failed to update title backend");
             return false;
         }
@@ -99,32 +134,28 @@ export function useChartRename() {
     const activeGroupId = useActiveGroupId();
     const groups = useChartGroups();
 
-    const { backendConversationId } = useChatStore();
+    const backendConversationId = useChatStore(s => s.backendConversationId);
+
+    // Resolve active cloud ID using the exact same priority as saveChartTitle
+    const activeCloudId = useMemo(() => {
+        if (chartMode === 'single' && chartData.datasets.length > 0) {
+            return chartData.datasets[activeDatasetIndex]?.sourceId || null;
+        }
+        if (chartMode === 'grouped' && activeGroupId && groups) {
+            const activeGroup = groups.find(g => g.id === activeGroupId);
+            if (activeGroup) return activeGroup.sourceId || null;
+        }
+        return backendConversationId || null;
+    }, [chartMode, chartData.datasets, activeDatasetIndex, activeGroupId, groups, backendConversationId]);
 
     // Subscribe to active conversation title in history store as primary source of truth
     const activeConversationTitle = useHistoryStore(s => {
-        if (!backendConversationId) return null;
-        const conv = s.conversations.find(c => c.id === backendConversationId);
+        if (!activeCloudId) return null;
+        const conv = s.conversations.find(c => c.id === activeCloudId);
         return conv?.title || null;
     });
 
-    const storeChartTitle = useChartStore(s => {
-        if (s.chartMode === 'grouped' && s.activeGroupId && s.groups) {
-            const activeGroup = s.groups.find(g => g.id === s.activeGroupId);
-            const title = activeGroup?.name || activeGroup?.sourceTitle;
-            if (title) {
-                return title;
-            }
-        }
-        if (s.chartMode === 'single' && s.chartData.datasets.length > 0) {
-            const activeDs = s.chartData.datasets[s.activeDatasetIndex];
-            const title = activeDs?.sourceTitle;
-            if (title) {
-                return title;
-            }
-        }
-        return s.chartTitle || "Untitled Chart";
-    });
+    const storeChartTitle = useChartStore(s => resolveLocalEntityTitle(s));
 
     const chartTitle = chartData.datasets.length === 0 ? "No Chart Available" : (activeConversationTitle || storeChartTitle);
 

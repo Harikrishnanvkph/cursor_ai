@@ -4,6 +4,7 @@ import { sanitizeHTML } from "@/lib/utils/sanitize"
 
 import React, { useRef, useState, useEffect } from "react"
 import { useStore } from "zustand"
+import { useShallow } from "zustand/react/shallow"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
@@ -22,6 +23,7 @@ import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-exp
 import { FileDown, FileImage, FileCode, Cloud, Camera, ImageIcon, RotateCcw, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useChartExport } from "@/lib/hooks/use-chart-export"
+import { useChartRename } from "@/lib/hooks/use-chart-rename"
 import { useSnapStateStore } from "@/lib/stores/snap-state-store"
 import { ContentBankDrawer } from "@/components/gallery/ContentBankDrawer"
 import { FormatRichEditorDialog } from "@/components/format/FormatRichEditorDialog"
@@ -49,6 +51,7 @@ import {
   useChartGroups
 } from "@/lib/hooks/use-chart-state"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useFormatHoverStore } from "@/lib/stores/format-hover-store"
 import { ChartTypeSelector } from "@/components/chart-preview/chart-type-selector"
 import { getPatternCSS } from "@/lib/utils"
 import { renderFormat, extractContentFromChartData } from "@/lib/variant-engine"
@@ -100,11 +103,31 @@ export function TemplateChartPreview({
   // For >= 1152px (and < 1024px): show zoom & pan outside.
   const showZoomPanOutside = !isCompactDesktop || effectiveLeftSidebarCollapsed;
 
-  const { isLoupeActive, toggleLoupe } = useLoupeStore();
+  const { isLoupeActive, toggleLoupe } = useLoupeStore(useShallow(s => ({
+    isLoupeActive: s.isLoupeActive,
+    toggleLoupe: s.toggleLoupe,
+  })));
   const { handleExportCSV } = useChartExport();
-  const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences, templateSavedToCloud } = useTemplateStore()
+  const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences, templateSavedToCloud } = useTemplateStore(useShallow(s => ({
+    currentTemplate: s.currentTemplate,
+    templateInBackground: s.templateInBackground,
+    selectedTextAreaId: s.selectedTextAreaId,
+    setSelectedTextAreaId: s.setSelectedTextAreaId,
+    editorMode: s.editorMode,
+    setEditorMode: s.setEditorMode,
+    contentTypePreferences: s.contentTypePreferences,
+    templateSavedToCloud: s.templateSavedToCloud,
+  })))
   const { selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl,
-    selectedFormatSnapshot, loadFormats } = useFormatGalleryStore()
+    selectedFormatSnapshot, loadFormats } = useFormatGalleryStore(useShallow(s => ({
+    selectedFormatId: s.selectedFormatId,
+    contentPackage: s.contentPackage,
+    formats: s.formats,
+    userFormats: s.userFormats,
+    contextualImageUrl: s.contextualImageUrl,
+    selectedFormatSnapshot: s.selectedFormatSnapshot,
+    loadFormats: s.loadFormats,
+  })))
 
   // Hydrate format blueprints after page refresh:
   // The persisted snapshot is the primary source, but we also need the full format
@@ -160,61 +183,20 @@ export function TemplateChartPreview({
   }, [selectedFormatId, effectiveContentPackage, selectedFormatSnapshot, formats, userFormats, chartType, contextualImageUrl])
 
   const { setChartType, setActiveGroup } = useChartActions()
-  const setChartTitle = useChartStore(s => s.setChartTitle)
-  const { backendConversationId } = useChatStore()
-
-  // Derive targetId for editing
-  // Default to null - we ONLY want to enable editing if the active item has a proven sourceId
-  let targetId: string | null = null;
-
-  if (chartMode === 'single' && chartData.datasets?.[activeDatasetIndex]?.sourceId) {
-    targetId = chartData.datasets[activeDatasetIndex].sourceId!;
-  } else if (chartMode === 'grouped' && activeGroupId && groups) {
-    const activeGroup = groups.find(g => activeGroupId === g.id);
-    if (activeGroup?.sourceId) {
-      targetId = activeGroup.sourceId;
-    }
-  }
-
-  // Only allow editing if we have a valid target ID (implying the chart is saved/cloud-aware)
-  const currentSnapshotId = useChartStore(s => s.currentSnapshotId)
-  const canEditTitle = !!targetId || !!backendConversationId || !!currentSnapshotId || !!templateSavedToCloud;
-
-  // Subscribe to active conversation title in history store as primary source of truth
-  const activeConversationTitle = useHistoryStore(s => {
-    if (!backendConversationId) return null;
-    const conv = s.conversations.find(c => c.id === backendConversationId);
-    return conv?.title || null;
-  });
-
-  // Derive title logic
-  let displayTitle = activeConversationTitle || globalTitle || "Untitled Chart";
-
-  if (!activeConversationTitle) {
-    if (chartMode === 'grouped' && activeGroupId && groups) {
-      const activeGroup = groups.find(g => g.id === activeGroupId);
-      const title = activeGroup?.name || activeGroup?.sourceTitle;
-      if (title) {
-        displayTitle = title;
-      } else {
-        displayTitle = globalTitle || "Untitled Chart";
-      }
-    } else if (chartMode === 'single' && chartData.datasets.length > 0) {
-      const activeDs = chartData.datasets[activeDatasetIndex];
-      const title = activeDs?.sourceTitle;
-      if (title) {
-        displayTitle = title;
-      } else {
-        displayTitle = globalTitle || "Untitled Chart";
-      }
-    }
-  }
-
-
-  const chartTitle = displayTitle;
-
-  const { conversations, updateConversation } = useHistoryStore()
-  const { drawingMode } = useDecorationStore()
+  const {
+    chartTitle,
+    isRenaming,
+    renameValue,
+    isSavingRename,
+    renameInputRef,
+    canEditTitle,
+    handleStartRename,
+    handleSaveRename,
+    handleRenameKeyDown,
+    setRenameValue,
+    setIsRenaming,
+  } = useChartRename()
+  const drawingMode = useDecorationStore(s => s.drawingMode)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const exportCanvasRef = useRef<HTMLDivElement>(null)
@@ -266,12 +248,6 @@ export function TemplateChartPreview({
     return () => observer.disconnect()
   }, [])
 
-  // Rename state
-  const [isRenaming, setIsRenaming] = useState(false)
-  const [renameValue, setRenameValue] = useState("")
-  const [isSavingRename, setIsSavingRename] = useState(false)
-  const renameInputRef = useRef<HTMLInputElement>(null)
-
   // Mobile state and resize listener
   const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
@@ -286,75 +262,10 @@ export function TemplateChartPreview({
   const canUndo = pastStates.length > 0;
   const canRedo = futureStates.length > 0;
 
-  // Focus input when entering rename mode
-  useEffect(() => {
-    if (isRenaming && renameInputRef.current) {
-      renameInputRef.current.focus()
-      renameInputRef.current.select()
-    }
-  }, [isRenaming])
-
-  // Start renaming
-  const handleStartRename = () => {
-    if (!canEditTitle) return;
-    setRenameValue(chartTitle || "")
-    setIsRenaming(true)
-    setTimeout(() => {
-      renameInputRef.current?.focus()
-    }, 0)
-  }
-
   // Handle chart type change
   const handleChartTypeChange = (type: string) => {
     setChartType(type as any);
   };
-
-  // Save rename
-  const handleSaveRename = async () => {
-    if (!renameValue.trim() || renameValue === chartTitle) {
-      setIsRenaming(false)
-      return
-    }
-
-    if (!targetId) {
-      setChartTitle(renameValue.trim())
-      setIsRenaming(false)
-      return
-    }
-
-    setIsSavingRename(true)
-    try {
-      setChartTitle(renameValue.trim())
-
-      // Optimistically update history store
-      updateConversation(targetId, { title: renameValue.trim() })
-
-      try {
-        const result = await dataService.updateConversation(targetId, { title: renameValue.trim() })
-        if (result.error) throw new Error(result.error)
-        toast.success("Title updated")
-      } catch (error) {
-        console.error("Rename error:", error)
-        toast.error("Failed to update title backend")
-      }
-
-      setIsRenaming(false)
-    } catch (error) {
-      console.error("Rename error:", error)
-      toast.error("Failed to update title")
-    } finally {
-      setIsSavingRename(false)
-    }
-  }
-
-  // Handle key press in rename input
-  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveRename()
-    } else if (e.key === 'Escape') {
-      setIsRenaming(false)
-    }
-  }
 
   // Reset pan offset when template changes (mx-auto on the layout wrapper
   // handles visual centering; panOffset is only for user-initiated panning)
@@ -475,7 +386,7 @@ export function TemplateChartPreview({
     try {
       useFormatGalleryStore.getState().setSelectedZoneId(null)
       useFormatGalleryStore.getState().setEditingZoneId(null)
-      useFormatGalleryStore.getState().setHoveredZoneId(null)
+      useFormatHoverStore.getState().setHoveredZoneId(null)
       if (typeof document !== 'undefined') {
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur()
@@ -1512,7 +1423,7 @@ export function TemplateChartPreview({
         <div className={cn(
           variant === 'landing'
             ? 'h-[52px] min-h-[52px] px-3.5 border-b border-slate-200/80 bg-white/40 backdrop-blur-xl flex items-center justify-between flex-shrink-0 z-10 w-full'
-            : 'px-2 py-1 mb-1 flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0'
+            : 'px-3 h-[45px] min-h-[45px] border-b border-gray-200 bg-white flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0'
         )}>
           <div className={cn(
             "flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0",
@@ -1875,8 +1786,8 @@ export function TemplateChartPreview({
       {(() => {
         const cardElement = (
           <Card className={cn(
-            "w-full flex flex-col flex-1 min-h-[300px] rounded-lg bg-card text-card-foreground overflow-hidden transition-all duration-200",
-            readOnly ? "border-none shadow-none bg-transparent" : "border shadow-lg"
+            "w-full flex flex-col flex-1 min-h-[300px] rounded-none border-0 shadow-none bg-card text-card-foreground overflow-hidden transition-all duration-200",
+            readOnly && "bg-transparent"
           )}>
             <CardContent className="p-0 flex-1 flex flex-col h-full w-full relative">
               <div
@@ -2002,7 +1913,7 @@ export function TemplateChartPreview({
         );
 
         return variant === 'landing' ? (
-          <div className="flex-1 p-4 overflow-auto min-h-0 flex flex-col">
+          <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
             {cardElement}
           </div>
         ) : (

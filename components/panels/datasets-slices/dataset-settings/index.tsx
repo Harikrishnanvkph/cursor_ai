@@ -143,22 +143,8 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         setColorOpacity(100);
     }, [colorMode, chartMode, filteredDatasets]);
 
-    // Sync backendConversationId to match the active single-mode dataset or active grouped-mode group
-    useEffect(() => {
-        if (chartMode === 'single') {
-            if (chartData.datasets && chartData.datasets.length > 0) {
-                const activeDs = chartData.datasets[activeDatasetIndex];
-                const sourceId = activeDs?.sourceId || null;
-                useChatStore.getState().setBackendConversationId(sourceId);
-            } else {
-                useChatStore.getState().setBackendConversationId(null);
-            }
-        } else {
-            const activeGroup = groups.find(g => g.id === activeGroupId);
-            const sourceId = activeGroup?.sourceId || null;
-            useChatStore.getState().setBackendConversationId(sourceId);
-        }
-    }, [chartMode, activeDatasetIndex, activeGroupId, chartData.datasets, groups]);
+    // Note: backendConversationId is synchronously kept in sync with the active dataset/group's
+    // sourceId via useChartStore.subscribe in chat-store.ts (works regardless of which tab is mounted).
 
     // ─── Handlers ───
 

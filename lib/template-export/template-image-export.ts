@@ -3,6 +3,7 @@
 import type { TemplateLayout } from "@/lib/template-store"
 import type { TemplateExportOptions } from "./template-export-types"
 import { renderBackgroundOnCanvas, renderHTMLToCanvas, drawPlainText } from "./canvas-utils"
+import { clampExportScale } from "./export-scale"
 
 /**
  * Get a high-quality chart canvas for export
@@ -49,7 +50,8 @@ export const exportTemplateAsImage = async (
     options: TemplateExportOptions,
     chartConfig?: any
 ): Promise<string> => {
-    const { format = 'png', quality = 1, fileName = 'chart-template', scale = 2 } = options
+    const { format = 'png', quality = 1, fileName = 'chart-template', scale: requestedScale = 2 } = options
+    const scale = clampExportScale(template.width, template.height, requestedScale)
 
     // Create a canvas with the template dimensions
     const canvas = document.createElement('canvas')
@@ -118,12 +120,13 @@ export const exportTemplateAsImage = async (
                 )
             }
 
-            // Get a high-quality version of the chart canvas
+            // Get a high-quality version of the chart canvas matching export scale within pixel budget
+            const chartScale = clampExportScale(template.chartArea.width, template.chartArea.height, scale)
             const highQualityChartCanvas = await getHighQualityChartCanvas(
                 chartCanvas,
                 template.chartArea.width,
                 template.chartArea.height,
-                scale * 2 // Double the scale for chart quality
+                chartScale
             )
 
             // Draw the high-quality chart onto the template

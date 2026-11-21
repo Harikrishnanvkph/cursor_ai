@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -21,7 +22,18 @@ export function FormatRichEditorDialog() {
     contentPackage,
     setContentPackage,
     updateZoneContent
-  } = useFormatGalleryStore()
+  } = useFormatGalleryStore(useShallow(s => ({
+    richEditorOpen: s.richEditorOpen,
+    richEditorZoneId: s.richEditorZoneId,
+    closeRichEditor: s.closeRichEditor,
+    selectedFormatSnapshot: s.selectedFormatSnapshot,
+    formats: s.formats,
+    userFormats: s.userFormats,
+    selectedFormatId: s.selectedFormatId,
+    contentPackage: s.contentPackage,
+    setContentPackage: s.setContentPackage,
+    updateZoneContent: s.updateZoneContent,
+  })))
 
   // Find active format & zone
   const activeFormat = selectedFormatSnapshot || [...formats, ...userFormats].find(f => f.id === selectedFormatId)

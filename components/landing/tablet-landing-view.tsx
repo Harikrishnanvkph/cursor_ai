@@ -182,7 +182,7 @@ export function TabletLandingView({
               <BarChart2 className="h-5 w-5 text-white" />
             </button>
             <span className="hidden sm:inline text-sm font-bold text-slate-800 dark:text-slate-100">
-              Chartography
+              AIChartor
             </span>
           </div>
 
@@ -321,7 +321,7 @@ export function TabletLandingView({
       {/* Main Content Area */}
       <main className="flex-1 ml-16 mt-16 relative flex flex-col">
         {/* Main Chart Area */}
-        <div className="flex-1 p-3 sm:p-4 flex flex-col relative">
+        <div className={`flex-1 flex flex-col relative ${hasVisualContent ? 'p-0 overflow-hidden' : 'p-3 sm:p-4'}`}>
           {(!storeHydrated || (!contentReady && hasJSON)) && (
             <div className="absolute inset-0 z-20 p-4 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-sm rounded-xl">
               <ChartAreaSkeleton />

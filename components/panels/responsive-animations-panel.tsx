@@ -229,8 +229,9 @@ export function ResponsiveAnimationsPanel() {
     const newConfig = { ...chartConfig } as any;
     let current = newConfig;
     for (let i = 0; i < keys.length - 1; i++) {
-      if (!current[keys[i]]) current[keys[i]] = {};
-      current = current[keys[i]];
+      const k = keys[i];
+      current[k] = current[k] && typeof current[k] === "object" ? { ...current[k] } : {};
+      current = current[k];
     }
     current[keys[keys.length - 1]] = value;
     updateChartConfig(newConfig);

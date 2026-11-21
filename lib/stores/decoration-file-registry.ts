@@ -5,6 +5,21 @@
  */
 export const decorationFileRegistry = new Map<string, File>();
 
+export function cleanupUnreferencedDecorationFiles(referencedUrls: Set<string>) {
+  if (typeof window === 'undefined') return;
+
+  decorationFileRegistry.forEach((_, url) => {
+    if (!referencedUrls.has(url)) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Failed to revoke unreferenced blob URL:', e);
+      }
+      decorationFileRegistry.delete(url);
+    }
+  });
+}
+
 /**
  * Revokes all active blob URLs in the registry and clears all mappings.
  */

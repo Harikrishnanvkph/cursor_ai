@@ -2,12 +2,13 @@
 
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigSidebar } from "@/components/config-sidebar"
-import { useChartStore } from "@/lib/chart-store"
+import { useChartStore, prepareChartDataForSave } from "@/lib/chart-store"
 import { saveChartToCloud } from "@/lib/save-utils"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { ChevronLeft, ChevronRight, Settings, SlidersHorizontal, Save, Trash2, X, Loader2, PanelRight } from "lucide-react"
 import { HistoryDropdown } from "@/components/history-dropdown"
@@ -22,7 +23,9 @@ import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
 import { useHistoryStore } from "@/lib/history-store"
-import { getEffectiveChartTitle } from "@/lib/hooks/use-chart-rename"
+import { getEffectiveChartTitle, resolveActiveCloudConversationId } from "@/lib/hooks/use-chart-rename"
+import { DatasetService } from "@/lib/services/dataset-service"
+import { GroupService } from "@/lib/services/group-service"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 import { FormatGallery } from "@/components/gallery/FormatGallery"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
@@ -33,17 +36,34 @@ import { parseDimension } from "@/lib/utils/dimension-utils"
 import { useIsBelow1152 } from "@/lib/hooks/use-screen-dimensions"
 
 export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSidebarOpen: boolean, setLeftSidebarOpen: (open: boolean) => void }) {
-  const { chartData, chartType, chartConfig, hasJSON } = useChartStore()
+  const { hasChartData, chartConfig, hasJSON } = useChartStore(useShallow(s => ({
+    hasChartData: s.chartData.datasets.length > 0,
+    chartConfig: s.chartConfig,
+    hasJSON: s.hasJSON,
+  })))
   const { user, signOut } = useAuth()
-  const { startNewConversation, clearMessages } = useChatStore()
-  const { editorMode, currentTemplate, setEditorMode } = useTemplateStore()
+  const { startNewConversation, clearMessages } = useChatStore(useShallow(s => ({
+    startNewConversation: s.startNewConversation,
+    clearMessages: s.clearMessages,
+  })))
+  const { editorMode, currentTemplate, setEditorMode } = useTemplateStore(useShallow(s => ({
+    editorMode: s.editorMode,
+    currentTemplate: s.currentTemplate,
+    setEditorMode: s.setEditorMode,
+  })))
   const router = useRouter()
-  const hasChartData = chartData.datasets.length > 0
 
-  const { isSidebarCollapsed: isCollapsed, toggleSidebar, setSidebarCollapsed, setActiveSidebarTab } = useUIStore()
+  const { isCollapsed, toggleSidebar, setSidebarCollapsed, setActiveSidebarTab } = useUIStore(useShallow(s => ({
+    isCollapsed: s.isSidebarCollapsed,
+    toggleSidebar: s.toggleSidebar,
+    setSidebarCollapsed: s.setSidebarCollapsed,
+    setActiveSidebarTab: s.setActiveSidebarTab,
+  })))
   const isBelow1152 = useIsBelow1152()
-  const { isGalleryOpen, selectedFormatId } = useFormatGalleryStore()
-  const [isHovering, setIsHovering] = useState(false)
+  const { isGalleryOpen, selectedFormatId } = useFormatGalleryStore(useShallow(s => ({
+    isGalleryOpen: s.isGalleryOpen,
+    selectedFormatId: s.selectedFormatId,
+  })))
   const [isSaving, setIsSaving] = useState(false)
 
   const handleEditBasicSettings = () => {
@@ -119,7 +139,10 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
     setIsSaving(true)
     try {
       // Create NEW conversation (chart only)
-      const conversationTitle = `Chart copy - ${new Date().toLocaleDateString()}`
+      const baseTitle = getEffectiveChartTitle()
+      const conversationTitle = (baseTitle && baseTitle !== "No Chart Available" && baseTitle !== "Untitled Chart")
+        ? `${baseTitle} (Copy)`
+        : `Chart copy - ${new Date().toLocaleDateString()}`
       const response = await dataService.createConversation(
         conversationTitle,
         'Standalone chart copy (no template)'
@@ -132,12 +155,22 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
 
       const newConversationId = response.data.id
 
-      // Save chart snapshot WITHOUT template
+      // Save ONLY the active chart snapshot WITHOUT template
+      const liveStore = useChartStore.getState()
+      const chartDataToSave = prepareChartDataForSave(
+        liveStore.chartData,
+        liveStore.chartMode,
+        liveStore.activeDatasetIndex,
+        liveStore.activeGroupId,
+        conversationTitle,
+        newConversationId,
+        true
+      )
       const snapshotResult = await dataService.saveChartSnapshot(
         newConversationId,
-        chartType,
-        chartData,
-        chartConfig,
+        liveStore.chartType,
+        chartDataToSave,
+        liveStore.getActiveChartConfig(),
         null,  // NO template structure
         null   // NO template content
       )
@@ -150,10 +183,35 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       // Clear local template state (clears both currentTemplate and templateInBackground)
       useTemplateStore.getState().clearAllTemplateState()
 
-      // Update local state to point to new entry
+      // Update active entity metadata AND local state to point to new entry
+      const newSnapshotId = snapshotResult.data?.id || null
+      if (liveStore.chartMode === 'single' && liveStore.chartData.datasets[liveStore.activeDatasetIndex]) {
+        const updated = DatasetService.updateDataset(liveStore.activeDatasetIndex, {
+          sourceId: newConversationId,
+          sourceSnapshotId: newSnapshotId || undefined,
+          sourceTitle: conversationTitle
+        }, {
+          chartType: liveStore.chartType,
+          chartData: liveStore.chartData,
+          chartConfig: liveStore.chartConfig,
+          chartMode: liveStore.chartMode,
+          hasJSON: liveStore.hasJSON,
+          singleModeData: liveStore.singleModeData,
+          groupedModeData: liveStore.groupedModeData
+        })
+        if (updated) useChartStore.setState({ ...updated, chartTitle: conversationTitle })
+      } else if (liveStore.chartMode === 'grouped' && liveStore.activeGroupId && liveStore.groups) {
+        const updated = GroupService.updateGroup(liveStore.activeGroupId, {
+          name: conversationTitle,
+          sourceId: newConversationId,
+          sourceSnapshotId: newSnapshotId || undefined,
+          sourceTitle: conversationTitle
+        }, { groups: liveStore.groups })
+        useChartStore.setState({ ...updated, chartTitle: conversationTitle })
+      }
       useChatStore.getState().setBackendConversationId(newConversationId)
-      if (snapshotResult.data?.id) {
-        useChartStore.getState().setCurrentSnapshotId(snapshotResult.data.id)
+      if (newSnapshotId) {
+        useChartStore.getState().setCurrentSnapshotId(newSnapshotId)
       }
 
       // Refresh history store immediately so newly saved chart appears in Recents / History
@@ -203,7 +261,10 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
     }
     setIsSaving(true)
     try {
-      const conversationTitle = `Chart copy - ${new Date().toLocaleDateString()}`
+      const baseTitle = getEffectiveChartTitle()
+      const conversationTitle = (baseTitle && baseTitle !== "No Chart Available" && baseTitle !== "Untitled Chart")
+        ? `${baseTitle} (Copy)`
+        : `Chart copy - ${new Date().toLocaleDateString()}`
       const response = await dataService.createConversation(
         conversationTitle,
         'Standalone chart copy (no template)'
@@ -213,11 +274,21 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         return
       }
       const newConversationId = response.data.id
+      const liveStore = useChartStore.getState()
+      const chartDataToSave = prepareChartDataForSave(
+        liveStore.chartData,
+        liveStore.chartMode,
+        liveStore.activeDatasetIndex,
+        liveStore.activeGroupId,
+        conversationTitle,
+        newConversationId,
+        true
+      )
       const snapshotResult = await dataService.saveChartSnapshot(
         newConversationId,
-        chartType,
-        chartData,
-        chartConfig,
+        liveStore.chartType,
+        chartDataToSave,
+        liveStore.getActiveChartConfig(),
         null,  // NO template
         null
       )
@@ -225,10 +296,35 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         toast.error("Failed to save chart snapshot")
         return
       }
-      // Don't touch the original template chart - just update local state to new entry
+      // Don't touch the original template chart - update active entity metadata & local state to new entry
+      const newSnapshotId = snapshotResult.data?.id || null
+      if (liveStore.chartMode === 'single' && liveStore.chartData.datasets[liveStore.activeDatasetIndex]) {
+        const updated = DatasetService.updateDataset(liveStore.activeDatasetIndex, {
+          sourceId: newConversationId,
+          sourceSnapshotId: newSnapshotId || undefined,
+          sourceTitle: conversationTitle
+        }, {
+          chartType: liveStore.chartType,
+          chartData: liveStore.chartData,
+          chartConfig: liveStore.chartConfig,
+          chartMode: liveStore.chartMode,
+          hasJSON: liveStore.hasJSON,
+          singleModeData: liveStore.singleModeData,
+          groupedModeData: liveStore.groupedModeData
+        })
+        if (updated) useChartStore.setState({ ...updated, chartTitle: conversationTitle })
+      } else if (liveStore.chartMode === 'grouped' && liveStore.activeGroupId && liveStore.groups) {
+        const updated = GroupService.updateGroup(liveStore.activeGroupId, {
+          name: conversationTitle,
+          sourceId: newConversationId,
+          sourceSnapshotId: newSnapshotId || undefined,
+          sourceTitle: conversationTitle
+        }, { groups: liveStore.groups })
+        useChartStore.setState({ ...updated, chartTitle: conversationTitle })
+      }
       useChatStore.getState().setBackendConversationId(newConversationId)
-      if (snapshotResult.data?.id) {
-        useChartStore.getState().setCurrentSnapshotId(snapshotResult.data.id)
+      if (newSnapshotId) {
+        useChartStore.getState().setCurrentSnapshotId(newSnapshotId)
       }
       // Clear template and format state locally
       useTemplateStore.getState().clearAllTemplateState()
@@ -274,8 +370,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
 
   // Proceed to save dialog (called after dimension check passes or user bypasses mismatch)
   const proceedToSaveDialog = () => {
-    // Get the existing backend ID to check if this is an update
-    const existingBackendId = useChatStore.getState().backendConversationId
+    const existingBackendId = resolveActiveCloudConversationId()
     const effectiveTitle = getEffectiveChartTitle()
     const conversations = useHistoryStore.getState().conversations
     const existingConversation = existingBackendId ? conversations.find(c => c.id === existingBackendId) : null
@@ -364,8 +459,6 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
             ? "w-[320px] z-30 shadow-2xl bg-white dark:bg-slate-950"
             : "w-[320px] z-10 bg-white dark:bg-slate-950"
         )}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
       >
         {isCollapsed && (
           // Collapsed state: show profile, expand button, and action buttons
@@ -508,7 +601,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       <SaveChartDialog
         open={showSaveChartDialog}
         defaultName={currentChartName}
-        isUpdate={!!useChatStore.getState().backendConversationId}
+        isUpdate={!!resolveActiveCloudConversationId()}
         isSaving={isSaving}
         onSave={(name) => {
           setShowSaveChartDialog(false)

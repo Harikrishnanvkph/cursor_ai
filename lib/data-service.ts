@@ -1,5 +1,15 @@
 // Frontend data service with caching and offline support
-import { authApi } from './auth-client';
+import { authApi, waitForActiveSessionRefresh } from './auth-client';
+
+const PUBLIC_DATA_ENDPOINTS = new Set([
+  '/api/data/formats/official',
+  '/api/data/chart-style-presets/official',
+]);
+
+function isPublicDataEndpoint(endpoint: string): boolean {
+  const pathOnly = endpoint.split('?')[0];
+  return PUBLIC_DATA_ENDPOINTS.has(pathOnly) || pathOnly.startsWith('/api/data/shared/');
+}
 
 interface ApiResponse<T> {
   data?: T;
@@ -34,6 +44,12 @@ class DataService {
       if (cached && Date.now() - cached.timestamp < cached.ttl) {
         return { data: cached.data };
       }
+    }
+
+    // If an expired 1-hour JWT cookie is currently being rotated by AuthProvider's initial /auth/me,
+    // wait for the Set-Cookie rotation to complete before dispatching any protected API request.
+    if (!isPublicDataEndpoint(endpoint)) {
+      await waitForActiveSessionRefresh();
     }
 
     try {
@@ -308,6 +324,44 @@ class DataService {
         changes
       }),
     }, false);
+  }
+
+  async addMessagesBatch(
+    conversationId: string,
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      chartSnapshotId?: string;
+      action?: string;
+      changes?: string[];
+    }>
+  ): Promise<ApiResponse<any[]>> {
+    if (!messages || messages.length === 0) {
+      return { data: [] };
+    }
+    const res = await this.request<any[]>('/api/data/messages/batch', {
+      method: 'POST',
+      body: JSON.stringify({ conversationId, messages }),
+    }, false);
+
+    // Graceful fallback if deployed frontend momentarily talks to an older backend without /messages/batch
+    if (res.status === 404) {
+      const inserted: any[] = [];
+      for (const msg of messages) {
+        const singleRes = await this.addMessage(
+          conversationId,
+          msg.role,
+          msg.content,
+          msg.chartSnapshotId,
+          msg.action,
+          msg.changes
+        );
+        if (singleRes.data) inserted.push(singleRes.data);
+      }
+      return { data: inserted };
+    }
+
+    return res;
   }
 
   async getMessages(conversationId: string, limit = 100): Promise<ApiResponse<any[]>> {

@@ -1,5 +1,6 @@
 import { Chart, ChartConfiguration } from 'chart.js';
 import { getProxiedImageUrl } from './utils/image-proxy-utils';
+import { clampExportScale } from './template-export/export-scale';
 
 export interface BackgroundImageConfig {
   type: 'image';
@@ -113,7 +114,7 @@ const exportPlugin = {
     // Add export method to chart instance
     chart.exportToImage = async (options?: Partial<ExportPluginOptions>) => {
       const exportOptions = { ...pluginOptions, ...options };
-      const exportScale = typeof exportOptions.exportScale === 'number' ? exportOptions.exportScale : 2;
+      const requestedScale = typeof exportOptions.exportScale === 'number' ? exportOptions.exportScale : 2;
       const canvas = chart.canvas;
       // High-DPI Chart Boost: Temporarily increase chart resolution for crystal-clear export
       const origDpr = chart.options.devicePixelRatio || window.devicePixelRatio || 1;
@@ -125,36 +126,37 @@ const exportPlugin = {
       // Target logical dimensions: prefer explicit options, fallback to existing chart dimensions
       const targetWidth = exportOptions.width || origWidth;
       const targetHeight = exportOptions.height || origHeight;
-
-      const shouldAdjustDpr = typeof exportScale === 'number' && exportScale !== origDpr;
-      if (shouldAdjustDpr) {
-        chart.options.devicePixelRatio = exportScale;
-        // MUST pass explicit (targetWidth, targetHeight) to prevent Chart.js
-        // from re-measuring canvas.parentNode.getBoundingClientRect() which is shrunk by CSS scale/zoom
-        chart.resize(targetWidth, targetHeight);
-        chart.update('none');
-        // Small delay to ensure high-DPI canvas buffer has painted
-        await new Promise(resolve => setTimeout(resolve, 80));
-      }
-      const ctx = canvas.getContext('2d');
-
-      if (!ctx) {
-        console.error('Failed to get canvas context');
-        return;
-      }
-
-      // Create a temporary canvas
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
-      const tempCtx = tempCanvas.getContext('2d');
-
-      if (!tempCtx) {
-        console.error('Failed to create temporary canvas');
-        return;
-      }
+      const exportScale = clampExportScale(targetWidth, targetHeight, requestedScale);
+      const shouldAdjustDpr = exportScale !== origDpr;
 
       try {
+        if (shouldAdjustDpr) {
+          chart.options.devicePixelRatio = exportScale;
+          // MUST pass explicit (targetWidth, targetHeight) to prevent Chart.js
+          // from re-measuring canvas.parentNode.getBoundingClientRect() which is shrunk by CSS scale/zoom
+          chart.resize(targetWidth, targetHeight);
+          chart.update('none');
+          // Small delay to ensure high-DPI canvas buffer has painted
+          await new Promise(resolve => setTimeout(resolve, 80));
+        }
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          console.error('Failed to get canvas context');
+          return;
+        }
+
+        // Create a temporary canvas
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        if (!tempCtx) {
+          console.error('Failed to create temporary canvas');
+          return;
+        }
+
         const background = exportOptions.background || { type: 'color', color: '#ffffff' };
         const opacity = (background.opacity ?? 100) / 100;
 
@@ -738,10 +740,10 @@ const exportPlugin = {
       } catch (error) {
         console.error('Error exporting chart:', error);
       } finally {
-        // Restore original chart DPR and dimensions after export
+        // Restore original chart DPR and dimensions unconditionally after export attempt
         if (shouldAdjustDpr) {
           chart.options.devicePixelRatio = origDpr;
-          chart.resize(targetWidth, targetHeight);
+          chart.resize(origWidth, origHeight);
           chart.update('none');
           if (origStyleWidth) {
             canvas.style.width = origStyleWidth;

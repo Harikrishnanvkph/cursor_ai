@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server';
 import { checkContentSafety } from '@/lib/safety/content-filter';
+import { guardApiRoute, clampInt, fetchWithTimeout } from '@/lib/utils/api-route-guard';
 
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY || '';
 
 export async function GET(request: Request) {
+  const denied = guardApiRoute(request, { limit: 60 });
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('query')?.trim() || '';
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const perPage = Math.min(parseInt(searchParams.get('per_page') || '20', 10), 80);
+    const query = (searchParams.get('query')?.trim() || '').slice(0, 120);
+    const page = clampInt(searchParams.get('page'), 1, 1, 100);
+    const perPage = clampInt(searchParams.get('per_page'), 20, 1, 80);
     const orientation = searchParams.get('orientation'); // landscape, portrait, square
 
     // SafeSearch / Content moderation check
@@ -46,7 +50,7 @@ export async function GET(request: Request) {
       url = `https://api.pexels.com/v1/curated?${params.toString()}`;
     }
 
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: {
         Authorization: PEXELS_API_KEY,
       },
@@ -57,17 +61,19 @@ export async function GET(request: Request) {
       const errorText = await res.text();
       console.error('Pexels API error:', res.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to fetch images from Pexels', details: errorText },
+        { error: 'Failed to fetch images from Pexels' },
         { status: res.status }
       );
     }
 
     const data = await res.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: { 'Cache-Control': 'private, max-age=300' },
+    });
   } catch (error: any) {
     console.error('Error in Pexels proxy route:', error);
     return NextResponse.json(
-      { error: 'Internal server error while calling Pexels', message: error?.message },
+      { error: 'Internal server error while calling Pexels' },
       { status: 500 }
     );
   }

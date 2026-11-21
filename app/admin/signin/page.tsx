@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { BarChart3, Eye, EyeOff, Loader2, LogOut, Shield, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/components/auth/AuthProvider"
@@ -22,7 +22,6 @@ function getSafeAdminRedirect(rawRedirect: string | null): string {
 
 function AdminSignInContent() {
   const { user, loading, sessionVerified, signIn, signOut } = useAuth()
-  const router = useRouter()
   const searchParams = useSearchParams()
 
   const [email, setEmail] = useState("")
@@ -46,9 +45,13 @@ function AdminSignInContent() {
     if (sessionVerified && user?.is_admin) {
       sessionStorage.removeItem("redirectAfterSignIn")
       sessionStorage.removeItem("logged_out_from_oauth")
-      router.replace(targetRedirect)
+      if (!document.cookie.includes("is_authenticated=true")) {
+        const secureAttr = window.location.protocol === "https:" ? "; Secure" : ""
+        document.cookie = `is_authenticated=true; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax${secureAttr}`
+      }
+      window.location.replace(targetRedirect)
     }
-  }, [user, sessionVerified, router, targetRedirect])
+  }, [user, sessionVerified, targetRedirect])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -66,12 +69,35 @@ function AdminSignInContent() {
   }
 
   if (!sessionVerified || loading || user?.is_admin) {
+    const isRedirecting = Boolean(user?.is_admin)
     return (
-      <div className="w-full max-w-md rounded-2xl bg-gray-900/80 border border-white/10 backdrop-blur-xl p-8 flex flex-col items-center justify-center min-h-[300px] shadow-2xl">
-        <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />
-        <p className="text-sm text-gray-400">
-          {user?.is_admin ? "Redirecting to Admin Panel..." : "Verifying admin session..."}
+      <div className="w-full max-w-sm mx-auto flex flex-col items-center justify-center py-12 px-6 text-center animate-in fade-in duration-300">
+        <div className="relative mb-6 flex items-center justify-center">
+          <div
+            aria-hidden="true"
+            className="absolute -inset-4 rounded-full bg-gradient-to-tr from-purple-600/20 via-indigo-600/25 to-blue-600/20 blur-xl animate-pulse pointer-events-none transform-gpu"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute -inset-2.5 rounded-[22px] border-2 border-transparent border-t-purple-500 border-r-indigo-500/30 rounded-full animate-spin pointer-events-none transform-gpu"
+          />
+          <div className="relative w-14 h-14 rounded-2xl bg-gray-900 border border-white/10 shadow-md flex items-center justify-center">
+            <Shield className="w-7 h-7 text-purple-400" />
+          </div>
+        </div>
+        <h2 className="text-lg font-semibold tracking-tight text-white">
+          {isRedirecting ? "Redirecting to Admin Panel…" : "Verifying admin session…"}
+        </h2>
+        <p className="mt-1.5 text-xs text-gray-400 max-w-xs">
+          {isRedirecting ? "Launching your administrative dashboard…" : "Checking security credentials…"}
         </p>
+        <div className="mt-6 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-purple-300 shadow-sm">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-400" />
+          </span>
+          <span>{isRedirecting ? "Loading admin console…" : "Securing session…"}</span>
+        </div>
       </div>
     )
   }

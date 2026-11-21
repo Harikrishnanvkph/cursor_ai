@@ -70,6 +70,10 @@ export function UpgradeProDialog({
   const firstAiBonusClaimed = Boolean(user?.first_ai_bonus_claimed)
   const activePacks = creditTab === "ai" ? AI_CREDIT_PACKS : CLOUD_CREDIT_PACKS
 
+  if (!open) {
+    return null
+  }
+
   const handleBuyPack = async (packId: CreditPackId) => {
     if (!user) {
       window.location.href = "/signin"

@@ -1,9 +1,11 @@
 "use client"
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useRouter } from "next/navigation"
 import { Square } from "lucide-react"
 import { saveChartToCloud } from "@/lib/save-utils"
+import { getEffectiveChartTitle, resolveActiveCloudConversationId } from "@/lib/hooks/use-chart-rename"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { ChartLayout } from "@/components/chart-layout"
@@ -21,7 +23,7 @@ import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { FormatGallery } from "@/components/gallery/FormatGallery"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { ChartStyleGalleryPage } from "@/components/chart-style-gallery/ChartStyleGalleryPage"
-import { useSidebarContext, useSidebarInputContext } from "@/components/landing/sidebar-context"
+import { useSidebarContext, useSidebarInputDispatch } from "@/components/landing/sidebar-context"
 import { useIsMobile, useIsTablet } from "@/lib/hooks/use-screen-dimensions"
 import {
   PromptTemplate,
@@ -37,7 +39,7 @@ export default function LandingPage() {
 }
 
 function LandingPageContent() {
-  const { user } = useAuth()
+  const { user, sessionReady } = useAuth()
   const router = useRouter()
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
   const { isPro, aiCreditsLimit, aiCreditsRemaining, freeAiCreditsRemaining, purchasedAiCredits } = useSubscriptionQuota()
@@ -52,7 +54,17 @@ function LandingPageContent() {
     setHasJSON,
     originalCloudDimensions,
     currentSnapshotId
-  } = useChartStore()
+  } = useChartStore(useShallow(s => ({
+    chartConfig: s.chartConfig,
+    chartData: s.chartData,
+    chartType: s.chartType,
+    setChartType: s.setChartType,
+    resetChart: s.resetChart,
+    hasJSON: s.hasJSON,
+    setHasJSON: s.setHasJSON,
+    originalCloudDimensions: s.originalCloudDimensions,
+    currentSnapshotId: s.currentSnapshotId,
+  })))
 
   const {
     messages,
@@ -67,9 +79,25 @@ function LandingPageContent() {
     setSelectedModel,
     includeImages,
     setIncludeImages
-  } = useChatStore()
+  } = useChatStore(useShallow(s => ({
+    messages: s.messages,
+    currentChartState: s.currentChartState,
+    isProcessing: s.isProcessing,
+    continueConversation: s.continueConversation,
+    startNewConversation: s.startNewConversation,
+    clearMessages: s.clearMessages,
+    setMessages: s.setMessages,
+    backendConversationId: s.backendConversationId,
+    selectedModel: s.selectedModel,
+    setSelectedModel: s.setSelectedModel,
+    includeImages: s.includeImages,
+    setIncludeImages: s.setIncludeImages,
+  })))
 
-  const { loadConversationsFromBackend, restoreConversation } = useHistoryStore()
+  const { loadConversationsFromBackend, restoreConversation } = useHistoryStore(useShallow(s => ({
+    loadConversationsFromBackend: s.loadConversationsFromBackend,
+    restoreConversation: s.restoreConversation,
+  })))
   const {
     generateMode,
     editorMode,
@@ -80,9 +108,27 @@ function LandingPageContent() {
     setModeChangeConfirm,
     confirmModeChange,
     cancelModeChange
-  } = useTemplateStore()
+  } = useTemplateStore(useShallow(s => ({
+    generateMode: s.generateMode,
+    editorMode: s.editorMode,
+    currentTemplate: s.currentTemplate,
+    templateInBackground: s.templateInBackground,
+    syncTemplatesFromCloud: s.syncTemplatesFromCloud,
+    showModeChangeConfirm: s.showModeChangeConfirm,
+    setModeChangeConfirm: s.setModeChangeConfirm,
+    confirmModeChange: s.confirmModeChange,
+    cancelModeChange: s.cancelModeChange,
+  })))
 
-  const { isGalleryOpen, openGallery, selectedFormatId, contentPackage, formats, userFormats, selectedFormatSnapshot } = useFormatGalleryStore()
+  const { isGalleryOpen, openGallery, selectedFormatId, contentPackage, formats, userFormats, selectedFormatSnapshot } = useFormatGalleryStore(useShallow(s => ({
+    isGalleryOpen: s.isGalleryOpen,
+    openGallery: s.openGallery,
+    selectedFormatId: s.selectedFormatId,
+    contentPackage: s.contentPackage,
+    formats: s.formats,
+    userFormats: s.userFormats,
+    selectedFormatSnapshot: s.selectedFormatSnapshot,
+  })))
 
   const renderedFormat = useMemo(() => {
     if (!selectedFormatId || !contentPackage) return null
@@ -98,7 +144,7 @@ function LandingPageContent() {
     return group?.chartConfig ?? s.chartConfig
   })
 
-  const { isGalleryOpen: isStyleGalleryOpen } = useChartStyleStore()
+  const isStyleGalleryOpen = useChartStyleStore(s => s.isGalleryOpen)
 
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -163,7 +209,8 @@ function LandingPageContent() {
   }, [generateMode, selectedFormatId, messages, setMessages])
 
   const [showActiveBanner, setShowActiveBanner] = useState(false)
-  const sidebarContext = useSidebarContext(); const sidebarInputContext = useSidebarInputContext();
+  const sidebarContext = useSidebarContext()
+  const setSidebarChatInput = useSidebarInputDispatch()
   const leftSidebarOpen = sidebarContext.leftSidebarOpen
   const setLeftSidebarOpen = sidebarContext.setLeftSidebarOpen
   const [hasLoadedBackendData, setHasLoadedBackendData] = useState(false)
@@ -174,47 +221,49 @@ function LandingPageContent() {
 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
 
-  // Auto-sync backend data when user logs in
+  // Auto-sync backend data when user logs in (keyed on user?.id + sessionReady so stale JWTs
+  // finish single-flight /auth/me refresh before parallel conversations + templates requests fire)
+  const userId = user?.id
   useEffect(() => {
-    if (user && !hasLoadedBackendData) {
+    if (userId && sessionReady && !hasLoadedBackendData) {
+      setHasLoadedBackendData(true)
       Promise.all([
         loadConversationsFromBackend(),
         syncTemplatesFromCloud()
       ])
         .then(() => {
-          setHasLoadedBackendData(true)
           const chatStore = useChatStore.getState()
           if (chatStore.backendConversationId && !currentChartState) {
             restoreConversation(chatStore.backendConversationId).catch(() => {})
           }
         })
-        .catch(() => {})
+        .catch(() => {
+          setHasLoadedBackendData(false)
+        })
     }
 
-    if (!user && hasLoadedBackendData) {
+    if (!userId && hasLoadedBackendData) {
       setHasLoadedBackendData(false)
     }
-  }, [user, hasLoadedBackendData, loadConversationsFromBackend, syncTemplatesFromCloud, currentChartState, restoreConversation])
+  }, [userId, sessionReady, hasLoadedBackendData, loadConversationsFromBackend, syncTemplatesFromCloud, currentChartState, restoreConversation])
 
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveChartDialogName, setSaveChartDialogName] = useState("")
 
   const handleSaveToCloudClick = useCallback(() => {
-    const storeTitle = useChartStore.getState().chartTitle
-    const existingBackendId = useChatStore.getState().backendConversationId
+    const existingBackendId = resolveActiveCloudConversationId()
+    const effectiveTitle = getEffectiveChartTitle()
 
     let defaultName = "Untitled Chart"
-    if (existingBackendId) {
+    if (effectiveTitle && effectiveTitle !== "No Chart Available" && effectiveTitle !== "Untitled Chart") {
+      defaultName = effectiveTitle
+    } else if (existingBackendId) {
       const conversations = useHistoryStore.getState().conversations
       const existingConversation = conversations.find(c => c.id === existingBackendId)
-      if (existingConversation) {
+      if (existingConversation?.title) {
         defaultName = existingConversation.title
-      } else if (storeTitle) {
-        defaultName = storeTitle
       }
-    } else if (storeTitle) {
-      defaultName = storeTitle
     } else {
       const chartTitleFromConfig = activeConfig?.plugins?.title?.text
       if (chartTitleFromConfig) {
@@ -304,7 +353,7 @@ function LandingPageContent() {
 
   const handleTemplateClick = useCallback(() => {
     setInput(chartTemplate)
-    sidebarInputContext.setChatInput(chartTemplate)
+    setSidebarChatInput(chartTemplate)
     setTimeout(() => {
       const ref = sidebarContext.textareaRef?.current || textareaRef.current
       if (ref) {
@@ -313,7 +362,7 @@ function LandingPageContent() {
         ref.style.height = `${ref.scrollHeight}px`
       }
     }, 0)
-  }, [sidebarContext])
+  }, [sidebarContext, setSidebarChatInput])
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value

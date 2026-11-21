@@ -9,323 +9,273 @@ import type { ExtendedChartDataset, SupportedChartType } from "@/lib/chart-defau
 import { toast } from "sonner"
 import { isChartTypeCompatible, getChartIncompatibilityReason } from "@/lib/chart-types"
 
-export const useChartActions = () => {
-    // Get setters from the store
-    // We do NOT select state here to avoid stale closures in actions
-    const setChartData = useChartStore(s => s.setChartData)
-    const setChartMode = useChartStore(s => s.setChartMode)
-    const setActiveDatasetIndex = useChartStore(s => s.setActiveDatasetIndex)
+const addDataset = (dataset: ExtendedChartDataset) => {
+    const currentState = useChartStore.getState()
+    const newState = DatasetService.addDataset(dataset, {
+        chartType: currentState.chartType,
+        chartData: currentState.chartData,
+        chartConfig: currentState.chartConfig,
+        groups: currentState.groups,
+        activeGroupId: currentState.activeGroupId,
+        chartMode: currentState.chartMode,
+        activeDatasetIndex: currentState.activeDatasetIndex,
+        singleModeData: currentState.singleModeData,
+        groupedModeData: currentState.groupedModeData
+    })
+    useChartStore.setState(newState)
+}
 
-    // Store toggles that just proxy directly
-    const toggleFillArea = useChartStore(s => s.toggleFillArea)
-    const toggleFillPoints = useChartStore(s => s.toggleFillPoints)
-    const toggleShowBorder = useChartStore(s => s.toggleShowBorder)
-    const toggleShowImages = useChartStore(s => s.toggleShowImages)
-    const toggleShowLabels = useChartStore(s => s.toggleShowLabels)
-    const toggleShowLegend = useChartStore(s => s.toggleShowLegend)
+const removeDataset = (index: number) => {
+    const currentState = useChartStore.getState()
+    const newState = DatasetService.removeDataset(index, {
+        chartData: currentState.chartData,
+        groups: currentState.groups,
+        chartMode: currentState.chartMode,
+        singleModeData: currentState.singleModeData,
+        groupedModeData: currentState.groupedModeData,
+        activeDatasetIndex: currentState.activeDatasetIndex
+    })
+    useChartStore.setState(newState)
+}
 
-    // --- Data Operations (Batch 1) ---
-
-    const addDataset = (dataset: ExtendedChartDataset) => {
-        const currentState = useChartStore.getState()
-        const newState = DatasetService.addDataset(dataset, {
-            chartType: currentState.chartType,
-            chartData: currentState.chartData,
-            chartConfig: currentState.chartConfig,
-            groups: currentState.groups,
-            activeGroupId: currentState.activeGroupId,
-            chartMode: currentState.chartMode,
-            activeDatasetIndex: currentState.activeDatasetIndex,
-            singleModeData: currentState.singleModeData,
-            groupedModeData: currentState.groupedModeData
-        })
-
+const updateDataset = (index: number, updates: Partial<ExtendedChartDataset> & { addPoint?: boolean; removePoint?: boolean; randomizeColors?: boolean }) => {
+    const currentState = useChartStore.getState()
+    const newState = DatasetService.updateDataset(index, updates, {
+        chartType: currentState.chartType,
+        chartData: currentState.chartData,
+        chartConfig: currentState.chartConfig,
+        chartMode: currentState.chartMode,
+        hasJSON: currentState.hasJSON,
+        singleModeData: currentState.singleModeData,
+        groupedModeData: currentState.groupedModeData
+    })
+    if (newState) {
         useChartStore.setState(newState)
-    }
-
-    const removeDataset = (index: number) => {
-        const currentState = useChartStore.getState()
-        const newState = DatasetService.removeDataset(index, {
-            chartData: currentState.chartData,
-            groups: currentState.groups,
-            chartMode: currentState.chartMode,
-            singleModeData: currentState.singleModeData,
-            groupedModeData: currentState.groupedModeData,
-            activeDatasetIndex: currentState.activeDatasetIndex
-        })
-        useChartStore.setState(newState)
-    }
-
-    const updateDataset = (index: number, updates: Partial<ExtendedChartDataset> & { addPoint?: boolean; removePoint?: boolean; randomizeColors?: boolean }) => {
-        const currentState = useChartStore.getState()
-        const newState = DatasetService.updateDataset(index, updates, {
-            chartType: currentState.chartType,
-            chartData: currentState.chartData,
-            chartConfig: currentState.chartConfig,
-            chartMode: currentState.chartMode,
-            hasJSON: currentState.hasJSON,
-            singleModeData: currentState.singleModeData,
-            groupedModeData: currentState.groupedModeData
-        })
-        if (newState) {
-            useChartStore.setState(newState)
-        }
-    }
-
-    const updateDataPoint = (datasetIndex: number, pointIndex: number, field: string, value: any) => {
-        const currentState = useChartStore.getState()
-        const newState = DatasetService.updateDataPoint(datasetIndex, pointIndex, field, value, {
-            chartData: currentState.chartData,
-            chartMode: currentState.chartMode,
-            singleModeData: currentState.singleModeData,
-            groupedModeData: currentState.groupedModeData
-        })
-        useChartStore.setState(newState)
-    }
-
-    const updatePointImage = (datasetIndex: number, pointIndex: number, imageUrl: string, imageConfig: any) => {
-        const currentState = useChartStore.getState()
-        const changes = DatasetService.updatePointImage(datasetIndex, pointIndex, imageUrl, imageConfig, currentState)
-        if (changes) {
-            useChartStore.setState(changes)
-        }
-    }
-
-    const updateLabels = (labels: string[]) => {
-        const currentState = useChartStore.getState()
-        const changes = DatasetService.updateLabels(labels, {
-            chartData: currentState.chartData,
-            chartMode: currentState.chartMode,
-            activeDatasetIndex: currentState.activeDatasetIndex,
-            activeGroupId: currentState.activeGroupId,
-            singleModeData: currentState.singleModeData,
-            groupedModeData: currentState.groupedModeData,
-            hasJSON: currentState.hasJSON
-        })
-        useChartStore.setState(changes)
-    }
-
-    const toggleDatasetVisibility = (index: number) => {
-        const currentState = useChartStore.getState()
-        const changes = ChartStateService.toggleDatasetVisibility(index, currentState)
-        useChartStore.setState(changes)
-    }
-
-    const toggleSliceVisibility = (index: number) => {
-        const currentState = useChartStore.getState()
-        const changes = ChartStateService.toggleSliceVisibility(index, currentState)
-        useChartStore.setState(changes)
-    }
-
-    // Chart Operations
-    const setChartType = (type: SupportedChartType) => {
-        const currentState = useChartStore.getState()
-        if (currentState.chartType === type) return
-
-        if (!isChartTypeCompatible(type, currentState.chartType)) {
-            toast.error(getChartIncompatibilityReason(type, currentState.chartType))
-            return
-        }
-
-        // Use service to calculate new state
-        const newState = ChartTypeService.applyChartTypeChange(
-            currentState.chartType,
-            type,
-            {
-                chartData: currentState.chartData,
-                chartConfig: currentState.chartConfig,
-                chartMode: currentState.chartMode,
-                activeDatasetIndex: currentState.activeDatasetIndex,
-                uniformityMode: currentState.uniformityMode
-            }
-        )
-
-        if (!newState) return
-
-        // Undo capture is handled by zundo middleware automatically
-
-        // Build final state: mirror chartData AND chartConfig into mode-specific storage
-        // In grouped mode, the chart reads config from group.chartConfig (via resolveActiveConfig),
-        // not from state.chartConfig. So we must update the active group's chartConfig too.
-        const finalState: any = {
-            ...newState,
-        };
-
-        if (currentState.chartMode === 'single') {
-            // Single mode: write config into the active dataset's chartConfig (deep clone to avoid shared reference)
-            const newDatasets = newState.chartData.datasets.map((ds: any, i: number) =>
-                i === currentState.activeDatasetIndex ? { ...ds, chartConfig: JSON.parse(JSON.stringify(newState.chartConfig)) } : ds
-            );
-            finalState.chartData = { ...newState.chartData, datasets: newDatasets };
-            finalState.singleModeData = finalState.chartData;
-        } else {
-            // Grouped mode: write config into the active group's chartConfig (deep clone for each)
-            finalState.groups = currentState.groups.map((g: any) =>
-                g.id === currentState.activeGroupId ? { ...g, chartConfig: JSON.parse(JSON.stringify(newState.chartConfig)) } : g
-            );
-            finalState.chartData = newState.chartData;
-            finalState.groupedModeData = newState.chartData;
-        }
-
-        useChartStore.setState(finalState)
-    }
-
-    const updateChartConfig = (config: any) => {
-        const currentState = useChartStore.getState()
-        // Resolve the current active config for accurate undo state
-        const activeConfig = currentState.getActiveChartConfig()
-
-        // Undo capture is handled by zundo middleware automatically
-
-        const normalizedConfig = ChartConfigService.normalizeConfig(config, currentState.chartType)
-        // Use the store's updateChartConfig action which routes to the correct dataset/group
-        useChartStore.getState().updateChartConfig(normalizedConfig)
-    }
-
-    // Helper: ChartTransformService only returns { chartData }, but mode-specific
-    // storage (singleModeData / groupedModeData) must stay in sync. This wrapper
-    // augments the service result with the correct mode-specific update.
-    const applyTransformWithModeSync = (newState: Partial<any> | null) => {
-        if (!newState) return
-        const { chartMode } = useChartStore.getState()
-        if (newState.chartData) {
-            const modeDataUpdate = chartMode === 'single'
-                ? { singleModeData: newState.chartData }
-                : { groupedModeData: newState.chartData }
-            useChartStore.setState({ ...newState, ...modeDataUpdate })
-        } else {
-            useChartStore.setState(newState)
-        }
-    }
-
-    // Transforms
-    const sortDataset = (index: number, order: 'asc' | 'desc' | 'label-asc' | 'label-desc') => {
-        applyTransformWithModeSync(ChartTransformService.sortDataset(useChartStore.getState(), index, order))
-    }
-
-    const reverseDataset = (index: number) => {
-        applyTransformWithModeSync(ChartTransformService.reverseDataset(useChartStore.getState(), index))
-    }
-
-    const filterTopN = (index: number, n: number) => {
-        applyTransformWithModeSync(ChartTransformService.filterTopN(useChartStore.getState(), index, n))
-    }
-
-    const filterAboveThreshold = (index: number, threshold: number) => {
-        applyTransformWithModeSync(ChartTransformService.filterAboveThreshold(useChartStore.getState(), index, threshold))
-    }
-
-    const filterBelowThreshold = (index: number, threshold: number) => {
-        applyTransformWithModeSync(ChartTransformService.filterBelowThreshold(useChartStore.getState(), index, threshold))
-    }
-
-    const normalizeDataset = (index: number, range: string = '0-100') => {
-        applyTransformWithModeSync(ChartTransformService.normalizeDataset(useChartStore.getState(), index, range))
-    }
-
-    const convertToPercentage = (index: number) => {
-        applyTransformWithModeSync(ChartTransformService.convertToPercentage(useChartStore.getState(), index))
-    }
-
-    const roundDataset = (index: number, decimals: number) => {
-        applyTransformWithModeSync(ChartTransformService.roundDataset(useChartStore.getState(), index, decimals))
-    }
-
-    const scaleDataset = (index: number, factor: number) => {
-        applyTransformWithModeSync(ChartTransformService.scaleDataset(useChartStore.getState(), index, factor))
-    }
-
-    const offsetDataset = (index: number, offset: number) => {
-        applyTransformWithModeSync(ChartTransformService.offsetDataset(useChartStore.getState(), index, offset))
-    }
-
-    const backupDatasetState = (index: number) => {
-        const newState = ChartTransformService.createBackup(useChartStore.getState(), index)
-        if (newState) useChartStore.setState(newState)
-    }
-
-    const restoreDatasetState = (index: number) => {
-        applyTransformWithModeSync(ChartTransformService.restoreDatasetState(useChartStore.getState(), index))
-    }
-
-    const resetDatasetOperations = (index: number) => {
-        restoreDatasetState(index)
-    }
-
-    // Groups
-    const addGroup = (groupData: any) => {
-        const { id, newState } = GroupService.addGroup(groupData, { groups: useChartStore.getState().groups })
-        useChartStore.setState(newState)
-        return id
-    }
-
-    const updateGroup = (id: string, updates: any) => {
-        const newState = GroupService.updateGroup(id, updates, { groups: useChartStore.getState().groups })
-        useChartStore.setState(newState)
-    }
-
-    const deleteGroup = (id: string) => {
-        const currentState = useChartStore.getState()
-        const newState = GroupService.deleteGroup(id, {
-            groups: currentState.groups,
-            activeGroupId: currentState.activeGroupId,
-            chartType: currentState.chartType,
-            groupedModeData: currentState.groupedModeData
-        })
-        if (newState) useChartStore.setState(newState)
-    }
-
-    const setActiveGroup = (id: string) => {
-        const currentState = useChartStore.getState()
-        const newState = GroupService.setActiveGroup(id, {
-            groups: currentState.groups,
-            activeGroupId: currentState.activeGroupId,
-            chartType: currentState.chartType,
-            chartConfig: currentState.chartConfig,
-            chartData: currentState.chartData,
-            groupedModeData: currentState.groupedModeData
-        })
-        useChartStore.setState(newState)
-    }
-
-
-
-    return {
-        addDataset,
-        removeDataset,
-        updateDataset,
-        updateDataPoint,
-        updatePointImage,
-        updateLabels,
-        toggleDatasetVisibility,
-        toggleSliceVisibility,
-        setChartType,
-        updateChartConfig,
-        toggleFillArea,
-        toggleFillPoints,
-        toggleShowBorder,
-        toggleShowImages,
-        toggleShowLabels,
-        toggleShowLegend,
-        // Transforms
-        sortDataset,
-        reverseDataset,
-        filterTopN,
-        filterAboveThreshold,
-        filterBelowThreshold,
-        normalizeDataset,
-        convertToPercentage,
-        roundDataset,
-        scaleDataset,
-        offsetDataset,
-        backupDatasetState,
-        restoreDatasetState,
-        resetDatasetOperations,
-        // Groups
-        addGroup,
-        updateGroup,
-        deleteGroup,
-        setActiveGroup,
-
     }
 }
+
+const updateDataPoint = (datasetIndex: number, pointIndex: number, field: string, value: any) => {
+    const currentState = useChartStore.getState()
+    const newState = DatasetService.updateDataPoint(datasetIndex, pointIndex, field, value, {
+        chartData: currentState.chartData,
+        chartMode: currentState.chartMode,
+        singleModeData: currentState.singleModeData,
+        groupedModeData: currentState.groupedModeData
+    })
+    useChartStore.setState(newState)
+}
+
+const updatePointImage = (datasetIndex: number, pointIndex: number, imageUrl: string, imageConfig: any) => {
+    const currentState = useChartStore.getState()
+    const changes = DatasetService.updatePointImage(datasetIndex, pointIndex, imageUrl, imageConfig, currentState)
+    if (changes) {
+        useChartStore.setState(changes)
+    }
+}
+
+const updateLabels = (labels: string[]) => {
+    const currentState = useChartStore.getState()
+    const changes = DatasetService.updateLabels(labels, {
+        chartData: currentState.chartData,
+        chartMode: currentState.chartMode,
+        activeDatasetIndex: currentState.activeDatasetIndex,
+        activeGroupId: currentState.activeGroupId,
+        singleModeData: currentState.singleModeData,
+        groupedModeData: currentState.groupedModeData,
+        hasJSON: currentState.hasJSON
+    })
+    useChartStore.setState(changes)
+}
+
+const toggleDatasetVisibility = (index: number) => {
+    const currentState = useChartStore.getState()
+    const changes = ChartStateService.toggleDatasetVisibility(index, currentState)
+    useChartStore.setState(changes)
+}
+
+const toggleSliceVisibility = (index: number) => {
+    const currentState = useChartStore.getState()
+    const changes = ChartStateService.toggleSliceVisibility(index, currentState)
+    useChartStore.setState(changes)
+}
+
+const setChartType = (type: SupportedChartType) => {
+    const currentState = useChartStore.getState()
+    if (currentState.chartType === type) return
+
+    if (!isChartTypeCompatible(type, currentState.chartType)) {
+        toast.error(getChartIncompatibilityReason(type, currentState.chartType))
+        return
+    }
+
+    const newState = ChartTypeService.applyChartTypeChange(
+        currentState.chartType,
+        type,
+        {
+            chartData: currentState.chartData,
+            chartConfig: currentState.chartConfig,
+            chartMode: currentState.chartMode,
+            activeDatasetIndex: currentState.activeDatasetIndex,
+            uniformityMode: currentState.uniformityMode
+        }
+    )
+
+    if (!newState) return
+
+    const finalState: any = { ...newState }
+    if (currentState.chartMode === 'single') {
+        const newDatasets = newState.chartData.datasets.map((ds: any, i: number) =>
+            i === currentState.activeDatasetIndex ? { ...ds, chartConfig: JSON.parse(JSON.stringify(newState.chartConfig)) } : ds
+        )
+        finalState.chartData = { ...newState.chartData, datasets: newDatasets }
+        finalState.singleModeData = finalState.chartData
+    } else {
+        finalState.groups = currentState.groups.map((g: any) =>
+            g.id === currentState.activeGroupId ? { ...g, chartConfig: JSON.parse(JSON.stringify(newState.chartConfig)) } : g
+        )
+        finalState.chartData = newState.chartData
+        finalState.groupedModeData = newState.chartData
+    }
+
+    useChartStore.setState(finalState)
+}
+
+const updateChartConfig = (config: any) => {
+    const currentState = useChartStore.getState()
+    const normalizedConfig = ChartConfigService.normalizeConfig(config, currentState.chartType)
+    currentState.updateChartConfig(normalizedConfig)
+}
+
+const applyTransformWithModeSync = (newState: Partial<any> | null) => {
+    if (!newState) return
+    const { chartMode } = useChartStore.getState()
+    if (newState.chartData) {
+        const modeDataUpdate = chartMode === 'single'
+            ? { singleModeData: newState.chartData }
+            : { groupedModeData: newState.chartData }
+        useChartStore.setState({ ...newState, ...modeDataUpdate })
+    } else {
+        useChartStore.setState(newState)
+    }
+}
+
+const sortDataset = (index: number, order: 'asc' | 'desc' | 'label-asc' | 'label-desc') => {
+    applyTransformWithModeSync(ChartTransformService.sortDataset(useChartStore.getState(), index, order))
+}
+const reverseDataset = (index: number) => {
+    applyTransformWithModeSync(ChartTransformService.reverseDataset(useChartStore.getState(), index))
+}
+const filterTopN = (index: number, n: number) => {
+    applyTransformWithModeSync(ChartTransformService.filterTopN(useChartStore.getState(), index, n))
+}
+const filterAboveThreshold = (index: number, threshold: number) => {
+    applyTransformWithModeSync(ChartTransformService.filterAboveThreshold(useChartStore.getState(), index, threshold))
+}
+const filterBelowThreshold = (index: number, threshold: number) => {
+    applyTransformWithModeSync(ChartTransformService.filterBelowThreshold(useChartStore.getState(), index, threshold))
+}
+const normalizeDataset = (index: number, range: string = '0-100') => {
+    applyTransformWithModeSync(ChartTransformService.normalizeDataset(useChartStore.getState(), index, range))
+}
+const convertToPercentage = (index: number) => {
+    applyTransformWithModeSync(ChartTransformService.convertToPercentage(useChartStore.getState(), index))
+}
+const roundDataset = (index: number, decimals: number) => {
+    applyTransformWithModeSync(ChartTransformService.roundDataset(useChartStore.getState(), index, decimals))
+}
+const scaleDataset = (index: number, factor: number) => {
+    applyTransformWithModeSync(ChartTransformService.scaleDataset(useChartStore.getState(), index, factor))
+}
+const offsetDataset = (index: number, offset: number) => {
+    applyTransformWithModeSync(ChartTransformService.offsetDataset(useChartStore.getState(), index, offset))
+}
+const backupDatasetState = (index: number) => {
+    const newState = ChartTransformService.createBackup(useChartStore.getState(), index)
+    if (newState) useChartStore.setState(newState)
+}
+const restoreDatasetState = (index: number) => {
+    applyTransformWithModeSync(ChartTransformService.restoreDatasetState(useChartStore.getState(), index))
+}
+const resetDatasetOperations = (index: number) => {
+    restoreDatasetState(index)
+}
+const addGroup = (groupData: any) => {
+    const { id, newState } = GroupService.addGroup(groupData, { groups: useChartStore.getState().groups })
+    useChartStore.setState(newState)
+    return id
+}
+const updateGroup = (id: string, updates: any) => {
+    const newState = GroupService.updateGroup(id, updates, { groups: useChartStore.getState().groups })
+    useChartStore.setState(newState)
+}
+const deleteGroup = (id: string) => {
+    const currentState = useChartStore.getState()
+    const newState = GroupService.deleteGroup(id, {
+        groups: currentState.groups,
+        activeGroupId: currentState.activeGroupId,
+        chartType: currentState.chartType,
+        groupedModeData: currentState.groupedModeData
+    })
+    if (newState) useChartStore.setState(newState)
+}
+const setActiveGroup = (id: string) => {
+    const currentState = useChartStore.getState()
+    const newState = GroupService.setActiveGroup(id, {
+        groups: currentState.groups,
+        activeGroupId: currentState.activeGroupId,
+        chartType: currentState.chartType,
+        chartConfig: currentState.chartConfig,
+        chartData: currentState.chartData,
+        groupedModeData: currentState.groupedModeData,
+        chartTitle: currentState.chartTitle,
+        currentSnapshotId: currentState.currentSnapshotId
+    })
+    useChartStore.setState(newState)
+}
+
+const CHART_ACTIONS = Object.freeze({
+    addDataset,
+    removeDataset,
+    updateDataset,
+    updateDataPoint,
+    updatePointImage,
+    updateLabels,
+    toggleDatasetVisibility,
+    toggleSliceVisibility,
+    setChartType,
+    updateChartConfig,
+    setChartData: (...args: Parameters<ReturnType<typeof useChartStore.getState>['setChartData']>) =>
+        useChartStore.getState().setChartData(...args),
+    setChartMode: (...args: Parameters<ReturnType<typeof useChartStore.getState>['setChartMode']>) =>
+        useChartStore.getState().setChartMode(...args),
+    setActiveDatasetIndex: (...args: Parameters<ReturnType<typeof useChartStore.getState>['setActiveDatasetIndex']>) =>
+        useChartStore.getState().setActiveDatasetIndex(...args),
+    toggleFillArea: () => useChartStore.getState().toggleFillArea(),
+    toggleFillPoints: () => useChartStore.getState().toggleFillPoints(),
+    toggleShowBorder: () => useChartStore.getState().toggleShowBorder(),
+    toggleShowImages: () => useChartStore.getState().toggleShowImages(),
+    toggleShowLabels: () => useChartStore.getState().toggleShowLabels(),
+    toggleShowLegend: () => useChartStore.getState().toggleShowLegend(),
+    sortDataset,
+    reverseDataset,
+    filterTopN,
+    filterAboveThreshold,
+    filterBelowThreshold,
+    normalizeDataset,
+    convertToPercentage,
+    roundDataset,
+    scaleDataset,
+    offsetDataset,
+    backupDatasetState,
+    restoreDatasetState,
+    resetDatasetOperations,
+    addGroup,
+    updateGroup,
+    deleteGroup,
+    setActiveGroup,
+})
+
+/**
+ * Returns a frozen singleton bag of chart actions with permanent referential stability.
+ */
+export const useChartActions = () => CHART_ACTIONS

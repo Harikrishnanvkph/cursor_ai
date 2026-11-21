@@ -91,10 +91,6 @@ export function ImagesTab({
         const {
             compressImage,
             validateImageFile,
-            getAvailableLocalStorageSpace,
-            shouldCleanupImages,
-            getImagesToCleanup,
-            wouldExceedQuota
         } = await import('@/lib/image-utils')
 
         // Validate file
@@ -104,47 +100,8 @@ export function ImagesTab({
         }
 
         try {
-            // Check available space and cleanup if needed
-            const availableSpace = getAvailableLocalStorageSpace()
-            if (availableSpace < 200 * 1024) {
-                const cleanupInfo = shouldCleanupImages(chartData, 1 * 1024 * 1024)
-                if (cleanupInfo.needed) {
-                    chartData.datasets.forEach((dataset: any, dsIdx: number) => {
-                        const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
-                        if (indicesToRemove.length > 0) {
-                            const newPointImages = [...(dataset.pointImages || [])]
-                            indicesToRemove.forEach((i: number) => {
-                                newPointImages[i] = null
-                            })
-                            updateDataset(dsIdx, { pointImages: newPointImages })
-                        }
-                    })
-                }
-            }
-
-            // Compress image with better defaults
-            const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true)
-
-            // Check if compressed image would exceed quota
-            if (wouldExceedQuota(compressedImageUrl)) {
-                const cleanupInfo = shouldCleanupImages(chartData, 2 * 1024 * 1024)
-                if (cleanupInfo.needed) {
-                    chartData.datasets.forEach((dataset: any, dsIdx: number) => {
-                        const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
-                        if (indicesToRemove.length > 0) {
-                            const newPointImages = [...(dataset.pointImages || [])]
-                            indicesToRemove.forEach((i: number) => {
-                                newPointImages[i] = null
-                            })
-                            updateDataset(dsIdx, { pointImages: newPointImages })
-                        }
-                    })
-                }
-                if (wouldExceedQuota(compressedImageUrl)) {
-                    toast.error('Storage quota exceeded. Please remove some images.')
-                    return
-                }
-            }
+            // Chart state persists in IndexedDB (not 5MB localStorage); compress directly without deleting other slices' images
+            const compressedImageUrl = await compressImage(file, 600, 600, 0.75, false, true)
 
             const { images, configs } = ensureArrays()
             images[pointIndex] = compressedImageUrl
@@ -152,25 +109,7 @@ export function ImagesTab({
             const imageConfig = currentDataset?.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
             configs[pointIndex] = { ...imageConfig }
 
-            try {
-                updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
-            } catch (error: any) {
-                if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
-                    chartData.datasets.forEach((dataset: any, dsIdx: number) => {
-                        const indicesToRemove = getImagesToCleanup(dataset, 1)
-                        if (indicesToRemove.length > 0) {
-                            const newPointImages = [...(dataset.pointImages || [])]
-                            indicesToRemove.forEach((i: number) => {
-                                newPointImages[i] = null
-                            })
-                            updateDataset(dsIdx, { pointImages: newPointImages })
-                        }
-                    })
-                    updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
-                } else {
-                    throw error
-                }
-            }
+            updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
         } catch (error: any) {
             console.error('Error compressing image:', error)
             if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {

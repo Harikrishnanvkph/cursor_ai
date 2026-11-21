@@ -7,9 +7,21 @@ function isUnsplashHotlinkHost(hostname: string): boolean {
 }
 
 /**
+ * Our own Supabase public format-assets bucket already returns Access-Control-Allow-Origin: *
+ * and compresses uploads to WebP at upload time, so full-size/export fetches don't need
+ * to bounce through the backend serverless image proxy.
+ */
+function isDirectSupabaseFormatAsset(parsedUrl: URL): boolean {
+    return (
+        parsedUrl.hostname.toLowerCase().endsWith('.supabase.co') &&
+        parsedUrl.pathname.startsWith('/storage/v1/object/public/format-assets/')
+    );
+}
+
+/**
  * Checks if a URL requires proxying to bypass CORS or hotlinking protection
- * Proxies external URLs except Unsplash CDN hosts, which must be hotlinked directly
- * per Unsplash API guidelines so CDN views are tracked accurately.
+ * Proxies external URLs except Unsplash CDN hosts (required by Unsplash API guidelines)
+ * and our own CORS-enabled Supabase format-assets storage bucket.
  */
 export function requiresProxy(url: string): boolean {
     if (!url) return false;
@@ -30,12 +42,31 @@ export function requiresProxy(url: string): boolean {
             return false;
         }
 
+        // Our own Supabase format-assets bucket already serves Access-Control-Allow-Origin: *
+        if (isDirectSupabaseFormatAsset(parsedUrl)) {
+            return false;
+        }
+
         // Only proxy HTTP/HTTPS
         return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
     } catch (e) {
         // If URL parsing fails (e.g. data URI, relative path), it likely doesn't need proxying
         return false;
     }
+}
+
+const QUANTIZED_IMAGE_WIDTHS = [320, 640, 1024, 1600, 2048] as const;
+
+/**
+ * Snaps requested image pixel widths to fixed cacheable buckets so zoom/resize
+ * never triggers unique Sharp resize requests on every pixel tick.
+ */
+export function quantizeImageWidth(px: number): number {
+    if (!Number.isFinite(px) || px <= 0) return 640;
+    for (let i = 0; i < QUANTIZED_IMAGE_WIDTHS.length; i++) {
+        if (px <= QUANTIZED_IMAGE_WIDTHS[i]) return QUANTIZED_IMAGE_WIDTHS[i];
+    }
+    return 2048;
 }
 
 /**
@@ -50,6 +81,8 @@ export function getProxiedImageUrl(
         return originalUrl;
     }
 
+    const quantizedWidth = options?.width ? quantizeImageWidth(options.width) : undefined;
+
     try {
         const parsed = new URL(originalUrl);
         if (
@@ -59,13 +92,29 @@ export function getProxiedImageUrl(
             if (!options) {
                 return originalUrl;
             }
-            if (options.width) parsed.searchParams.set('w', String(options.width));
+            if (quantizedWidth) parsed.searchParams.set('w', String(quantizedWidth));
             if (options.quality) parsed.searchParams.set('q', String(options.quality));
             if (options.format) {
                 parsed.searchParams.set('fm', options.format);
                 parsed.searchParams.set('auto', 'format');
             }
             return parsed.toString();
+        }
+
+        // For our own Supabase format-assets, serve directly for WebP >= 1200 or full-size renders
+        if (
+            (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+            isDirectSupabaseFormatAsset(parsed)
+        ) {
+            const isWebp = parsed.pathname.toLowerCase().endsWith('.webp');
+            if (!quantizedWidth || (isWebp && quantizedWidth >= 1200)) {
+                return originalUrl;
+            }
+            const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+            let resizedUrl = `${apiUrl}/api/proxy/image?url=${encodeURIComponent(originalUrl)}&width=${quantizedWidth}`;
+            if (options?.quality) resizedUrl += `&quality=${options.quality}`;
+            if (options?.format) resizedUrl += `&format=${options.format}`;
+            return resizedUrl;
         }
     } catch {
         // Fall through for relative paths or data URIs
@@ -83,7 +132,7 @@ export function getProxiedImageUrl(
     let url = `${apiUrl}/api/proxy/image?url=${encodeURIComponent(originalUrl)}`;
     
     if (options) {
-        if (options.width) url += `&width=${options.width}`;
+        if (quantizedWidth) url += `&width=${quantizedWidth}`;
         if (options.quality) url += `&quality=${options.quality}`;
         if (options.format) url += `&format=${options.format}`;
     }

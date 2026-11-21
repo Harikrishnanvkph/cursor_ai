@@ -25,10 +25,12 @@ export function SaveChartDialog({
     const [name, setName] = useState(defaultName)
     const inputRef = useRef<HTMLInputElement>(null)
 
-    // Update name when defaultName changes
+    // Update name whenever defaultName changes or dialog re-opens (prevents cancelled draft leaking)
     useEffect(() => {
-        setName(defaultName)
-    }, [defaultName])
+        if (open) {
+            setName(defaultName)
+        }
+    }, [defaultName, open])
 
     // Focus and select input when dialog opens
     useEffect(() => {

@@ -39,9 +39,9 @@ export function SiteHeader() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2.5 sm:space-x-3 group">
-              <img src="/logo.png" alt="Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain group-hover:scale-105 transition-transform duration-300" />
+              <img src="/logo.png" alt="AIChartor" className="w-8 h-8 sm:w-9 sm:h-9 object-contain group-hover:scale-105 transition-transform duration-300" />
               <span className="text-lg sm:text-xl font-bold tracking-tight transition-colors text-slate-900 dark:text-white">
-                Chartography.in
+                AIChartor
               </span>
             </Link>
           </div>

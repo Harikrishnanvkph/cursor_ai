@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { Sidebar, CHART_TABS, TEMPLATE_TABS, getVisibleTemplateTabs } from "@/components/sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
-import { useChartStore, getDefaultConfigForType } from "@/lib/chart-store"
+import { useChartStore, getDefaultConfigForType, prepareChartDataForSave } from "@/lib/chart-store"
 import type { SupportedChartType } from "@/lib/chart-defaults"
 import { saveChartToCloud } from "@/lib/save-utils"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
@@ -21,7 +22,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import { useChartExport } from "@/lib/hooks/use-chart-export"
-import { useChartRename, getEffectiveChartTitle } from "@/lib/hooks/use-chart-rename"
+import { useChartRename, getEffectiveChartTitle, resolveActiveCloudConversationId } from "@/lib/hooks/use-chart-rename"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChatStore } from "@/lib/chat-store"
 import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
@@ -33,8 +34,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 import { useFormatGalleryStore, ensureDefaultFormatSelected } from "@/lib/stores/format-gallery-store"
-import { useDecorationStore } from "@/lib/stores/decoration-store"
-import { cleanupDecorationFiles } from "@/lib/stores/decoration-file-registry"
+import { useDecorationStore, collectDecorationBlobUrls } from "@/lib/stores/decoration-store"
+import { cleanupUnreferencedDecorationFiles } from "@/lib/stores/decoration-file-registry"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
@@ -73,7 +74,14 @@ function EditorPageContent() {
     setIsBuiltInPreset,
     presetMetadata,
     setPresetMetadata
-  } = useChartStyleStore()
+  } = useChartStyleStore(useShallow(s => ({
+    editPresetId: s.editPresetId,
+    setEditPresetId: s.setEditPresetId,
+    isBuiltInPreset: s.isBuiltInPreset,
+    setIsBuiltInPreset: s.setIsBuiltInPreset,
+    presetMetadata: s.presetMetadata,
+    setPresetMetadata: s.setPresetMetadata,
+  })))
   const [showUpdatePresetDialog, setShowUpdatePresetDialog] = useState(false)
 
   // Helper function to load compatible dummy data for chart type
@@ -332,7 +340,8 @@ function EditorPageContent() {
       useDecorationStore.persist?.rehydrate?.()
     }
     return () => {
-      cleanupDecorationFiles()
+      const referenced = collectDecorationBlobUrls(useDecorationStore.getState())
+      cleanupUnreferencedDecorationFiles(referenced)
     }
   }, [])
 
@@ -344,7 +353,7 @@ function EditorPageContent() {
     }
   }, [useTemplateStore.getState().editorMode])
 
-  const { user, signOut } = useAuth()
+  const { user, sessionReady, signOut } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { activeTab, setActiveTab, leftSidebarCollapsed, setLeftSidebarCollapsed, sidebarView, setSidebarView } = useEditorSidebarContext()
@@ -390,9 +399,30 @@ function EditorPageContent() {
     setModeChangeConfirm,
     confirmModeChange,
     cancelModeChange
-  } = useTemplateStore()
-  const { selectedFormatId, contentPackage, formats, userFormats, selectedFormatSnapshot } = useFormatGalleryStore()
-  const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
+  } = useTemplateStore(useShallow(s => ({
+    setEditorMode: s.setEditorMode,
+    currentTemplate: s.currentTemplate,
+    editorMode: s.editorMode,
+    syncTemplatesFromCloud: s.syncTemplatesFromCloud,
+    templateInBackground: s.templateInBackground,
+    showModeChangeConfirm: s.showModeChangeConfirm,
+    setModeChangeConfirm: s.setModeChangeConfirm,
+    confirmModeChange: s.confirmModeChange,
+    cancelModeChange: s.cancelModeChange,
+  })))
+  const { selectedFormatId, contentPackage, formats, userFormats, selectedFormatSnapshot } = useFormatGalleryStore(useShallow(s => ({
+    selectedFormatId: s.selectedFormatId,
+    contentPackage: s.contentPackage,
+    formats: s.formats,
+    userFormats: s.userFormats,
+    selectedFormatSnapshot: s.selectedFormatSnapshot,
+  })))
+  const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore(useShallow(s => ({
+    messages: s.messages,
+    clearMessages: s.clearMessages,
+    startNewConversation: s.startNewConversation,
+    setBackendConversationId: s.setBackendConversationId,
+  })))
   const originalCloudDimensions = useChartStore(s => s.originalCloudDimensions)
   const rename = useChartRename()
   const exports = useChartExport()
@@ -596,10 +626,14 @@ function EditorPageContent() {
 
     if (isGrouped) {
       const freshGroupConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(targetType)));
+      freshGroupConfig.templateDimensions = false;
+      freshGroupConfig.originalDimensions = false;
       if (dims.isResponsive) {
         freshGroupConfig.responsive = true;
         freshGroupConfig.manualDimensions = false;
         freshGroupConfig.dynamicDimension = false;
+        freshGroupConfig.width = `${dims.width}px`;
+        freshGroupConfig.height = `${dims.height}px`;
       } else {
         freshGroupConfig.responsive = false;
         freshGroupConfig.manualDimensions = true;
@@ -632,9 +666,14 @@ function EditorPageContent() {
       }, { groups: useChartStore.getState().groups || [] });
       useChartStore.setState(groupState);
 
+      // Switch to grouped mode FIRST so we never leak singleModeData datasets into groupedModeData
+      if (useChartStore.getState().chartMode !== 'grouped') {
+        useChartStore.getState().setChartMode('grouped');
+      }
+
       if (datasets && datasets.length > 0) {
         const store = useChartStore.getState();
-        const currentData = store.chartData;
+        const currentGroupedData = store.groupedModeData || { labels: [], datasets: [] };
         const newGroupDatasets = datasets.map(dataset => ({
           ...dataset,
           groupId: newGroupId,
@@ -642,8 +681,8 @@ function EditorPageContent() {
           chartConfig: freshGroupConfig
         }));
         const newChartData = {
-          ...currentData,
-          datasets: [...currentData.datasets, ...newGroupDatasets]
+          ...currentGroupedData,
+          datasets: [...(currentGroupedData.datasets || []), ...newGroupDatasets]
         };
         useChartStore.setState({
           chartData: newChartData,
@@ -652,11 +691,8 @@ function EditorPageContent() {
         });
       }
 
-      useChartStore.getState().updateChartConfig(freshGroupConfig);
-      if (useChartStore.getState().chartMode !== 'grouped') {
-        useChartStore.getState().setChartMode('grouped');
-      }
       useChartStore.getState().setActiveGroupId(newGroupId);
+      useChartStore.getState().updateChartConfig(freshGroupConfig);
     } else {
       // Ensure mode is updated to 'single' if user was in 'grouped' mode
       const chartStore = useChartStore.getState();
@@ -665,10 +701,14 @@ function EditorPageContent() {
       }
 
       const freshSingleConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(targetType)));
+      freshSingleConfig.templateDimensions = false;
+      freshSingleConfig.originalDimensions = false;
       if (dims.isResponsive) {
         freshSingleConfig.responsive = true;
         freshSingleConfig.manualDimensions = false;
         freshSingleConfig.dynamicDimension = false;
+        freshSingleConfig.width = `${dims.width}px`;
+        freshSingleConfig.height = `${dims.height}px`;
       } else {
         freshSingleConfig.responsive = false;
         freshSingleConfig.manualDimensions = true;
@@ -687,13 +727,15 @@ function EditorPageContent() {
       freshSingleConfig.decorationShapes = [];
 
       if (datasets && datasets.length > 0) {
+        const trimmedName = groupName?.trim() || undefined;
         datasets.forEach(dataset => {
           const currentState = useChartStore.getState();
           const newState = DatasetService.addDataset({
             ...dataset,
             chartType: targetType,
             chartConfig: freshSingleConfig,
-            mode: 'single'
+            mode: 'single',
+            ...(trimmedName ? { sourceTitle: trimmedName } : {})
           }, currentState as any);
           useChartStore.setState(newState);
         });
@@ -738,9 +780,11 @@ function EditorPageContent() {
   }, [searchParams, router, editPresetId])
 
   // Auto-sync templates and load conversations from cloud when user logs in
-  const { loadConversationsFromBackend } = useHistoryStore()
+  // Keyed on user?.id + sessionReady so stale JWTs finish single-flight /auth/me refresh first
+  const loadConversationsFromBackend = useHistoryStore(s => s.loadConversationsFromBackend)
+  const userId = user?.id
   useEffect(() => {
-    if (user) {
+    if (userId && sessionReady) {
       syncTemplatesFromCloud().catch((error) => {
         console.error('Failed to sync templates from cloud:', error);
       });
@@ -748,7 +792,7 @@ function EditorPageContent() {
         console.error('Failed to load conversations from backend:', error);
       });
     }
-  }, [user, syncTemplatesFromCloud, loadConversationsFromBackend]);
+  }, [userId, sessionReady, syncTemplatesFromCloud, loadConversationsFromBackend]);
 
 
 
@@ -823,6 +867,40 @@ function EditorPageContent() {
     setActiveTab('tpl_templates')
   }
 
+  // Helper to sync the active dataset/group's cloud metadata when saving a standalone copy
+  // Prevents dataset-settings/index.tsx from reverting backendConversationId back to the original sourceId
+  const syncActiveEntityToNewCloudCopy = (newConversationId: string, newSnapshotId: string | null, title: string) => {
+    const store = useChartStore.getState()
+    if (store.chartMode === 'single') {
+      if (store.chartData.datasets[store.activeDatasetIndex]) {
+        const newState = DatasetService.updateDataset(store.activeDatasetIndex, {
+          sourceId: newConversationId,
+          sourceSnapshotId: newSnapshotId || undefined,
+          sourceTitle: title
+        }, {
+          chartType: store.chartType,
+          chartData: store.chartData,
+          chartConfig: store.chartConfig,
+          chartMode: store.chartMode,
+          hasJSON: store.hasJSON,
+          singleModeData: store.singleModeData,
+          groupedModeData: store.groupedModeData
+        })
+        if (newState) {
+          useChartStore.setState({ ...newState, chartTitle: title })
+        }
+      }
+    } else if (store.chartMode === 'grouped' && store.activeGroupId && store.groups) {
+      const newState = GroupService.updateGroup(store.activeGroupId, {
+        name: title,
+        sourceId: newConversationId,
+        sourceSnapshotId: newSnapshotId || undefined,
+        sourceTitle: title
+      }, { groups: store.groups })
+      useChartStore.setState({ ...newState, chartTitle: title })
+    }
+  }
+
   // Handle "Save as Chart Only" - creates NEW standalone chart copy
   const handleSaveAsChartOnly = async () => {
     if (!user) {
@@ -833,7 +911,10 @@ function EditorPageContent() {
     setIsSaving(true)
     try {
       // Create NEW conversation (chart only)
-      const conversationTitle = `Chart copy - ${new Date().toLocaleDateString()}`
+      const baseTitle = getEffectiveChartTitle()
+      const conversationTitle = (baseTitle && baseTitle !== "No Chart Available" && baseTitle !== "Untitled Chart")
+        ? `${baseTitle} (Copy)`
+        : `Chart copy - ${new Date().toLocaleDateString()}`
       const response = await dataService.createConversation(
         conversationTitle,
         'Standalone chart copy (no template)'
@@ -846,12 +927,22 @@ function EditorPageContent() {
 
       const newConversationId = response.data.id
 
-      // Save chart snapshot WITHOUT template
+      // Save ONLY the active chart snapshot WITHOUT template (prevents other workspace datasets & old sourceIds from leaking)
+      const liveStore = useChartStore.getState()
+      const chartDataToSave = prepareChartDataForSave(
+        liveStore.chartData,
+        liveStore.chartMode,
+        liveStore.activeDatasetIndex,
+        liveStore.activeGroupId,
+        conversationTitle,
+        newConversationId,
+        true
+      )
       const snapshotResult = await dataService.saveChartSnapshot(
         newConversationId,
-        chartType,
-        chartData,
-        chartConfig,
+        liveStore.chartType,
+        chartDataToSave,
+        liveStore.getActiveChartConfig(),
         null,  // NO template structure
         null   // NO template content
       )
@@ -864,10 +955,12 @@ function EditorPageContent() {
       // Clear local template state
       useTemplateStore.getState().clearAllTemplateState()
 
-      // Update local state to point to new entry
+      // Update local state AND active entity metadata to point to new entry
+      const newSnapshotId = snapshotResult.data?.id || null
+      syncActiveEntityToNewCloudCopy(newConversationId, newSnapshotId, conversationTitle)
       setBackendConversationId(newConversationId)
-      if (snapshotResult.data?.id) {
-        setCurrentSnapshotId(snapshotResult.data.id)
+      if (newSnapshotId) {
+        setCurrentSnapshotId(newSnapshotId)
       }
 
       // Refresh history store immediately so newly saved chart appears in Recents / History
@@ -891,8 +984,8 @@ function EditorPageContent() {
 
   // Proceed to save dialog (called after dimension check passes or user bypasses mismatch)
   const proceedToSaveDialog = () => {
-    // Get the existing backend ID to check if this is an update
-    const existingBackendId = useChatStore.getState().backendConversationId
+    // Resolve the active chart entity's cloud ID (never a stale global backendConversationId)
+    const existingBackendId = resolveActiveCloudConversationId()
     const effectiveTitle = getEffectiveChartTitle()
     const conversations = useHistoryStore.getState().conversations
     const existingConversation = existingBackendId ? conversations.find(c => c.id === existingBackendId) : null
@@ -932,7 +1025,10 @@ function EditorPageContent() {
     }
     setIsSaving(true)
     try {
-      const conversationTitle = `Chart copy - ${new Date().toLocaleDateString()}`
+      const baseTitle = getEffectiveChartTitle()
+      const conversationTitle = (baseTitle && baseTitle !== "No Chart Available" && baseTitle !== "Untitled Chart")
+        ? `${baseTitle} (Copy)`
+        : `Chart copy - ${new Date().toLocaleDateString()}`
       const response = await dataService.createConversation(
         conversationTitle,
         'Standalone chart copy (no template)'
@@ -942,11 +1038,21 @@ function EditorPageContent() {
         return
       }
       const newConversationId = response.data.id
+      const liveStore = useChartStore.getState()
+      const chartDataToSave = prepareChartDataForSave(
+        liveStore.chartData,
+        liveStore.chartMode,
+        liveStore.activeDatasetIndex,
+        liveStore.activeGroupId,
+        conversationTitle,
+        newConversationId,
+        true
+      )
       const snapshotResult = await dataService.saveChartSnapshot(
         newConversationId,
-        chartType,
-        chartData,
-        chartConfig,
+        liveStore.chartType,
+        chartDataToSave,
+        liveStore.getActiveChartConfig(),
         null,  // NO template
         null
       )
@@ -954,10 +1060,12 @@ function EditorPageContent() {
         toast.error("Failed to save chart snapshot")
         return
       }
-      // Don't touch the original template chart - just update local state to new entry
+      // Don't touch the original template chart - update local state AND active entity metadata to new entry
+      const newSnapshotId = snapshotResult.data?.id || null
+      syncActiveEntityToNewCloudCopy(newConversationId, newSnapshotId, conversationTitle)
       setBackendConversationId(newConversationId)
-      if (snapshotResult.data?.id) {
-        setCurrentSnapshotId(snapshotResult.data.id)
+      if (newSnapshotId) {
+        setCurrentSnapshotId(newSnapshotId)
       }
       // Clear template state locally
       useTemplateStore.getState().clearAllTemplateState()
@@ -1556,7 +1664,7 @@ function EditorPageContent() {
           </div>
         </div>
         {/* Chart Preview / Welcome Area */}
-        <div className={`flex-1 w-full flex flex-col items-center justify-center p-2 pb-16 ${hasJSON ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        <div className={`flex-1 w-full flex flex-col items-center justify-center pb-16 ${hasJSON ? 'p-0 overflow-hidden' : 'p-2 overflow-y-auto'}`}>
           {!storeHydrated ? (
             renderCenterAreaLoader()
           ) : hasJSON ? (
@@ -1650,7 +1758,7 @@ function EditorPageContent() {
         <SaveChartDialog
           open={showSaveChartDialog}
           defaultName={currentChartName}
-          isUpdate={!!useChatStore.getState().backendConversationId}
+          isUpdate={!!resolveActiveCloudConversationId()}
           isSaving={isSaving}
           onSave={handleSave}
           onCancel={() => setShowSaveChartDialog(false)}
@@ -1727,6 +1835,7 @@ function EditorPageContent() {
           isCustom={true}
           startAtStep={1}
           step2Title={plusModalType === 'grouped' ? "Add Data" : "Add Data"}
+          initialGroupName={plusModalType === 'grouped' ? `Group ${(useChartStore.getState().groups || []).length + 1}` : `Chart ${(useChartStore.getState().singleModeData?.datasets || []).length + 1}`}
           confirmButtonText={plusModalType === 'grouped' ? "Create Group" : undefined}
           onConfirm={handlePlusModalConfirm}
         />
@@ -1761,8 +1870,8 @@ function EditorPageContent() {
           {/* Drawer Header */}
           <div className="flex items-center justify-between pl-[18px] pr-3 py-2.5 border-b border-slate-100 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
-              <span className="text-sm font-bold text-slate-700">Chartography.in</span>
+              <img src="/logo.png" alt="AIChartor" className="h-6 w-6 object-contain" />
+              <span className="text-sm font-bold text-slate-700">AIChartor</span>
             </div>
             <button 
               onClick={() => setSandwichOpen(false)}
@@ -1900,7 +2009,7 @@ function EditorPageContent() {
         </div>
 
         {/* Chart Area (between left and right sidebars) */}
-        <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'pr-4 pl-2 pt-2 pb-4 overflow-hidden' : 'p-2 sm:p-4 overflow-y-auto justify-center items-center'}`}>
+        <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'p-0 overflow-hidden' : 'p-2 sm:p-4 overflow-y-auto justify-center items-center'}`}>
           {!storeHydrated ? (
             renderCenterAreaLoader()
           ) : hasJSON ? (
@@ -2108,7 +2217,7 @@ function EditorPageContent() {
         <SaveChartDialog
           open={showSaveChartDialog}
           defaultName={currentChartName}
-          isUpdate={!!useChatStore.getState().backendConversationId}
+          isUpdate={!!resolveActiveCloudConversationId()}
           isSaving={isSaving}
           onSave={handleSave}
           onCancel={() => setShowSaveChartDialog(false)}
@@ -2185,6 +2294,7 @@ function EditorPageContent() {
           isCustom={true}
           startAtStep={1}
           step2Title={plusModalType === 'grouped' ? "Add Data" : "Add Data"}
+          initialGroupName={plusModalType === 'grouped' ? `Group ${(useChartStore.getState().groups || []).length + 1}` : `Chart ${(useChartStore.getState().singleModeData?.datasets || []).length + 1}`}
           confirmButtonText={plusModalType === 'grouped' ? "Create Group" : undefined}
           onConfirm={handlePlusModalConfirm}
         />
@@ -2209,9 +2319,9 @@ function EditorPageContent() {
   return (
     <>
       {/* Center Area - Chart Preview */}
-      <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'pr-4 pl-1 pt-2 pb-4 overflow-hidden' : 'p-4 overflow-y-auto justify-center items-center'}`}>
+      <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'p-0 overflow-hidden' : 'p-4 overflow-y-auto justify-center items-center'}`}>
         {editPresetId && (
-          <div className="mb-2 bg-gradient-to-r from-violet-950 via-purple-950 to-indigo-950 border border-violet-700/50 rounded-xl px-3 py-2 flex items-center justify-between text-white shadow-md shrink-0">
+          <div className="mx-3 mt-2 mb-2 bg-gradient-to-r from-violet-950 via-purple-950 to-indigo-950 border border-violet-700/50 rounded-xl px-3 py-2 flex items-center justify-between text-white shadow-md shrink-0">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-6 h-6 rounded-md bg-violet-600/40 border border-violet-400/30 flex items-center justify-center shrink-0">
                 <Palette className="w-3.5 h-3.5 text-violet-300" />
@@ -2417,7 +2527,7 @@ function EditorPageContent() {
       <SaveChartDialog
         open={showSaveChartDialog}
         defaultName={currentChartName}
-        isUpdate={!!useChatStore.getState().backendConversationId}
+        isUpdate={!!resolveActiveCloudConversationId()}
         isSaving={isSaving}
         onSave={handleSave}
         onCancel={() => setShowSaveChartDialog(false)}
@@ -2478,6 +2588,7 @@ function EditorPageContent() {
         isCustom={true}
         startAtStep={1}
         step2Title={plusModalType === 'grouped' ? "Add Data" : "Add Data"}
+        initialGroupName={plusModalType === 'grouped' ? `Group ${(useChartStore.getState().groups || []).length + 1}` : `Chart ${(useChartStore.getState().singleModeData?.datasets || []).length + 1}`}
         confirmButtonText={plusModalType === 'grouped' ? "Create Group" : undefined}
         onConfirm={handlePlusModalConfirm}
       />

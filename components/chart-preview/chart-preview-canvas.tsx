@@ -137,7 +137,7 @@ export const ChartPreviewCanvas = React.memo(({
                             style={{ width: '100%', height: '100%', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: panMode ? 'none' : 'auto' }}
                         >
                             <ChartGenerator 
-                                devicePixelRatioMultiplier={exactScale >= 1 ? exactScale : 1.0} 
+                                devicePixelRatioMultiplier={exactScale >= 1 ? Math.min(4, Math.ceil(exactScale)) : 1.0} 
                                 responsiveWidth={rWidth}
                                 responsiveHeight={rHeight}
                             />
@@ -236,7 +236,7 @@ export const ChartPreviewCanvas = React.memo(({
                         }}
                     >
                         <ChartGenerator 
-                            devicePixelRatioMultiplier={exactScale >= 1 ? exactScale : 1.0} 
+                            devicePixelRatioMultiplier={exactScale >= 1 ? Math.min(4, Math.ceil(exactScale)) : 1.0} 
                             responsiveWidth={chartWidth}
                             responsiveHeight={chartHeight}
                         />

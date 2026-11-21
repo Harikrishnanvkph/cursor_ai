@@ -817,7 +817,7 @@ export function initializeStorageWithExpiry(): void {
  * Use this with Zustand persist for automatic timestamp tracking
  * Compatible with Zustand v4+ persist middleware
  */
-import { StateStorage, createJSONStorage } from 'zustand/middleware';
+import type { PersistStorage, StorageValue } from 'zustand/middleware';
 import { toast } from 'sonner';
 
 // =============================================
@@ -908,22 +908,81 @@ export const idbStorage = {
   }
 };
 
-const pendingStorageWrites = new Map<string, string>();
+interface PendingWriteEntry {
+  value: StorageValue<any>;
+  target: 'idb' | 'session';
+  storageKey: string;
+}
+
+const pendingStorageWrites = new Map<string, PendingWriteEntry>();
 const pendingStorageTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const lastPersistedSnapshot = new Map<string, { state: any; version: number | undefined }>();
 let storageFlushListenersAttached = false;
 
-function flushPendingStorageWrite(key: string): void {
-  const timer = pendingStorageTimers.get(key);
+function shallowEqualPersistedState(a: any, b: any): boolean {
+  if (Object.is(a, b)) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (let i = 0; i < keysA.length; i++) {
+    const k = keysA[i];
+    if (!Object.prototype.hasOwnProperty.call(b, k) || !Object.is(a[k], b[k])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isFormatBuilderPath(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.location.pathname.includes('/admin/format') ||
+      window.location.pathname.includes('/editor/custom-format'))
+  );
+}
+
+function flushPendingStorageWrite(pendingKey: string): void {
+  const timer = pendingStorageTimers.get(pendingKey);
   if (timer) {
     clearTimeout(timer);
-    pendingStorageTimers.delete(key);
+    pendingStorageTimers.delete(pendingKey);
   }
-  const value = pendingStorageWrites.get(key);
-  if (value === undefined) return;
-  pendingStorageWrites.delete(key);
+  const entry = pendingStorageWrites.get(pendingKey);
+  if (entry === undefined) return;
+  pendingStorageWrites.delete(pendingKey);
 
-  idbStorage.setItem(key, value).then(() => {
-    updateStorageTimestamp(key);
+  // Skip serialization and storage I/O if persisted slice references did not change
+  const prev = lastPersistedSnapshot.get(pendingKey);
+  if (prev && prev.version === entry.value.version && shallowEqualPersistedState(prev.state, entry.value.state)) {
+    return;
+  }
+
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(entry.value);
+  } catch (err) {
+    console.error('Failed to serialize Zustand persisted state:', err);
+    return;
+  }
+
+  lastPersistedSnapshot.set(pendingKey, {
+    state: entry.value.state,
+    version: entry.value.version,
+  });
+
+  if (entry.target === 'session') {
+    try {
+      sessionStorage.setItem(entry.storageKey, serialized);
+    } catch (error) {
+      console.error('QuotaExceededError: Failed to save format draft to sessionStorage:', error);
+      toast.error('Session storage limit reached! Please remove large images.');
+    }
+    return;
+  }
+
+  idbStorage.setItem(entry.storageKey, serialized).then(() => {
+    updateStorageTimestamp(entry.storageKey);
   }).catch((error) => {
     console.error(`QuotaExceededError: Failed to save to IndexedDB:`, error);
     toast.error('Storage limit reached! Please remove large images to continue saving.');
@@ -934,8 +993,8 @@ function ensureStorageFlushListeners(): void {
   if (storageFlushListenersAttached || typeof window === 'undefined') return;
   storageFlushListenersAttached = true;
   const flushAll = () => {
-    for (const key of Array.from(pendingStorageWrites.keys())) {
-      flushPendingStorageWrite(key);
+    for (const pendingKey of Array.from(pendingStorageWrites.keys())) {
+      flushPendingStorageWrite(pendingKey);
     }
   };
   window.addEventListener('pagehide', flushAll);
@@ -944,83 +1003,84 @@ function ensureStorageFlushListeners(): void {
   });
 }
 
-export function createExpiringStorage(baseName: string) {
+export function createExpiringStorage<S = any>(baseName: string): PersistStorage<S> {
   if (typeof window === 'undefined') {
-    // Return a dummy storage for SSR that doesn't do anything
-    return createJSONStorage(() => ({
+    return {
       getItem: () => null,
       setItem: () => { },
       removeItem: () => { },
-    }));
+    };
   }
 
   ensureStorageFlushListeners();
 
-  const storage: StateStorage = {
-    getItem: async (name: string): Promise<string | null> => {
+  return {
+    getItem: async (_name: string): Promise<StorageValue<S> | null> => {
       const key = getUserStorageKey(baseName);
-      
-      // Isolate format builder drafts into sessionStorage to prevent bleeding into the main editor
-      if (baseName === 'decoration-store' && typeof window !== 'undefined' && 
-          (window.location.pathname.includes('/admin/format') || window.location.pathname.includes('/editor/custom-format'))) {
-        const draft = sessionStorage.getItem(`${key}-format-draft`);
-        return draft ? draft : null; // return null to force Zustand to initialize empty instead of loading editor shapes!
-      }
-      
-      if (pendingStorageWrites.has(key)) {
-        return pendingStorageWrites.get(key)!;
+      const isFormatSession = baseName === 'decoration-store' && isFormatBuilderPath();
+      const targetKey = isFormatSession ? `${key}-format-draft` : key;
+
+      if (pendingStorageWrites.has(targetKey)) {
+        return pendingStorageWrites.get(targetKey)!.value as StorageValue<S>;
       }
 
-      return await idbStorage.getItem(key);
-    },
-    setItem: async (name: string, value: string): Promise<void> => {
-      const key = getUserStorageKey(baseName);
-      
-      // Isolate format builder drafts into sessionStorage
-      if (baseName === 'decoration-store' && typeof window !== 'undefined' && 
-          (window.location.pathname.includes('/admin/format') || window.location.pathname.includes('/editor/custom-format'))) {
-        try {
-          sessionStorage.setItem(`${key}-format-draft`, value);
-        } catch (error) {
-          console.error(`QuotaExceededError: Failed to save format draft to sessionStorage:`, error);
-          toast.error('Session storage limit reached! Please remove large images.');
-        }
-        return;
+      const raw = isFormatSession
+        ? sessionStorage.getItem(targetKey)
+        : await idbStorage.getItem(targetKey);
+
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw) as StorageValue<S>;
+        lastPersistedSnapshot.set(targetKey, {
+          state: parsed?.state,
+          version: parsed?.version,
+        });
+        return parsed;
+      } catch (err) {
+        console.warn(`Failed to parse stored state for ${targetKey}:`, err);
+        return null;
       }
-      
-      // Coalesce high-frequency (60fps slider/drag) writes in memory and flush after 600ms
-      pendingStorageWrites.set(key, value);
-      const existingTimer = pendingStorageTimers.get(key);
+    },
+    setItem: (_name: string, value: StorageValue<S>): void => {
+      const key = getUserStorageKey(baseName);
+      const isFormatSession = baseName === 'decoration-store' && isFormatBuilderPath();
+      const targetKey = isFormatSession ? `${key}-format-draft` : key;
+      const target: 'idb' | 'session' = isFormatSession ? 'session' : 'idb';
+      const delayMs = isFormatSession ? 250 : 600;
+
+      // Coalesce high-frequency writes BEFORE JSON.stringify; flushed after debounce or pagehide/hidden
+      pendingStorageWrites.set(targetKey, { value, target, storageKey: targetKey });
+      const existingTimer = pendingStorageTimers.get(targetKey);
       if (existingTimer) {
         clearTimeout(existingTimer);
       }
       const timer = setTimeout(() => {
-        flushPendingStorageWrite(key);
-      }, 600);
-      pendingStorageTimers.set(key, timer);
+        flushPendingStorageWrite(targetKey);
+      }, delayMs);
+      pendingStorageTimers.set(targetKey, timer);
     },
-    removeItem: async (name: string): Promise<void> => {
+    removeItem: async (_name: string): Promise<void> => {
       const key = getUserStorageKey(baseName);
-      
-      if (baseName === 'decoration-store' && typeof window !== 'undefined' && 
-          (window.location.pathname.includes('/admin/format') || window.location.pathname.includes('/editor/custom-format'))) {
-        sessionStorage.removeItem(`${key}-format-draft`);
-        return;
-      }
-      
-      const existingTimer = pendingStorageTimers.get(key);
+      const isFormatSession = baseName === 'decoration-store' && isFormatBuilderPath();
+      const targetKey = isFormatSession ? `${key}-format-draft` : key;
+
+      const existingTimer = pendingStorageTimers.get(targetKey);
       if (existingTimer) {
         clearTimeout(existingTimer);
-        pendingStorageTimers.delete(key);
+        pendingStorageTimers.delete(targetKey);
       }
-      pendingStorageWrites.delete(key);
+      pendingStorageWrites.delete(targetKey);
+      lastPersistedSnapshot.delete(targetKey);
 
-      await idbStorage.removeItem(key);
-      removeStorageTimestamp(key);
+      if (isFormatSession) {
+        sessionStorage.removeItem(targetKey);
+        return;
+      }
+
+      await idbStorage.removeItem(targetKey);
+      removeStorageTimestamp(targetKey);
     },
   };
-
-  return createJSONStorage(() => storage);
 }
 
 /**

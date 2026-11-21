@@ -1,5 +1,6 @@
 "use client"
 
+import { useShallow } from "zustand/react/shallow"
 import { cn } from "@/lib/utils"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
@@ -82,10 +83,22 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
     groups,
     activeGroupId,
     setActiveGroupId
-  } = useChartStore()
+  } = useChartStore(useShallow(s => ({
+    chartMode: s.chartMode,
+    chartData: s.chartData,
+    activeDatasetIndex: s.activeDatasetIndex,
+    setActiveDatasetIndex: s.setActiveDatasetIndex,
+    groups: s.groups,
+    activeGroupId: s.activeGroupId,
+    setActiveGroupId: s.setActiveGroupId,
+  })))
 
-  const { editorMode, setEditorMode, currentTemplate } = useTemplateStore()
-  const { selectedFormatId } = useFormatGalleryStore()
+  const { editorMode, setEditorMode, currentTemplate } = useTemplateStore(useShallow(s => ({
+    editorMode: s.editorMode,
+    setEditorMode: s.setEditorMode,
+    currentTemplate: s.currentTemplate,
+  })))
+  const selectedFormatId = useFormatGalleryStore(s => s.selectedFormatId)
 
   const datasets = chartData.datasets || []
   const isTemplateMode = editorMode === 'template'

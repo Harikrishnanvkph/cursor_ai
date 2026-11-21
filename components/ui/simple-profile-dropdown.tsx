@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
+import { useGeoLocation } from "@/hooks/useGeoLocation"
 import { useSubscriptionQuota } from "@/lib/hooks/use-subscription-quota"
 import { UserAvatar } from "./user-avatar"
 import { SimpleDropdown } from "./simple-dropdown"
@@ -32,6 +33,7 @@ export function SimpleProfileDropdown({
   customNavigationItems
 }: SimpleProfileDropdownProps) {
   const { signOut } = useAuth()
+  const { isIndia, currencySymbol } = useGeoLocation()
   const {
     user,
     isPro,
@@ -153,7 +155,7 @@ export function SimpleProfileDropdown({
             className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-semibold hover:from-indigo-700 hover:to-purple-700 shadow-sm transition-all active:scale-98 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Buy Credits ($2 / $5)</span>
+            <span>Buy Credits ({currencySymbol}{isIndia ? "99" : "2"} / {currencySymbol}{isIndia ? "249" : "5"})</span>
           </button>
         </div>
 

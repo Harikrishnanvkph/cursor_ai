@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -10,44 +11,15 @@ import { Slider } from "@/components/ui/slider"
 import { Palette, FileText, MousePointerClick, Layers, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
+import { compressImage as sharedCompressImage, validateImageFile } from "@/lib/image-utils"
 import { toast } from "sonner"
 import type { FormatBlueprintRow } from "@/lib/format-types"
 
-// Image compression helper
-const compressImage = (
-  file: File,
-  maxWidth: number = 800,
-  quality: number = 0.85
-): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        let width = img.width
-        let height = img.height
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width
-          width = maxWidth
-        }
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (ctx) {
-          ctx.imageSmoothingEnabled = true
-          ctx.imageSmoothingQuality = 'high'
-          ctx.drawImage(img, 0, 0, width, height)
-        }
-        const format = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
-        resolve(canvas.toDataURL(format, quality))
-      }
-      img.onerror = () => reject(new Error('Failed to load image'))
-      img.src = e.target?.result as string
-    }
-    reader.onerror = () => reject(new Error('Failed to read file'))
-    reader.readAsDataURL(file)
-  })
+async function validateAndCompressBgImage(file: File, maxDim: number): Promise<string> {
+  if (!validateImageFile(file, 10)) {
+    throw new Error('Invalid image file. Please select an image under 10MB.')
+  }
+  return await sharedCompressImage(file, maxDim, maxDim, 0.85, false, true)
 }
 
 type BackgroundMode = 'document' | 'section'
@@ -57,7 +29,12 @@ type BackgroundMode = 'document' | 'section'
  * Templates and Formats with "Whole Document" / "Selected Section" toggle.
  */
 export function BackgroundPanel() {
-  const { selectedFormatId, selectedZoneId, formats, selectedFormatSnapshot } = useFormatGalleryStore()
+  const { selectedFormatId, selectedZoneId, formats, selectedFormatSnapshot } = useFormatGalleryStore(useShallow(s => ({
+    selectedFormatId: s.selectedFormatId,
+    selectedZoneId: s.selectedZoneId,
+    formats: s.formats,
+    selectedFormatSnapshot: s.selectedFormatSnapshot,
+  })))
 
   const [bgMode, setBgMode] = useState<BackgroundMode>('document')
 
@@ -264,15 +241,16 @@ function FormatBackgroundEditor({ format }: { format: FormatBlueprintRow }) {
               <div className="flex items-center gap-1.5">
                 <AddImageButton
                   className="flex-1 h-8 text-xs"
-                  onSelectImage={(result: AddImageResult) => {
+                  onSelectImage={async (result: AddImageResult) => {
                     if (result.source === 'file' && result.file) {
                       const file = result.file
                       URL.revokeObjectURL(result.url)
-                      const reader = new FileReader()
-                      reader.onload = (event) => {
-                        updateBgStyle({ imageUrl: event.target?.result as string })
+                      try {
+                        const compressed = await validateAndCompressBgImage(file, 1600)
+                        updateBgStyle({ imageUrl: compressed })
+                      } catch (err: any) {
+                        toast.error(err.message || 'Failed to process image')
                       }
-                      reader.readAsDataURL(file)
                       return
                     }
                     if (result.url) {
@@ -521,7 +499,7 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
                     const file = result.file
                     URL.revokeObjectURL(result.url)
                     try {
-                      const compressed = await compressImage(file, 800, 0.85)
+                      const compressed = await validateAndCompressBgImage(file, 800)
                       handleUpdateZoneStyle({ bgImageUrl: compressed })
                     } catch (err: any) {
                       toast.error(err.message || 'Failed to process image')

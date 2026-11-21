@@ -59,7 +59,7 @@ export default function TermsOfServicePage() {
               Terms of Service
             </h1>
             <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl">
-              Please read these terms carefully before using Chartography. By accessing or using our platform, you agree to be bound by these terms.
+              Please read these terms carefully before using AIChartor. By accessing or using our platform, you agree to be bound by these terms.
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-400 dark:text-slate-500">
               <span>Effective: August 1, 2026</span>
@@ -99,8 +99,8 @@ export default function TermsOfServicePage() {
             {/* ── 1. Acceptance of Terms ───────────────────── */}
             <section id="acceptance">
               <SectionHeading number="01" icon={FileText} color="blue" title="Acceptance of Terms" />
-              <P>By accessing or using Chartography (&quot;the Service&quot;), operated by Chartography (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), you agree to comply with and be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, you must not access or use the Service.</P>
-              <P>These Terms constitute a legally binding agreement between you and Chartography governing your use of the platform, including all features, tools, content, and services offered through <strong>chartography.in</strong>.</P>
+              <P>By accessing or using AIChartor (&quot;the Service&quot;), operated by AIChartor (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), you agree to comply with and be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, you must not access or use the Service.</P>
+              <P>These Terms constitute a legally binding agreement between you and AIChartor governing your use of the platform, including all features, tools, content, and services offered through <strong>aichartor.com</strong>.</P>
             </section>
 
             <Divider />
@@ -108,7 +108,7 @@ export default function TermsOfServicePage() {
             {/* ── 2. Eligibility ──────────────────────────── */}
             <section id="eligibility">
               <SectionHeading number="02" icon={UserCheck} color="emerald" title="Eligibility" />
-              <P>You must be at least <strong>13 years of age</strong> to use the Service. By using Chartography, you represent and warrant that you meet this age requirement.</P>
+              <P>You must be at least <strong>13 years of age</strong> to use the Service. By using AIChartor, you represent and warrant that you meet this age requirement.</P>
               <P>If you are using the Service on behalf of an organization, you represent that you have the authority to bind that organization to these Terms, and &quot;you&quot; refers to both you individually and the organization.</P>
             </section>
 
@@ -117,7 +117,7 @@ export default function TermsOfServicePage() {
             {/* ── 3. Account Responsibilities ─────────────── */}
             <section id="account-responsibilities">
               <SectionHeading number="03" icon={ShieldCheck} color="violet" title="Account Responsibilities" />
-              <P>When you create an account with Chartography, you agree to:</P>
+              <P>When you create an account with AIChartor, you agree to:</P>
               <Ul>
                 <Li>Provide <strong>accurate details</strong> during registration (such as a valid email address) and maintain your account information.</Li>
                 <Li>Maintain the <strong>confidentiality of your account credentials</strong> and not share your login details with others.</Li>
@@ -132,7 +132,7 @@ export default function TermsOfServicePage() {
             {/* ── 4. Permitted Use ────────────────────────── */}
             <section id="permitted-use">
               <SectionHeading number="04" icon={FileText} color="teal" title="Permitted Use" />
-              <P>Chartography grants you a limited, non-exclusive, non-transferable, revocable license to access and use the Service for your personal or internal business purposes, subject to these Terms. You may:</P>
+              <P>AIChartor grants you a limited, non-exclusive, non-transferable, revocable license to access and use the Service for your personal or internal business purposes, subject to these Terms. You may:</P>
               <Ul>
                 <Li>Create, edit, and manage charts, infographic templates, and data visualizations.</Li>
                 <Li>Use the AI-powered chart generation tools to create and modify visual content.</Li>
@@ -165,7 +165,7 @@ export default function TermsOfServicePage() {
             {/* ── 6. AI-Powered Features ─────────────────── */}
             <section id="ai-features">
               <SectionHeading number="06" icon={Sparkles} color="violet" title="AI-Powered Features" />
-              <P>Chartography offers AI-powered chart generation and editing capabilities. By using these features, you acknowledge and agree that:</P>
+              <P>AIChartor offers AI-powered chart generation and editing capabilities. By using these features, you acknowledge and agree that:</P>
               <Ul>
                 <Li><strong>AI outputs are generated content.</strong> Charts, data configurations, and suggestions produced by AI models are machine-generated and may contain errors, inaccuracies, or unexpected results. You are responsible for reviewing and validating all AI-generated output before use.</Li>
                 <Li><strong>No guarantees of accuracy.</strong> We do not warrant that AI-generated charts will be factually accurate, statistically valid, or suitable for any particular purpose.</Li>
@@ -182,10 +182,10 @@ export default function TermsOfServicePage() {
               <SectionHeading number="07" icon={Copyright} color="orange" title="User Content & Ownership" />
 
               <H3>Your Content</H3>
-              <P>You retain <strong>full ownership</strong> of all content you create, upload, or input into Chartography, including charts, datasets, templates, images, annotations, and text. We do not claim ownership of your content.</P>
+              <P>You retain <strong>full ownership</strong> of all content you create, upload, or input into AIChartor, including charts, datasets, templates, images, annotations, and text. We do not claim ownership of your content.</P>
 
               <H3>License to Operate</H3>
-              <P>By using the Service, you grant Chartography a limited, non-exclusive, worldwide, royalty-free license to host, store, process, and display your content <strong>solely for the purpose of operating and providing the Service</strong> to you. This includes:</P>
+              <P>By using the Service, you grant AIChartor a limited, non-exclusive, worldwide, royalty-free license to host, store, process, and display your content <strong>solely for the purpose of operating and providing the Service</strong> to you. This includes:</P>
               <Ul>
                 <Li>Storing your charts and data in our cloud infrastructure.</Li>
                 <Li>Processing your inputs through AI models to generate chart configurations.</Li>
@@ -202,7 +202,7 @@ export default function TermsOfServicePage() {
             {/* ── 8. Sharing & Export ────────────────────── */}
             <section id="sharing-and-export">
               <SectionHeading number="08" icon={Share2} color="cyan" title="Sharing & Export" />
-              <P>When you use the sharing and export features of Chartography:</P>
+              <P>When you use the sharing and export features of AIChartor:</P>
               <Ul>
                 <Li><strong>Public sharing links</strong> make your chart visible to anyone with the link. You are responsible for the content you choose to share publicly.</Li>
                 <Li><strong>Exported files</strong> (PNG, SVG, HTML) are generated in your browser and downloaded to your device. Once exported, these files are under your control and responsibility.</Li>
@@ -216,10 +216,10 @@ export default function TermsOfServicePage() {
             {/* ── 9. Images, Icons, Logos & Fair Use ──────── */}
             <section id="assets-and-fair-use">
               <SectionHeading number="09" icon={ImageIcon} color="indigo" title="Images, Icons, Logos & Fair Use" />
-              <P>Chartography provides access to stock photos, illustrations, vector icons, brand marks, emojis, and design elements from integrated third-party libraries (including Pexels, Unsplash, Pixabay, Wikimedia Commons, and Iconify) alongside your own uploads. By incorporating these assets into your charts, you agree to the following rules:</P>
+              <P>AIChartor provides access to stock photos, illustrations, vector icons, brand marks, emojis, and design elements from integrated third-party libraries (including Pexels, Unsplash, Pixabay, Wikimedia Commons, and Iconify) alongside your own uploads. By incorporating these assets into your charts, you agree to the following rules:</P>
 
               <H3>No Attribution Required on Exported Charts</H3>
-              <P>Assets surfaced in Chartography&apos;s built-in search panels are curated from permissive, Public Domain, CC0, or open-source licenses that do <strong>not</strong> require end users to include copyright attribution or credit lines on exported PNG, SVG, or HTML charts.</P>
+              <P>Assets surfaced in AIChartor&apos;s built-in search panels are curated from permissive, Public Domain, CC0, or open-source licenses that do <strong>not</strong> require end users to include copyright attribution or credit lines on exported PNG, SVG, or HTML charts.</P>
 
               <H3>Stock Photos &amp; Media Libraries</H3>
               <Ul>
@@ -245,7 +245,7 @@ export default function TermsOfServicePage() {
             {/* ── 10. Intellectual Property ───────────────── */}
             <section id="intellectual-property">
               <SectionHeading number="10" icon={Copyright} color="amber" title="Intellectual Property" />
-              <P>The Service, including its design, logos, trademarks, visual identity, user interface, underlying code, and documentation, is the <strong>intellectual property of Chartography</strong> and is protected by applicable copyright, trademark, and other intellectual property laws.</P>
+              <P>The Service, including its design, logos, trademarks, visual identity, user interface, underlying code, and documentation, is the <strong>intellectual property of AIChartor</strong> and is protected by applicable copyright, trademark, and other intellectual property laws.</P>
               <P>You may not copy, modify, distribute, sell, or lease any part of the Service or its branding, nor may you reverse-engineer or attempt to extract the source code, except as permitted by law.</P>
             </section>
 
@@ -254,7 +254,7 @@ export default function TermsOfServicePage() {
             {/* ── 11. Pricing & Billing ─────────────────── */}
             <section id="pricing-and-billing">
               <SectionHeading number="11" icon={CreditCard} color="green" title="Pricing & Billing" />
-              <P>Chartography currently offers features during a <strong>public beta period</strong>. Pricing details for current and future plans are available on our <Link href="/pricing" className="text-indigo-600 dark:text-indigo-400 hover:underline">Pricing page</Link>.</P>
+              <P>AIChartor currently offers features during a <strong>public beta period</strong>. Pricing details for current and future plans are available on our <Link href="/pricing" className="text-indigo-600 dark:text-indigo-400 hover:underline">Pricing page</Link>.</P>
               <Ul>
                 <Li><strong>Free tier</strong> — access to core features with defined usage limits as described on the Pricing page.</Li>
                 <Li><strong>Paid plans</strong> — if and when paid plans become available, pricing, billing cycles, and payment terms will be clearly communicated before any charges apply.</Li>
@@ -290,7 +290,7 @@ export default function TermsOfServicePage() {
                   The Service is provided on an &quot;AS IS&quot; and &quot;AS AVAILABLE&quot; basis, without warranties of any kind, either express or implied.
                 </p>
               </div>
-              <P>Chartography disclaims all warranties, express or implied, including but not limited to:</P>
+              <P>AIChartor disclaims all warranties, express or implied, including but not limited to:</P>
               <Ul>
                 <Li>Implied warranties of <strong>merchantability, fitness for a particular purpose, and non-infringement</strong>.</Li>
                 <Li>Any warranty that the Service will be <strong>uninterrupted, error-free, secure, or free of harmful components</strong>.</Li>
@@ -304,7 +304,7 @@ export default function TermsOfServicePage() {
             {/* ── 14. Limitation of Liability ─────────── */}
             <section id="limitation-of-liability">
               <SectionHeading number="14" icon={AlertTriangle} color="red" title="Limitation of Liability" />
-              <P>Chartography and its team members shall <strong>not be liable</strong> for any indirect, incidental, special, consequential, or punitive damages, including but not limited to:</P>
+              <P>AIChartor and its team members shall <strong>not be liable</strong> for any indirect, incidental, special, consequential, or punitive damages, including but not limited to:</P>
               <Ul>
                 <Li>Loss of data, profits, revenue, or business opportunities.</Li>
                 <Li>Service interruptions or data breaches beyond our reasonable control.</Li>
@@ -330,17 +330,17 @@ export default function TermsOfServicePage() {
               <SectionHeading number="16" icon={Mail} color="indigo" title="Contact Us" />
               <P>If you have any questions or concerns about these Terms, please contact us:</P>
               <div className="mt-5 p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
-                <p className="font-semibold text-slate-900 dark:text-white text-sm mb-2">Chartography</p>
+                <p className="font-semibold text-slate-900 dark:text-white text-sm mb-2">AIChartor</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Email:{" "}
-                  <a href="mailto:support@chartography.in" className="text-indigo-600 dark:text-indigo-400 hover:underline">
-                    support@chartography.in
+                  <a href="mailto:support@aichartor.com" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                    support@aichartor.com
                   </a>
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   Website:{" "}
-                  <a href="https://chartography.in" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
-                    chartography.in
+                  <a href="https://aichartor.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                    aichartor.com
                   </a>
                 </p>
               </div>

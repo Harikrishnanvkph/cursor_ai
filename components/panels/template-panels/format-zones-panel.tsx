@@ -15,6 +15,22 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { unwrapProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
+import { compressImage, validateImageFile } from "@/lib/image-utils"
+import { toast } from "sonner"
+
+async function validateAndCompressZoneFile(file: File): Promise<string | null> {
+  if (!validateImageFile(file, 10)) {
+    toast.error("Invalid image file. Please select an image under 10MB.")
+    return null
+  }
+  try {
+    return await compressImage(file, 1600, 1600, 0.85, false, true)
+  } catch (err) {
+    console.error("Failed to compress zone image:", err)
+    toast.error("Failed to process image. Please try another file.")
+    return null
+  }
+}
 
 const ZONE_TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
   text:       { icon: <Type className="h-3.5 w-3.5" />, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Text' },
@@ -658,26 +674,17 @@ function BackgroundZoneEditor({
   const [activeTab, setActiveTab] = useState<'color' | 'gradient' | 'image' | 'transparent'>(currentMode)
 
   const updateImageUrl = (newUrl: string) => {
-    zone.imageUrl = newUrl
-    if (zone.style) {
-      zone.style.imageUrl = newUrl
-      zone.style.bgImageUrl = newUrl
-    }
     onUpdateStyle({ type: 'image', imageUrl: newUrl, bgImageUrl: newUrl, bgType: 'image' })
   }
 
-  const handleAddImageSelect = (result: AddImageResult) => {
+  const handleAddImageSelect = async (result: AddImageResult) => {
     if (result.source === 'file' && result.file) {
       const file = result.file
       URL.revokeObjectURL(result.url)
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string
-        if (dataUrl) {
-          updateImageUrl(dataUrl)
-        }
+      const dataUrl = await validateAndCompressZoneFile(file)
+      if (dataUrl) {
+        updateImageUrl(dataUrl)
       }
-      reader.readAsDataURL(file)
       return
     }
     if (result.url) {
@@ -1034,26 +1041,17 @@ function ImageZoneEditor({
   const displayUrl = unwrapProxiedImageUrl(rawUrl)
 
   const updateImageUrl = (newUrl: string) => {
-    zone.imageUrl = newUrl
-    if (zone.style) {
-      zone.style.imageUrl = newUrl
-      zone.style.bgImageUrl = newUrl
-    }
     onUpdateStyle({ type: 'image', imageUrl: newUrl, bgImageUrl: newUrl })
   }
 
-  const handleAddImageSelect = (result: AddImageResult) => {
+  const handleAddImageSelect = async (result: AddImageResult) => {
     if (result.source === 'file' && result.file) {
       const file = result.file
       URL.revokeObjectURL(result.url)
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string
-        if (dataUrl) {
-          updateImageUrl(dataUrl)
-        }
+      const dataUrl = await validateAndCompressZoneFile(file)
+      if (dataUrl) {
+        updateImageUrl(dataUrl)
       }
-      reader.readAsDataURL(file)
       return
     }
     if (result.url) {

@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { useShallow } from "zustand/react/shallow"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEditorSidebarContext } from "./editor-sidebar-context"
@@ -42,8 +43,8 @@ export function EditorLeftSidebar() {
     setSidebarView
   } = useEditorSidebarContext()
 
-  const { editorMode } = useTemplateStore()
-  const { selectedFormatId } = useFormatGalleryStore()
+  const editorMode = useTemplateStore(s => s.editorMode)
+  const selectedFormatId = useFormatGalleryStore(s => s.selectedFormatId)
   const sidebarRef = React.useRef<HTMLDivElement>(null)
 
   const TABS = React.useMemo(() => {
