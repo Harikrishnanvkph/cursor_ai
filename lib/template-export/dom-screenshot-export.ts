@@ -1,6 +1,5 @@
 "use client"
 
-import html2canvas from 'html2canvas'
 import { toast } from 'sonner'
 import { clampExportScale } from './export-scale'
 
@@ -59,6 +58,7 @@ export async function exportDOMElementAsImage(
     }
 
     // 4. Capture the DOM element with html2canvas
+    const { default: html2canvas } = await import('html2canvas')
     const canvas = await html2canvas(element, {
       scale,
       backgroundColor: null, // Preserve transparency

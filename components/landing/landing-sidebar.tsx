@@ -2,6 +2,7 @@
 
 import React, { useRef, useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import {
   ArrowUp, BarChart2, SquarePen, Edit3,
   MessageSquare, Sparkles, ChevronLeft, ChevronRight, ChevronDown,
@@ -228,32 +229,38 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
 
                 <DropdownMenuSeparator className="my-1 bg-slate-200/70 dark:bg-slate-800" />
 
-                <DropdownMenuItem
-                  onClick={() => router.push('/board')}
-                  className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors"
-                >
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
-                      Dashboard
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
-                      Manage saved charts & templates
-                    </span>
-                  </div>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/board"
+                    prefetch={false}
+                    className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors w-full"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                        Dashboard
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
+                        Manage saved charts & templates
+                      </span>
+                    </div>
+                  </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  onClick={() => router.push('/editor')}
-                  className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors"
-                >
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
-                      Advanced Editor
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
-                      Full canvas & infographic design
-                    </span>
-                  </div>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/editor"
+                    prefetch={false}
+                    className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors w-full"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                        Advanced Editor
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
+                        Full canvas & infographic design
+                      </span>
+                    </div>
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -376,13 +383,14 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
 
           <div className="flex flex-col items-center space-y-4 w-full py-4">
             {/* Application Logo - Always shows logo, routes to home */}
-            <button
-              onClick={() => router.push("/")}
+            <Link
+              href="/"
+              prefetch={false}
               className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 rounded-xl shadow-xs transition-all hover:shadow-sm"
               title="Go to Home"
             >
               <BarChart2 className="w-4 h-4" />
-            </button>
+            </Link>
 
             {/* New Chat Icon */}
             <button
@@ -424,19 +432,25 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="right" className="w-56 z-50 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-lg rounded-2xl p-1.5">
-                <DropdownMenuItem
-                  onClick={() => router.push('/board')}
-                  className="flex flex-col items-start px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">Dashboard</span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">Manage saved charts & templates</span>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/board"
+                    prefetch={false}
+                    className="flex flex-col items-start px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors w-full"
+                  >
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">Dashboard</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">Manage saved charts & templates</span>
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => router.push('/editor')}
-                  className="flex flex-col items-start px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">Advanced Editor</span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">Full canvas & infographic design</span>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/editor"
+                    prefetch={false}
+                    className="flex flex-col items-start px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors w-full"
+                  >
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">Advanced Editor</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">Full canvas & infographic design</span>
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

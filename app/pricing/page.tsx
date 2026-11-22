@@ -55,14 +55,11 @@ export default function PricingPage() {
   const [purchasingPackId, setPurchasingPackId] = useState<CreditPackId | null>(null)
 
   useEffect(() => {
-    const htmlEl = document.documentElement
     const bodyEl = document.body
-    htmlEl.classList.add(GeistSans.variable)
-    bodyEl.classList.add("home-page-active", GeistSans.variable, GeistSans.className)
+    bodyEl.classList.add("home-page-active")
 
     return () => {
-      htmlEl.classList.remove(GeistSans.variable)
-      bodyEl.classList.remove("home-page-active", GeistSans.variable, GeistSans.className)
+      bodyEl.classList.remove("home-page-active")
     }
   }, [])
 

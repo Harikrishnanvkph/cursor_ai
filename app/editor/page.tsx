@@ -18,6 +18,7 @@ import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, 
 import { useLoupeStore } from "@/lib/stores/loupe-store"
 import React from "react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
@@ -30,26 +31,28 @@ import { useHistoryStore } from "@/lib/history-store"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { clearCurrentChart } from "@/lib/storage-utils"
-import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
-import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 import { useFormatGalleryStore, ensureDefaultFormatSelected } from "@/lib/stores/format-gallery-store"
 import { useDecorationStore, collectDecorationBlobUrls } from "@/lib/stores/decoration-store"
 import { cleanupUnreferencedDecorationFiles } from "@/lib/stores/decoration-file-registry"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
-import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
-import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
-import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
+import type { ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
 import { DatasetService } from "@/lib/services/dataset-service"
 import { GroupService } from "@/lib/services/group-service"
-import { ModeChangeConfirmDialog } from "@/components/dialogs/mode-change-confirm-dialog"
 import { applyPresetToChart } from "@/lib/chart-style-engine"
 import type { PresetCategory } from "@/lib/chart-style-types"
 import { getPresetById } from "@/lib/chart-style-defaults"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
-import { UpdatePresetDialog } from "@/components/chart-style-gallery/update-preset-dialog"
 import { useSnapStateStore } from "@/lib/stores/snap-state-store"
+
+const ConfirmDialog = dynamic(() => import("@/components/ui/confirm-dialog").then(m => m.ConfirmDialog), { ssr: false })
+const SaveChartDialog = dynamic(() => import("@/components/ui/save-chart-dialog").then(m => m.SaveChartDialog), { ssr: false })
+const ClearChartDialog = dynamic(() => import("@/components/dialogs/clear-chart-dialog").then(m => m.ClearChartDialog), { ssr: false })
+const EditorWelcomeScreen = dynamic(() => import("@/components/editor-welcome-screen").then(m => m.EditorWelcomeScreen), { ssr: false })
+const DimensionMismatchDialog = dynamic(() => import("@/components/dialogs/dimension-mismatch-dialog").then(m => m.DimensionMismatchDialog), { ssr: false })
+const SaveModeConflictDialog = dynamic(() => import("@/components/dialogs/save-mode-conflict-dialog").then(m => m.SaveModeConflictDialog), { ssr: false })
+const ChartSetupDialog = dynamic(() => import("@/components/dialogs/chart-setup-dialog").then(m => m.ChartSetupDialog), { ssr: false })
+const ModeChangeConfirmDialog = dynamic(() => import("@/components/dialogs/mode-change-confirm-dialog").then(m => m.ModeChangeConfirmDialog), { ssr: false })
+const UpdatePresetDialog = dynamic(() => import("@/components/chart-style-gallery/update-preset-dialog").then(m => m.UpdatePresetDialog), { ssr: false })
 
 import {
   useChartConfig,

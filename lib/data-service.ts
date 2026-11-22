@@ -11,6 +11,16 @@ function isPublicDataEndpoint(endpoint: string): boolean {
   return PUBLIC_DATA_ENDPOINTS.has(pathOnly) || pathOnly.startsWith('/api/data/shared/');
 }
 
+function getSessionUserId(): string {
+  if (typeof window === 'undefined') return 'ssr';
+  try {
+    const userId = localStorage.getItem('user-id');
+    return userId && userId !== 'null' && userId !== 'undefined' ? userId : 'anonymous';
+  } catch {
+    return 'anonymous';
+  }
+}
+
 interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -26,6 +36,11 @@ class DataService {
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private readonly MAX_CACHE_SIZE = 50; // Prevent unbounded memory growth
 
+  private getCacheKey(method: string, url: string): string {
+    const userId = getSessionUserId();
+    return `${userId}:${method || 'GET'}:${url}`;
+  }
+
   // =============================================
   // REQUEST WRAPPER WITH CACHING
   // =============================================
@@ -36,7 +51,7 @@ class DataService {
     useCache = true
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
-    const cacheKey = `${options.method || 'GET'}:${url}`;
+    const cacheKey = this.getCacheKey(options.method || 'GET', url);
 
     // Check cache first (method is undefined for implicit GET requests)
     if (useCache && (!options.method || options.method === 'GET')) {
@@ -264,7 +279,7 @@ class DataService {
     if (res.data?.snapshots) {
       const now = Date.now();
       Object.entries(res.data.snapshots).forEach(([convId, snap]) => {
-        const cacheKey = `GET:${this.baseUrl}/api/data/conversations/${convId}/current-snapshot`;
+        const cacheKey = this.getCacheKey('GET', `${this.baseUrl}/api/data/conversations/${convId}/current-snapshot`);
         this.cache.set(cacheKey, {
           data: snap,
           timestamp: now,

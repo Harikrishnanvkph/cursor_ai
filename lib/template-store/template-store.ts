@@ -47,8 +47,9 @@ interface TemplateStore {
   deleteTemplate: (id: string) => Promise<void>
 
   // Cloud sync
-  syncTemplatesFromCloud: () => Promise<void>
+  syncTemplatesFromCloud: (force?: boolean) => Promise<void>
   isSyncing: boolean
+  lastSyncedAt: number | null
 
   // Text area management
   addTextArea: (textArea: Omit<TemplateTextArea, 'id'>) => void
@@ -119,6 +120,7 @@ export const useTemplateStore = create<TemplateStore>()(
       templateSavedToCloud: false, // Only true if template was loaded from a saved cloud conversation
       dimensionOverride: null,
       isSyncing: false,
+      lastSyncedAt: null,
       originalCloudTemplateContent: null,
       modifiedCloudTemplateContent: null,
       contentTypePreferences: {},
@@ -229,7 +231,7 @@ export const useTemplateStore = create<TemplateStore>()(
         const deletedWasCurrent = state.currentTemplate?.id === id
         const deletedWasBackground = state.templateInBackground?.id === id
 
-        const next: any = { templates: remaining }
+        const next: any = { templates: remaining, lastSyncedAt: null }
 
         if (deletedWasCurrent) {
           next.currentTemplate = null
@@ -685,9 +687,15 @@ export const useTemplateStore = create<TemplateStore>()(
       })),
 
       // Sync templates from cloud (merge with local, cloud takes precedence)
-      syncTemplatesFromCloud: async () => {
+      syncTemplatesFromCloud: async (force = false) => {
         const state = get()
         if (state.isSyncing) return
+
+        const now = Date.now()
+        // Skip duplicate network requests during rapid navigation if data was synced within 60s
+        if (!force && state.lastSyncedAt && (now - state.lastSyncedAt < 60_000)) {
+          return
+        }
 
         set({ isSyncing: true })
 
@@ -695,11 +703,11 @@ export const useTemplateStore = create<TemplateStore>()(
           // Dynamic import to avoid circular dependencies
           const { dataService } = await import('../data-service')
 
-          const response = await dataService.getTemplates(true)
+          const response = await dataService.getTemplates(force)
 
           if (response.error) {
             console.warn('Failed to sync templates from cloud:', response.error)
-            set({ isSyncing: false })
+            set({ isSyncing: false, lastSyncedAt: null })
             return
           }
 
@@ -741,16 +749,17 @@ export const useTemplateStore = create<TemplateStore>()(
 
             set({
               templates: mergedTemplates,
-              isSyncing: false
+              isSyncing: false,
+              lastSyncedAt: Date.now()
             })
 
             console.log(`✅ Synced ${cloudTemplates.length} templates from cloud`)
           } else {
-            set({ isSyncing: false })
+            set({ isSyncing: false, lastSyncedAt: Date.now() })
           }
         } catch (error) {
           console.error('Error syncing templates from cloud:', error)
-          set({ isSyncing: false })
+          set({ isSyncing: false, lastSyncedAt: null })
         }
       },
 

@@ -113,7 +113,6 @@ export function ImagesTab({
             const {
                 compressImage,
                 validateImageFile,
-                wouldExceedQuota
             } = await import('@/lib/image-utils');
 
             if (!validateImageFile(file, 10)) {
@@ -122,11 +121,8 @@ export function ImagesTab({
             }
 
             try {
-                const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true);
-                if (wouldExceedQuota(compressedImageUrl)) {
-                    toast.error('Storage quota exceeded. Please remove some images or clear browser storage.');
-                    return;
-                }
+                // Chart state persists in IndexedDB (not 5MB localStorage); compress directly
+                const compressedImageUrl = await compressImage(file, 600, 600, 0.75, false, true);
                 applyGlobalImageUrl(compressedImageUrl);
             } catch (error) {
                 console.error('Error compressing image:', error);

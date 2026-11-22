@@ -236,15 +236,28 @@ export function ChatWindow({
                     }`}
                   style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                 >
-                  <div className="flex items-start gap-2.5 min-w-0 w-full">
-                    {msg.role === 'assistant' && (
-                      <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg flex-shrink-0 shadow-2xs border border-slate-200/50 dark:border-slate-700/50">
-                        <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  {msg.role === 'assistant' ? (
+                    <div className="w-full min-w-0 space-y-2">
+                      {/* Header: Logo and Title */}
+                      <div className="flex items-center justify-between gap-2 min-w-0 pb-0.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="p-1 bg-white dark:bg-slate-800 rounded-md flex-shrink-0 shadow-2xs border border-slate-200/60 dark:border-slate-700/60">
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 select-none">
+                            AI Assistant
+                          </span>
+                        </div>
+                        {msg.modelUsed && !msg.tokensUsed && !msg.usage?.total && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 shrink-0">
+                            {msg.modelUsed}
+                          </span>
+                        )}
                       </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      {msg.role === 'assistant' && msg.searchQuery && (
-                        <div className="mb-2.5 p-2 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-800/50 rounded-xl text-xs min-w-0">
+
+                      {/* Web Search summary (if any) - full width */}
+                      {msg.searchQuery && (
+                        <div className="p-2 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-800/50 rounded-xl text-xs min-w-0 w-full">
                           <div className="flex items-center gap-1.5 font-medium text-blue-700 dark:text-blue-300 min-w-0">
                             <Globe className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                             <span className="truncate min-w-0 flex-1">
@@ -270,11 +283,15 @@ export function ChatWindow({
                           )}
                         </div>
                       )}
-                      <div className="break-words min-w-0 leading-relaxed text-xs sm:text-sm" style={{ overflowWrap: 'anywhere' }}>
+
+                      {/* Message Content - fully fills the space across 100% width */}
+                      <div className="break-words min-w-0 leading-relaxed text-xs sm:text-sm text-slate-800 dark:text-slate-100" style={{ overflowWrap: 'anywhere' }}>
                         {msg.content}
                       </div>
-                      {msg.role === 'assistant' && (Boolean(msg.tokensUsed) || Boolean(msg.usage?.total)) && (
-                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 select-none min-w-0">
+
+                      {/* Token usage and model footer - full width */}
+                      {(Boolean(msg.tokensUsed) || Boolean(msg.usage?.total)) && (
+                        <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-800 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 select-none min-w-0 w-full">
                           <div className="flex items-center gap-1.5 font-normal min-w-0 flex-wrap">
                             <Cpu className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                             <span className="break-words">
@@ -300,7 +317,11 @@ export function ChatWindow({
                         </div>
                       )}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="break-words min-w-0 leading-relaxed text-xs sm:text-sm" style={{ overflowWrap: 'anywhere' }}>
+                      {msg.content}
+                    </div>
+                  )}
                 </div>
               ))}
             {isProcessing && (

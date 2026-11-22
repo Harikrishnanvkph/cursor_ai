@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigSidebar } from "@/components/config-sidebar"
 import { useChartStore, prepareChartDataForSave } from "@/lib/chart-store"
@@ -19,21 +20,22 @@ import { dataService } from "@/lib/data-service"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { clearCurrentChart } from "@/lib/storage-utils"
-import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
-import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
-import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
 import { useHistoryStore } from "@/lib/history-store"
 import { getEffectiveChartTitle, resolveActiveCloudConversationId } from "@/lib/hooks/use-chart-rename"
 import { DatasetService } from "@/lib/services/dataset-service"
 import { GroupService } from "@/lib/services/group-service"
-import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
-import { FormatGallery } from "@/components/gallery/FormatGallery"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { FullSizeFormatView } from "@/components/gallery/FullSizeFormatView"
 
 // parseDimension imported from shared utility
 import { parseDimension } from "@/lib/utils/dimension-utils"
 import { useIsBelow1152 } from "@/lib/hooks/use-screen-dimensions"
+
+const DimensionMismatchDialog = dynamic(() => import("@/components/dialogs/dimension-mismatch-dialog").then(m => m.DimensionMismatchDialog), { ssr: false })
+const SaveChartDialog = dynamic(() => import("@/components/ui/save-chart-dialog").then(m => m.SaveChartDialog), { ssr: false })
+const SaveModeConflictDialog = dynamic(() => import("@/components/dialogs/save-mode-conflict-dialog").then(m => m.SaveModeConflictDialog), { ssr: false })
+const ClearChartDialog = dynamic(() => import("@/components/dialogs/clear-chart-dialog").then(m => m.ClearChartDialog), { ssr: false })
+const FormatGallery = dynamic(() => import("@/components/gallery/FormatGallery").then(m => m.FormatGallery), { ssr: false })
 
 export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSidebarOpen: boolean, setLeftSidebarOpen: (open: boolean) => void }) {
   const { hasChartData, chartConfig, hasJSON } = useChartStore(useShallow(s => ({

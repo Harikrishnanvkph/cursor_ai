@@ -135,6 +135,7 @@ export function clearUserSpecificStorage(userId: string): void {
         pendingStorageTimers.delete(key);
       }
       pendingStorageWrites.delete(key);
+      lastPersistedSnapshot.delete(key);
 
       if (localStorage.getItem(key) !== null) {
         localStorage.removeItem(key);
@@ -187,6 +188,7 @@ export async function clearAllUserSessionData(userId: string): Promise<void> {
         pendingStorageTimers.delete(key);
       }
       pendingStorageWrites.delete(key);
+      lastPersistedSnapshot.delete(key);
       localStorage.removeItem(key);
       removeStorageTimestamp(key);
     } catch (error) {
@@ -486,6 +488,14 @@ export function clearCurrentChart(): void {
   chartKeys.forEach(name => {
     const key = `${name}-${userId}`;
     try {
+      const pendingTimer = pendingStorageTimers.get(key);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        pendingStorageTimers.delete(key);
+      }
+      pendingStorageWrites.delete(key);
+      lastPersistedSnapshot.delete(key);
+
       localStorage.removeItem(key);
       // Also remove the timestamp for this key
       removeStorageTimestamp(key);

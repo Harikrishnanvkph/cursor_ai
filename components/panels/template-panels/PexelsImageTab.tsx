@@ -41,6 +41,7 @@ import {
 } from "@/components/shared/stock-provider-logos"
 import { AddImageModal, type AddImageResult } from "@/components/shared/add-image-modal"
 import { toast } from "sonner"
+import { compressImage } from "@/lib/image-utils"
 
 export type { StockProvider, PixabayImageType, UnifiedPhoto }
 
@@ -259,11 +260,21 @@ export function PexelsImageTab({ renderElementList, imagesListRef }: PexelsImage
   }
 
   // ── Modal Handlers (Add Image Modal) ──────────────────────────
-  const handleConfirmAddModalImage = (result: AddImageResult) => {
-    const finalUrl = result.url.trim()
+  const handleConfirmAddModalImage = async (result: AddImageResult) => {
+    let finalUrl = result.url.trim()
     if (!finalUrl) return
 
     if (result.source === 'file' && result.file) {
+      try {
+        finalUrl = await compressImage(result.file, 1200, 1200, 0.8, false, true)
+        if (result.url.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(result.url)
+          } catch (_) {}
+        }
+      } catch (err) {
+        console.error('Failed to compress decoration image:', err)
+      }
       decorationFileRegistry.set(finalUrl, result.file)
     }
 

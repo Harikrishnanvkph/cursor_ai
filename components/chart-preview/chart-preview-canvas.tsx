@@ -38,12 +38,6 @@ export const ChartPreviewCanvas = React.memo(({
     // Track container dimensions for DecorationShapeRenderer
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     const containerRef = React.useRef<HTMLDivElement>(null);
-    const [isInitializing, setIsInitializing] = useState(true);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsInitializing(false), 300);
-        return () => clearTimeout(timer);
-    }, []);
 
     // Attach pinch-to-zoom touch handlers for mobile
     useEffect(() => {

@@ -12,7 +12,7 @@ const config: Config = {
   theme: {
   	extend: {
 		fontFamily: {
-			sans: ['var(--font-geist-sans)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+			sans: ['var(--font-geist-sans)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
 		},
 		screens: {
 			'xs': '360px',

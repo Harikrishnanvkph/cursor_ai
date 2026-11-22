@@ -2392,10 +2392,8 @@ export default function HomeNewPage() {
       }
     }
 
-    const htmlEl = document.documentElement
     const bodyEl = document.body
-    htmlEl.classList.add(GeistSans.variable)
-    bodyEl.classList.add("home-page-active", GeistSans.variable, GeistSans.className)
+    bodyEl.classList.add("home-page-active")
 
     window.addEventListener("scroll", handleScroll, { passive: true })
     window.addEventListener("wheel", handleUserInteraction, { passive: true })
@@ -2404,8 +2402,7 @@ export default function HomeNewPage() {
     handleScroll()
 
     return () => {
-      htmlEl.classList.remove(GeistSans.variable)
-      bodyEl.classList.remove("home-page-active", GeistSans.variable, GeistSans.className)
+      bodyEl.classList.remove("home-page-active")
       window.removeEventListener("scroll", handleScroll)
       window.removeEventListener("wheel", handleUserInteraction)
       window.removeEventListener("touchstart", handleUserInteraction)

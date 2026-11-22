@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { GeistSans } from 'geist/font/sans'
 import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { Toaster } from '@/components/ui/sonner'
@@ -26,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground subpixel-antialiased">
+    <html lang="en" className={GeistSans.variable} suppressHydrationWarning>
+      <body className={`min-h-screen bg-background text-foreground subpixel-antialiased font-sans ${GeistSans.className}`}>
         <ConsoleSilencer />
         <ThemeProvider
           attribute="class"

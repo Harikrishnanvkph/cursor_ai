@@ -5,10 +5,19 @@ import { useShallow } from "zustand/react/shallow"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { TiptapEditor } from "@/components/tiptap-editor"
+import dynamic from "next/dynamic"
 import { sanitizeHTML } from "@/lib/utils/sanitize"
 import { Columns, Rows, Minimize, Maximize, PaintBucket, Info } from "lucide-react"
 import type { TextZone } from "@/lib/format-types"
+
+const TiptapEditor = dynamic(() => import("@/components/tiptap-editor").then(m => m.TiptapEditor), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full text-sm text-slate-400">
+      Loading editor...
+    </div>
+  ),
+})
 
 export function FormatRichEditorDialog() {
   const {

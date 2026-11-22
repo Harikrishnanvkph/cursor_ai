@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { GeistSans } from "geist/font/sans"
 import { BoardFontProvider } from "@/components/board/board-font-provider"
+import dynamic from "next/dynamic"
 import {
   Sheet,
   SheetContent,
@@ -21,12 +22,13 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
-import { ChartPreviewModal } from "@/components/board/chart-preview-modal"
 import { ChartCard } from "@/components/board/chart-card"
 import { BoardStats } from "@/components/board/board-stats"
-import { AnalyticsSidebar } from "@/components/board/analytics-sidebar"
 import { toast } from "sonner"
 import { dataService } from "@/lib/data-service"
+
+const ChartPreviewModal = dynamic(() => import("@/components/board/chart-preview-modal").then(m => m.ChartPreviewModal), { ssr: false })
+const AnalyticsSidebar = dynamic(() => import("@/components/board/analytics-sidebar").then(m => m.AnalyticsSidebar), { ssr: false })
 import {
   BarChart2,
   BarChart3,
@@ -149,7 +151,7 @@ function BoardPageContent() {
     if (userId && sessionReady) {
       inFlightBatchIdsRef.current.clear()
       setBatchAttemptedIds(new Set())
-      loadConversationsFromBackend(true)
+      loadConversationsFromBackend(false)
     }
   }, [userId, sessionReady, loadConversationsFromBackend])
 

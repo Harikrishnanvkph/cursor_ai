@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
+import dynamic from "next/dynamic"
 import { useShallow } from "zustand/react/shallow"
 import { useRouter } from "next/navigation"
 import { Square } from "lucide-react"
@@ -15,24 +16,27 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { useSubscriptionQuota } from "@/lib/hooks/use-subscription-quota"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { UpgradeProDialog } from "@/components/dialogs/upgrade-pro-dialog"
-import { ModeChangeConfirmDialog } from "@/components/dialogs/mode-change-confirm-dialog"
 import { toast } from "sonner"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
-import { FormatGallery } from "@/components/gallery/FormatGallery"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
-import { ChartStyleGalleryPage } from "@/components/chart-style-gallery/ChartStyleGalleryPage"
 import { useSidebarContext, useSidebarInputDispatch } from "@/components/landing/sidebar-context"
 import { useIsMobile, useIsTablet } from "@/lib/hooks/use-screen-dimensions"
-import {
-  PromptTemplate,
-  chartTemplate,
-  TabletLandingView,
-  MobileLandingView,
-  ChartAreaSkeleton,
-  GenerationProgressView
-} from "@/components/landing"
+import { PromptTemplate, chartTemplate } from "@/components/landing/prompt_template"
+import { ChartAreaSkeleton, GenerationProgressView } from "@/components/landing/landing-helpers"
+
+const SaveChartDialog = dynamic(() => import("@/components/ui/save-chart-dialog").then(m => m.SaveChartDialog), { ssr: false })
+const ModeChangeConfirmDialog = dynamic(() => import("@/components/dialogs/mode-change-confirm-dialog").then(m => m.ModeChangeConfirmDialog), { ssr: false })
+const FormatGallery = dynamic(() => import("@/components/gallery/FormatGallery").then(m => m.FormatGallery), { ssr: false })
+const ChartStyleGalleryPage = dynamic(() => import("@/components/chart-style-gallery/ChartStyleGalleryPage").then(m => m.ChartStyleGalleryPage), { ssr: false })
+const TabletLandingView = dynamic(
+  () => import("@/components/landing/tablet-landing-view").then(m => m.TabletLandingView),
+  { ssr: false, loading: () => <ChartAreaSkeleton /> }
+)
+const MobileLandingView = dynamic(
+  () => import("@/components/landing/mobile-landing-view").then(m => m.MobileLandingView),
+  { ssr: false, loading: () => <ChartAreaSkeleton /> }
+)
 
 export default function LandingPage() {
   return <LandingPageContent />
@@ -494,17 +498,18 @@ function LandingPageContent() {
     return () => { unsub?.() }
   }, [storeHydrated])
 
-  // Content readiness
-  const [contentReady, setContentReady] = useState(false)
+  // Content readiness - synchronously ready if already hydrated, no artificial timer delay
+  const [contentReady, setContentReady] = useState(() =>
+    !!(useChartStore.persist as any)?.hasHydrated?.()
+  )
 
   useEffect(() => {
-    if (!storeHydrated) return
-    let timer: ReturnType<typeof setTimeout>
+    if (!storeHydrated || contentReady) return
     const raf = requestAnimationFrame(() => {
-      timer = setTimeout(() => setContentReady(true), 150)
+      setContentReady(true)
     })
-    return () => { cancelAnimationFrame(raf); clearTimeout(timer) }
-  }, [storeHydrated])
+    return () => cancelAnimationFrame(raf)
+  }, [storeHydrated, contentReady])
 
   // Universal Gallery views (accessible across Desktop, Tablet, and Mobile)
   if (isGalleryOpen) {

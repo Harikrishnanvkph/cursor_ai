@@ -1,6 +1,5 @@
 "use client"
 
-import html2canvas from 'html2canvas'
 import { ensureGoogleFontLoaded } from '@/lib/typography-registry'
 import { sanitizeHTML } from '@/lib/utils/sanitize'
 
@@ -386,6 +385,7 @@ export async function renderHTMLToCanvas(
 
     try {
         // Use html2canvas to capture the exact rendering
+        const { default: html2canvas } = await import('html2canvas')
         const canvas = await html2canvas(container, {
             scale: scale,
             backgroundColor: null, // Transparent background

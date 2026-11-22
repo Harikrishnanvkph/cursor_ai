@@ -79,7 +79,7 @@ function AdminSignInContent() {
           />
           <div
             aria-hidden="true"
-            className="absolute -inset-2.5 rounded-[22px] border-2 border-transparent border-t-purple-500 border-r-indigo-500/30 rounded-full animate-spin pointer-events-none transform-gpu"
+            className="absolute -inset-2.5 rounded-full border-2 border-transparent border-t-purple-500 border-r-indigo-500/30 animate-spin [will-change:transform] pointer-events-none"
           />
           <div className="relative w-14 h-14 rounded-2xl bg-gray-900 border border-white/10 shadow-md flex items-center justify-center">
             <Shield className="w-7 h-7 text-purple-400" />

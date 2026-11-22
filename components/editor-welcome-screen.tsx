@@ -1,9 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart3, Database, Sparkles, TrendingUp, PieChart, LineChart, Ruler, Zap, Info, ChevronRight } from "lucide-react"
+import { Database, Sparkles, TrendingUp, Ruler, Zap, Info, ChevronRight, ArrowRight } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useChatStore } from "@/lib/chat-store"
@@ -12,9 +10,6 @@ import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/cha
 import { DEFAULT_CHART_WIDTH, DEFAULT_CHART_HEIGHT } from "@/lib/utils/dimension-utils"
 import { getDefaultConfigForType } from "@/lib/chart-defaults"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Label } from "@/components/ui/label"
 import { useIsMobile, useIsTablet } from "@/lib/hooks/use-screen-dimensions"
 
 interface EditorWelcomeScreenProps {
@@ -296,32 +291,36 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
 
   // ══════════════════════════════════════════════════════════
   // 1. MOBILE DEDICATED VIEW (< 768px)
-  // High-design compact card: ~370px total height
-  // Zero scrolling needed — all options fit 100% on mobile screen!
+  // Borderless, open canvas layout — compact & touch-friendly
+  // Zero scrolling needed — all options fit cleanly on mobile
   // ══════════════════════════════════════════════════════════
   if (isMobile) {
     return (
       <>
-        <div className={`w-full flex justify-center items-center my-auto py-2 px-3 ${className}`}>
-          <div className="w-full max-w-sm bg-gradient-to-br from-white via-white to-indigo-50/20 rounded-2xl border-2 border-dashed border-slate-300 shadow-md p-3.5 space-y-2.5">
+        <div className={`w-full flex justify-center items-center my-auto py-3 px-4 ${className}`}>
+          <div className="w-full max-w-sm space-y-4">
             {/* Header */}
-            <div className="text-center pt-0.5">
-              <h2 className="text-base font-bold text-slate-900 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            <div className="text-center space-y-1">
+              <h2 className="text-lg font-bold tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Welcome to Chart Editor
               </h2>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Start creating your chart by choosing an option below
+              <p className="text-xs text-slate-500">
+                Choose an option below to start creating
               </p>
             </div>
 
             {/* Dataset Type Switch */}
-            <div className="bg-slate-100/90 p-1 rounded-xl">
-              <div className="flex items-center justify-between mb-1.5 px-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-semibold text-slate-700">Dataset Type</span>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between px-0.5">
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] font-semibold text-slate-600">Dataset Type</span>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button type="button" className="text-slate-400 hover:text-slate-600 p-0.5">
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                        aria-label="Dataset type explanation"
+                      >
                         <Info className="h-3 w-3" />
                       </button>
                     </PopoverTrigger>
@@ -341,13 +340,13 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                   {datasetType === 'single' ? 'Single series' : 'Multi-series'}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/60">
                 <button
                   type="button"
                   onClick={() => setDatasetType('single')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors duration-150 ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all duration-150 ${
                     datasetType === 'single'
-                      ? 'bg-white text-indigo-700 shadow-xs'
+                      ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -357,9 +356,9 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={() => setDatasetType('grouped')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors duration-150 ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all duration-150 ${
                     datasetType === 'grouped'
-                      ? 'bg-white text-indigo-700 shadow-xs'
+                      ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -370,78 +369,78 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
             </div>
 
             {/* Section 1: Load Sample Data */}
-            <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 mb-1.5 px-0.5">
-                <Sparkles className="h-3 w-3 text-purple-600" />
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 px-0.5">
+                <Sparkles className="h-3 w-3 text-purple-500" />
                 Load Sample Data
               </span>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <button
                   type="button"
                   onClick={handleQuickLoadSample}
-                  className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-purple-300 active:bg-purple-50/50 transition-[border-color,background-color] duration-150 flex items-center justify-between group shadow-2xs"
+                  className="w-full text-left p-3 rounded-xl border border-slate-200/80 bg-white hover:border-purple-300 hover:shadow-sm active:bg-purple-50/40 transition-all duration-150 flex items-center justify-between group"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-100 transition-colors flex-shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 bg-purple-50 text-purple-600 ring-1 ring-purple-100 rounded-lg group-hover:bg-purple-100 transition-colors flex-shrink-0">
                       <Zap className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-800 leading-tight">Quick Start</span>
-                        <span className="text-[9px] bg-purple-100 text-purple-700 font-semibold px-1.5 py-0.2 rounded-full">Instant</span>
+                        <span className="text-xs font-semibold text-slate-900 leading-tight">Quick Start</span>
+                        <span className="text-[9px] bg-purple-50 text-purple-700 border border-purple-100 font-semibold px-1.5 py-0.5 rounded-full">Instant</span>
                       </div>
-                      <p className="text-[10px] text-slate-500 truncate mt-0.5">Load sample data at 800×600 px</p>
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">Sample data at {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT} px</p>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                 </button>
 
                 <button
                   type="button"
                   onClick={handleCustomDimensionSample}
-                  className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 active:bg-indigo-50/50 transition-[border-color,background-color] duration-150 flex items-center justify-between group shadow-2xs"
+                  className="w-full text-left p-3 rounded-xl border border-slate-200/80 bg-white hover:border-indigo-300 hover:shadow-sm active:bg-indigo-50/40 transition-all duration-150 flex items-center justify-between group"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-100 transition-colors flex-shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 rounded-lg group-hover:bg-indigo-100 transition-colors flex-shrink-0">
                       <Ruler className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-800 leading-tight">Choose Size</span>
-                        <span className="text-[9px] bg-indigo-100 text-indigo-700 font-semibold px-1.5 py-0.2 rounded-full">Preset / Custom</span>
+                        <span className="text-xs font-semibold text-slate-900 leading-tight">Choose Size</span>
+                        <span className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold px-1.5 py-0.5 rounded-full">Preset / Custom</span>
                       </div>
-                      <p className="text-[10px] text-slate-500 truncate mt-0.5">Pick dimensions + sample data</p>
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">Pick dimensions + sample data</p>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                 </button>
               </div>
             </div>
 
             {/* Section 2: Add Your Own Data */}
-            <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 mb-1.5 px-0.5">
-                <Database className="h-3 w-3 text-blue-600" />
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 px-0.5">
+                <Database className="h-3 w-3 text-blue-500" />
                 Add Your Own Data
               </span>
               <button
                 type="button"
                 onClick={handleCustomDimensionDataset}
-                className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-blue-300 active:bg-blue-50/50 transition-[border-color,background-color] duration-150 flex items-center justify-between group shadow-2xs"
+                className="w-full text-left p-3 rounded-xl border border-slate-200/80 bg-white hover:border-blue-300 hover:shadow-sm active:bg-blue-50/40 transition-all duration-150 flex items-center justify-between group"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-100 transition-colors flex-shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 bg-blue-50 text-blue-600 ring-1 ring-blue-100 rounded-lg group-hover:bg-blue-100 transition-colors flex-shrink-0">
                     <Database className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-slate-800 leading-tight">Set Dimensions & Add Data</span>
-                      <span className="text-[9px] bg-blue-100 text-blue-700 font-semibold px-1.5 py-0.2 rounded-full">Your Data</span>
+                      <span className="text-xs font-semibold text-slate-900 leading-tight">Set Dimensions & Add Data</span>
+                      <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 font-semibold px-1.5 py-0.5 rounded-full">Custom</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">Choose chart size first, then enter data</p>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">Choose chart size first, then enter data</p>
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
               </button>
             </div>
           </div>
@@ -465,181 +464,187 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
 
   // ══════════════════════════════════════════════════════════
   // 2. TABLET DEDICATED VIEW (768px – 1023px)
-  // Perfectly proportioned for iPad/Tablet portrait & landscape
-  // Fits with elegance, zero clipping, zero scrollbars (~390px height)
+  // Borderless, open canvas layout proportioned for Tablet
+  // Fits cleanly with zero clipping and zero scrollbars
   // ══════════════════════════════════════════════════════════
   if (isTablet) {
     return (
       <>
-        <div className={`w-full flex justify-center items-center my-auto py-2 px-3 sm:px-4 ${className}`}>
-          <Card className="w-full max-w-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-gradient-to-br from-white via-white to-slate-50/70 shadow-lg shadow-slate-200/50 rounded-2xl">
-            <CardHeader className="text-center px-5 pt-4 pb-2">
-              <CardTitle className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+        <div className={`w-full flex justify-center items-center my-auto py-4 px-5 ${className}`}>
+          <div className="w-full max-w-xl space-y-5">
+            {/* Header */}
+            <div className="text-center space-y-1">
+              <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Welcome to Chart Editor
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500 mt-0.5 max-w-md mx-auto">
+              </h2>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
                 Start creating your chart by choosing an option below
-              </CardDescription>
-            </CardHeader>
+              </p>
+            </div>
 
-            <CardContent className="space-y-3 px-5 pb-5">
-              {/* Dataset Type Switch */}
-              <div className="bg-slate-50/90 p-2.5 rounded-xl border border-slate-200/70">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-slate-700">Dataset Type</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-0.5 text-slate-400 hover:text-slate-600 focus:outline-none rounded transition-colors inline-flex items-center justify-center"
-                          title="Dataset type explanation"
-                        >
-                          <Info className="h-3.5 w-3.5 cursor-pointer" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-72 p-3 text-xs z-[100] shadow-xl text-slate-600 space-y-2 bg-white" side="top" align="start">
-                        <div>
-                          <strong className="text-slate-900 block mb-0.5 font-semibold">Single Chart:</strong>
-                          Visualizes a single dataset or metric across different categories.
-                        </div>
-                        <div>
-                          <strong className="text-slate-900 block mb-0.5 font-semibold">Grouped Chart:</strong>
-                          Visualizes multiple datasets or metrics simultaneously for comparison.
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    {datasetType === 'single' ? 'Single series' : 'Multi-series'}
-                  </span>
+            {/* Dataset Type Switch */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between px-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-slate-600">Dataset Type</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-0.5 text-slate-400 hover:text-slate-600 focus:outline-none rounded transition-colors inline-flex items-center justify-center"
+                        title="Dataset type explanation"
+                        aria-label="Dataset type explanation"
+                      >
+                        <Info className="h-3.5 w-3.5 cursor-pointer" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-3 text-xs z-[100] shadow-xl text-slate-600 space-y-2 bg-white" side="top" align="start">
+                      <div>
+                        <strong className="text-slate-900 block mb-0.5 font-semibold">Single Chart:</strong>
+                        Visualizes a single dataset or metric across different categories.
+                      </div>
+                      <div>
+                        <strong className="text-slate-900 block mb-0.5 font-semibold">Grouped Chart:</strong>
+                        Visualizes multiple datasets or metrics simultaneously for comparison.
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
-
-                <div className="grid grid-cols-2 p-1 bg-slate-200/60 rounded-lg gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setDatasetType('single')}
-                    className={`flex items-center justify-center gap-1.5 py-1 px-3 rounded-md text-xs font-semibold transition-colors duration-150 active:opacity-90 ${
-                      datasetType === 'single'
-                        ? 'bg-white text-indigo-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full transition-colors ${datasetType === 'single' ? 'bg-indigo-600' : 'bg-slate-300'}`} />
-                    Single Chart
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDatasetType('grouped')}
-                    className={`flex items-center justify-center gap-1.5 py-1 px-3 rounded-md text-xs font-semibold transition-colors duration-150 active:opacity-90 ${
-                      datasetType === 'grouped'
-                        ? 'bg-white text-indigo-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full transition-colors ${datasetType === 'grouped' ? 'bg-indigo-600' : 'bg-slate-300'}`} />
-                    Grouped Chart
-                  </button>
-                </div>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {datasetType === 'single' ? 'Single series' : 'Multi-series'}
+                </span>
               </div>
 
-              {/* Section 1: Load Sample Data */}
-              <div>
-                <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-purple-600" />
-                  Load Sample Data
-                </h3>
-                <div className="grid gap-2.5 grid-cols-2">
-                  {/* Quick Start */}
-                  <div
-                    className="border border-slate-200/90 rounded-xl p-3 hover:border-purple-400 hover:shadow-md active:bg-purple-50/30 active:border-purple-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
-                    onClick={handleQuickLoadSample}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1.5 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors flex-shrink-0">
-                            <Zap className="h-3.5 w-3.5 text-purple-600" />
-                          </div>
-                          <span className="text-xs font-bold text-slate-900 leading-tight">Quick Start</span>
-                        </div>
-                        <span className="text-[9px] bg-purple-50 text-purple-700 font-semibold px-1.5 py-0.2 rounded-full border border-purple-100">
-                          Instant
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-snug">
-                        Standard {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT} px sample
-                      </p>
-                    </div>
-                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center gap-1 text-[10px] text-slate-400">
-                      <TrendingUp className="h-3 w-3 text-purple-500 flex-shrink-0" />
-                      <span className="truncate">6 points • {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT}</span>
-                    </div>
-                  </div>
-
-                  {/* Choose Size */}
-                  <div
-                    className="border border-slate-200/90 rounded-xl p-3 hover:border-indigo-400 hover:shadow-md active:bg-indigo-50/30 active:border-indigo-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
-                    onClick={handleCustomDimensionSample}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1.5 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition-colors flex-shrink-0">
-                            <Ruler className="h-3.5 w-3.5 text-indigo-600" />
-                          </div>
-                          <span className="text-xs font-bold text-slate-900 leading-tight">Choose Size</span>
-                        </div>
-                        <span className="text-[9px] bg-indigo-50 text-indigo-700 font-semibold px-1.5 py-0.2 rounded-full border border-indigo-100">
-                          Custom
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-snug">
-                        Pick preset or custom dimensions
-                      </p>
-                    </div>
-                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center gap-1 text-[10px] text-slate-400">
-                      <Sparkles className="h-3 w-3 text-indigo-500 flex-shrink-0" />
-                      <span className="truncate">px / mm / cm</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-xl border border-slate-200/60 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setDatasetType('single')}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                    datasetType === 'single'
+                      ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full transition-colors ${datasetType === 'single' ? 'bg-indigo-600' : 'bg-slate-300'}`} />
+                  Single Chart
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDatasetType('grouped')}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                    datasetType === 'grouped'
+                      ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full transition-colors ${datasetType === 'grouped' ? 'bg-indigo-600' : 'bg-slate-300'}`} />
+                  Grouped Chart
+                </button>
               </div>
+            </div>
 
-              {/* Section 2: Add Your Own Data */}
-              <div>
-                <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Database className="h-3.5 w-3.5 text-blue-600" />
-                  Add Your Own Data
-                </h3>
-                <div
-                  className="border border-slate-200/90 rounded-xl p-3 hover:border-blue-400 hover:shadow-md active:bg-blue-50/30 active:border-blue-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
-                  onClick={handleCustomDimensionDataset}
+            {/* Section 1: Load Sample Data */}
+            <div className="space-y-2">
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 px-0.5">
+                <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                Load Sample Data
+              </h3>
+              <div className="grid gap-3 grid-cols-2">
+                {/* Quick Start */}
+                <button
+                  type="button"
+                  className="text-left border border-slate-200/80 rounded-2xl p-3.5 hover:border-purple-300 hover:shadow-[0_6px_20px_-6px_rgba(147,51,234,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                  onClick={handleQuickLoadSample}
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors flex-shrink-0">
-                          <Database className="h-3.5 w-3.5 text-blue-600" />
+                        <div className="p-2 bg-purple-50 text-purple-600 ring-1 ring-purple-100 rounded-xl group-hover:bg-purple-100 transition-colors flex-shrink-0">
+                          <Zap className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-bold text-slate-900 leading-tight">Set Dimensions & Add Data</span>
+                        <span className="text-xs font-bold text-slate-900 leading-tight">Quick Start</span>
                       </div>
+                      <span className="text-[9px] bg-purple-50 text-purple-700 font-semibold px-2 py-0.5 rounded-full border border-purple-100">
+                        Instant
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                      Standard {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT} px sample
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                    <span className="flex items-center gap-1 truncate">
+                      <TrendingUp className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                      <span className="truncate">6 points • {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT}</span>
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  </div>
+                </button>
+
+                {/* Choose Size */}
+                <button
+                  type="button"
+                  className="text-left border border-slate-200/80 rounded-2xl p-3.5 hover:border-indigo-300 hover:shadow-[0_6px_20px_-6px_rgba(79,70,229,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                  onClick={handleCustomDimensionSample}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 rounded-xl group-hover:bg-indigo-100 transition-colors flex-shrink-0">
+                          <Ruler className="h-4 w-4" />
+                        </div>
+                        <span className="text-xs font-bold text-slate-900 leading-tight">Choose Size</span>
+                      </div>
+                      <span className="text-[9px] bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-100">
+                        Custom
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                      Pick preset or custom dimensions
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                    <span className="flex items-center gap-1 truncate">
+                      <Sparkles className="h-3 w-3 text-indigo-500 flex-shrink-0" />
+                      <span className="truncate">px / mm / cm</span>
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Section 2: Add Your Own Data */}
+            <div className="space-y-2">
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 px-0.5">
+                <Database className="h-3.5 w-3.5 text-blue-500" />
+                Add Your Own Data
+              </h3>
+              <button
+                type="button"
+                className="w-full text-left border border-slate-200/80 rounded-2xl p-3.5 hover:border-blue-300 hover:shadow-[0_6px_20px_-6px_rgba(37,99,235,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex items-center justify-between gap-3"
+                onClick={handleCustomDimensionDataset}
+              >
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="p-2 bg-blue-50 text-blue-600 ring-1 ring-blue-100 rounded-xl group-hover:bg-blue-100 transition-colors flex-shrink-0 mt-0.5">
+                    <Database className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-900 leading-tight">Set Dimensions & Add Data</span>
                       <span className="text-[9px] bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
                         Custom Data
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-snug">
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                       Choose your chart size first, then enter your own custom data
                     </p>
                   </div>
-                  <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center gap-1 text-[10px] text-slate-400">
-                    <Database className="h-3 w-3 text-blue-500 flex-shrink-0" />
-                    <span className="truncate">Custom size • Full control • Your data</span>
-                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Chart Setup Dialog */}
@@ -660,172 +665,190 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
 
   // ══════════════════════════════════════════════════════════
   // 3. DESKTOP VIEW (>= 1024px)
-  // Premium, spacious hero card (~440px height)
-  // Fits with elegance on Desktop canvases with full details
+  // Clean, borderless open-canvas welcome experience
   // ══════════════════════════════════════════════════════════
   return (
     <>
-      <div className={`w-full flex justify-center items-center my-auto py-4 px-4 sm:px-6 ${className}`}>
-        <Card className="w-full max-w-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-gradient-to-br from-white via-white to-slate-50/70 shadow-xl shadow-slate-200/50 rounded-2xl">
-          <CardHeader className="text-center px-6 pt-6 pb-3">
-            <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+      <div className={`w-full flex justify-center items-center my-auto py-6 px-6 ${className}`}>
+        <div className="w-full max-w-2xl space-y-6">
+          {/* Header */}
+          <div className="text-center space-y-1.5">
+            <h2 className="text-2xl sm:text-[26px] font-bold tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Welcome to Chart Editor
-            </CardTitle>
-            <CardDescription className="text-xs sm:text-sm text-slate-500 mt-1 max-w-md mx-auto">
+            </h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
               Start creating your chart by choosing one of the options below
-            </CardDescription>
-          </CardHeader>
+            </p>
+          </div>
 
-          <CardContent className="space-y-4 px-6 pb-6">
-            {/* ── Dataset Type Selection ── */}
-            <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/70">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-slate-700">Dataset Type</span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="p-0.5 text-slate-400 hover:text-slate-600 focus:outline-none rounded transition-colors inline-flex items-center justify-center"
-                        title="Dataset type explanation"
-                        aria-label="Dataset type explanation"
-                      >
-                        <Info className="h-3.5 w-3.5 cursor-pointer" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-72 sm:w-80 p-3 text-xs z-[100] shadow-xl text-slate-600 space-y-2 bg-white" side="top" align="start">
-                      <div>
-                        <strong className="text-slate-900 block mb-0.5 font-semibold">Single Chart:</strong>
-                        Visualizes a single dataset or metric across different categories. Best for pie, donut, and basic bar/line charts.
-                      </div>
-                      <div>
-                        <strong className="text-slate-900 block mb-0.5 font-semibold">Grouped Chart:</strong>
-                        Visualizes multiple datasets or metrics simultaneously for comparison. Best for grouped bars, stacked charts, and multi-line charts.
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <span className="text-[10px] text-slate-400 font-medium">
-                  {datasetType === 'single' ? 'Single series' : 'Multi-series comparison'}
-                </span>
+          {/* ── Dataset Type Selection ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-slate-600">Dataset Type</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="p-0.5 text-slate-400 hover:text-slate-600 focus:outline-none rounded transition-colors inline-flex items-center justify-center"
+                      title="Dataset type explanation"
+                      aria-label="Dataset type explanation"
+                    >
+                      <Info className="h-3.5 w-3.5 cursor-pointer" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 sm:w-80 p-3 text-xs z-[100] shadow-xl text-slate-600 space-y-2 bg-white" side="top" align="start">
+                    <div>
+                      <strong className="text-slate-900 block mb-0.5 font-semibold">Single Chart:</strong>
+                      Visualizes a single dataset or metric across different categories. Best for pie, donut, and basic bar/line charts.
+                    </div>
+                    <div>
+                      <strong className="text-slate-900 block mb-0.5 font-semibold">Grouped Chart:</strong>
+                      Visualizes multiple datasets or metrics simultaneously for comparison. Best for grouped bars, stacked charts, and multi-line charts.
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
-
-              {/* Segmented Pill Switch */}
-              <div className="grid grid-cols-2 p-1 bg-slate-200/60 rounded-lg gap-1">
-                <button
-                  type="button"
-                  onClick={() => setDatasetType('single')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors duration-150 active:opacity-90 ${
-                    datasetType === 'single'
-                      ? 'bg-white text-indigo-700 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full transition-colors ${datasetType === 'single' ? 'bg-indigo-600' : 'bg-slate-300'}`} />
-                  Single Chart
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDatasetType('grouped')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors duration-150 active:opacity-90 ${
-                    datasetType === 'grouped'
-                      ? 'bg-white text-indigo-700 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full transition-colors ${datasetType === 'grouped' ? 'bg-indigo-600' : 'bg-slate-300'}`} />
-                  Grouped Chart
-                </button>
-              </div>
+              <span className="text-[11px] text-slate-400 font-medium">
+                {datasetType === 'single' ? 'Single series' : 'Multi-series comparison'}
+              </span>
             </div>
 
-            {/* ── Load Sample Data Section ── */}
-            <div>
-              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-purple-600" />
-                Load Sample Data
-              </h3>
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                {/* Quick Load (default dimensions) */}
-                <div
-                  className="border border-slate-200/90 rounded-xl p-3.5 hover:border-purple-400 hover:shadow-md active:bg-purple-50/30 active:border-purple-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
-                  onClick={handleQuickLoadSample}
-                >
-                  <div>
-                    <div className="flex items-center gap-2.5 mb-1.5">
-                      <div className="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors flex-shrink-0">
-                        <Zap className="h-4 w-4 text-purple-600" />
+            {/* Segmented Pill Switch */}
+            <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-xl border border-slate-200/60 gap-1">
+              <button
+                type="button"
+                onClick={() => setDatasetType('single')}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                  datasetType === 'single'
+                    ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full transition-colors ${datasetType === 'single' ? 'bg-indigo-600' : 'bg-slate-300'}`} />
+                Single Chart
+              </button>
+              <button
+                type="button"
+                onClick={() => setDatasetType('grouped')}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                  datasetType === 'grouped'
+                    ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full transition-colors ${datasetType === 'grouped' ? 'bg-indigo-600' : 'bg-slate-300'}`} />
+                Grouped Chart
+              </button>
+            </div>
+          </div>
+
+          {/* ── Load Sample Data Section ── */}
+          <div className="space-y-2.5">
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 px-0.5">
+              <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+              Load Sample Data
+            </h3>
+            <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2">
+              {/* Quick Load (default dimensions) */}
+              <button
+                type="button"
+                className="text-left border border-slate-200/80 rounded-2xl p-4 hover:border-purple-300 hover:shadow-[0_8px_24px_-8px_rgba(147,51,234,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                onClick={handleQuickLoadSample}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-purple-50 text-purple-600 ring-1 ring-purple-100 rounded-xl group-hover:bg-purple-100 transition-colors flex-shrink-0">
+                        <Zap className="h-4 w-4" />
                       </div>
                       <span className="text-sm font-bold text-slate-900 leading-tight">Quick Start</span>
                     </div>
-                    <p className="text-xs text-slate-500 line-clamp-2 mt-1">
-                      Load sample data at standard size ({DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT} px)
-                    </p>
+                    <span className="text-[10px] bg-purple-50 text-purple-700 font-semibold px-2 py-0.5 rounded-full border border-purple-100">
+                      Instant
+                    </span>
                   </div>
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-1.5 text-[10px] text-slate-500">
-                    <TrendingUp className="h-3 w-3 text-purple-500 flex-shrink-0" />
-                    <span className="truncate">Instant • 6 data points • {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT}</span>
-                  </div>
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                    Load sample data at standard size ({DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT} px)
+                  </p>
                 </div>
+                <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="flex items-center gap-1.5 truncate">
+                    <TrendingUp className="h-3.5 w-3.5 text-purple-500 flex-shrink-0" />
+                    <span className="truncate">6 data points • {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT}</span>
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                </div>
+              </button>
 
-                {/* Custom Dimensions + Sample Data */}
-                <div
-                  className="border border-slate-200/90 rounded-xl p-3.5 hover:border-indigo-400 hover:shadow-md active:bg-indigo-50/30 active:border-indigo-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
-                  onClick={handleCustomDimensionSample}
-                >
-                  <div>
-                    <div className="flex items-center gap-2.5 mb-1.5">
-                      <div className="p-2 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition-colors flex-shrink-0">
-                        <Ruler className="h-4 w-4 text-indigo-600" />
+              {/* Custom Dimensions + Sample Data */}
+              <button
+                type="button"
+                className="text-left border border-slate-200/80 rounded-2xl p-4 hover:border-indigo-300 hover:shadow-[0_8px_24px_-8px_rgba(79,70,229,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                onClick={handleCustomDimensionSample}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 rounded-xl group-hover:bg-indigo-100 transition-colors flex-shrink-0">
+                        <Ruler className="h-4 w-4" />
                       </div>
                       <span className="text-sm font-bold text-slate-900 leading-tight">Choose Size</span>
                     </div>
-                    <p className="text-xs text-slate-500 line-clamp-2 mt-1">
-                      Pick a preset or enter custom dimensions, then load sample data
-                    </p>
+                    <span className="text-[10px] bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-100">
+                      Preset / Custom
+                    </span>
                   </div>
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-1.5 text-[10px] text-slate-500">
-                    <Sparkles className="h-3 w-3 text-indigo-500 flex-shrink-0" />
-                    <span className="truncate">Custom size • px / mm / cm</span>
-                  </div>
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                    Pick a preset or enter custom dimensions, then load sample data
+                  </p>
                 </div>
-              </div>
+                <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="flex items-center gap-1.5 truncate">
+                    <Sparkles className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
+                    <span className="truncate">Custom size • px / mm / cm</span>
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                </div>
+              </button>
             </div>
+          </div>
 
-            {/* ── Add Your Own Data Section ── */}
-            <div>
-              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Database className="h-3.5 w-3.5 text-blue-600" />
-                Add Your Own Data
-              </h3>
-              <div
-                className="border border-slate-200/90 rounded-xl p-3.5 hover:border-blue-400 hover:shadow-md active:bg-blue-50/30 active:border-blue-500 transition-[border-color,box-shadow,background-color] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
-                onClick={handleCustomDimensionDataset}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors flex-shrink-0">
-                        <Database className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <span className="text-sm font-bold text-slate-900 leading-tight">Set Dimensions & Add Data</span>
-                    </div>
+          {/* ── Add Your Own Data Section ── */}
+          <div className="space-y-2.5">
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 px-0.5">
+              <Database className="h-3.5 w-3.5 text-blue-500" />
+              Add Your Own Data
+            </h3>
+            <button
+              type="button"
+              className="w-full text-left border border-slate-200/80 rounded-2xl p-4 hover:border-blue-300 hover:shadow-[0_8px_24px_-8px_rgba(37,99,235,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex items-center justify-between gap-4"
+              onClick={handleCustomDimensionDataset}
+            >
+              <div className="flex items-start gap-3.5 min-w-0">
+                <div className="p-2.5 bg-blue-50 text-blue-600 ring-1 ring-blue-100 rounded-xl group-hover:bg-blue-100 transition-colors flex-shrink-0 mt-0.5">
+                  <Database className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-slate-900 leading-tight">Set Dimensions & Add Data</span>
                     <span className="text-[10px] bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
                       Custom Data
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                     Choose your chart size first, then enter your own custom data
                   </p>
-                </div>
-                <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-1.5 text-[10px] text-slate-500">
-                  <Database className="h-3 w-3 text-blue-500 flex-shrink-0" />
-                  <span className="truncate">Custom size • Full control • Your data</span>
+                  <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-400">
+                    <Database className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                    <span className="truncate">Custom size • Full control • Your data</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ── Chart Setup Dialog ── */}

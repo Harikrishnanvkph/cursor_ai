@@ -25,6 +25,7 @@ import { isMulticolorSvg, extractSvgColors, replaceSvgColor } from "@/lib/elemen
 import { IconifySearchTab } from "./IconifySearchTab"
 import { PexelsImageTab } from "./PexelsImageTab"
 import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
+import { compressImage } from "@/lib/image-utils"
 
 // ═══════════════════════════════════════════════════════
 // Shape definitions for the picker
@@ -693,11 +694,22 @@ export function DecorationsPanel() {
   }
 
   // ── Section: Add Image directly ────────────────────
-  const handleAddImageSelect = (result: AddImageResult) => {
-    if (!result.url.trim()) return
+  const handleAddImageSelect = async (result: AddImageResult) => {
+    let finalUrl = result.url.trim()
+    if (!finalUrl) return
 
     if (result.source === 'file' && result.file) {
-      decorationFileRegistry.set(result.url, result.file)
+      try {
+        finalUrl = await compressImage(result.file, 1200, 1200, 0.8, false, true)
+        if (result.url.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(result.url)
+          } catch (_) {}
+        }
+      } catch (err) {
+        console.error('Failed to compress decoration image:', err)
+      }
+      decorationFileRegistry.set(finalUrl, result.file)
     }
 
     let width = 150
@@ -721,7 +733,7 @@ export function DecorationsPanel() {
       rotation: 0, fillColor: 'transparent', fillOpacity: 100,
       strokeColor: '#cbd5e1', strokeWidth: 0, strokeStyle: 'solid',
       visible: true, locked: false, zIndex: shapes.length + 1,
-      imageUrl: result.url.trim(),
+      imageUrl: finalUrl,
       imageFit: 'contain', borderRadius: 0,
     })
     if (newShapeId) {

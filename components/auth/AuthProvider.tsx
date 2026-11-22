@@ -274,25 +274,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Cross-tab synchronization: keep login/logout in sync across open tabs
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'cached_auth_user') {
-        if (e.newValue) {
-          try {
-            const parsed = JSON.parse(e.newValue) as AuthUser
-            setUser((prev) => {
-              // Preserve already server-verified is_admin for the same user so activity in another
-              // tab doesn't strip is_admin and kick an admin out of open /admin/* tabs.
-              const preservedAdmin = prev && prev.id === parsed.id ? Boolean(prev.is_admin) : false
-              return {
-                ...parsed,
-                is_admin: preservedAdmin,
-              }
-            })
-          } catch {}
-        } else {
-          setUser(null)
-          setSessionVerified(false)
-          setCachedSessionFresh(false)
-          setAuthCookie(false)
+      const isLogoutEvent =
+        (e.key === 'cached_auth_user' && !e.newValue) ||
+        (e.key === null && !localStorage.getItem('cached_auth_user'))
+
+      if (e.key === 'cached_auth_user' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue) as AuthUser
+          setUser((prev) => {
+            // Preserve already server-verified is_admin for the same user so activity in another
+            // tab doesn't strip is_admin and kick an admin out of open /admin/* tabs.
+            const preservedAdmin = prev && prev.id === parsed.id ? Boolean(prev.is_admin) : false
+            return {
+              ...parsed,
+              is_admin: preservedAdmin,
+            }
+          })
+        } catch {}
+      } else if (isLogoutEvent) {
+        authEpochRef.current++
+        setUser(null)
+        setSessionVerified(false)
+        setCachedSessionFresh(false)
+        setAuthCookie(false)
+
+        import('@/lib/data-service')
+          .then(({ dataService }) => dataService.clearCache())
+          .catch(() => {})
+
+        const currentPath = window.location.pathname
+        const isAdminSignin = currentPath.startsWith('/admin/signin')
+        const protectedPaths = ['/board', '/landing', '/editor', '/admin']
+        const isProtected = !isAdminSignin && protectedPaths.some(p => currentPath.startsWith(p))
+        if (isProtected) {
+          window.location.replace(currentPath.startsWith('/admin') ? '/admin/signin' : '/signin')
         }
       }
     }

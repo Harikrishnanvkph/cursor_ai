@@ -107,32 +107,38 @@ export function EditorLeftSidebar() {
 
                 <DropdownMenuSeparator className="my-1 bg-slate-200/70" />
 
-                <DropdownMenuItem
-                  onClick={() => router.push('/landing')}
-                  className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-semibold text-slate-800 leading-tight">
-                      AI Chart
-                    </span>
-                    <span className="text-xs text-slate-500 font-normal leading-normal">
-                      Create charts with AI prompts
-                    </span>
-                  </div>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/landing"
+                    prefetch={false}
+                    className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors w-full"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 leading-tight">
+                        AI Chart
+                      </span>
+                      <span className="text-xs text-slate-500 font-normal leading-normal">
+                        Create charts with AI prompts
+                      </span>
+                    </div>
+                  </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  onClick={() => router.push('/board')}
-                  className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-semibold text-slate-800 leading-tight">
-                      Dashboard
-                    </span>
-                    <span className="text-xs text-slate-500 font-normal leading-normal">
-                      Manage saved charts & templates
-                    </span>
-                  </div>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/board"
+                    prefetch={false}
+                    className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors w-full"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 leading-tight">
+                        Dashboard
+                      </span>
+                      <span className="text-xs text-slate-500 font-normal leading-normal">
+                        Manage saved charts & templates
+                      </span>
+                    </div>
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -235,32 +241,38 @@ export function EditorLeftSidebar() {
 
                 <DropdownMenuSeparator className="my-1 bg-slate-200/70" />
 
-                <DropdownMenuItem
-                  onClick={() => router.push('/landing')}
-                  className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-semibold text-slate-800 leading-tight">
-                      AI Chart
-                    </span>
-                    <span className="text-xs text-slate-500 font-normal leading-normal">
-                      Create charts with AI prompts
-                    </span>
-                  </div>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/landing"
+                    prefetch={false}
+                    className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors w-full"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 leading-tight">
+                        AI Chart
+                      </span>
+                      <span className="text-xs text-slate-500 font-normal leading-normal">
+                        Create charts with AI prompts
+                      </span>
+                    </div>
+                  </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  onClick={() => router.push('/board')}
-                  className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-semibold text-slate-800 leading-tight">
-                      Dashboard
-                    </span>
-                    <span className="text-xs text-slate-500 font-normal leading-normal">
-                      Manage saved charts & templates
-                    </span>
-                  </div>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/board"
+                    prefetch={false}
+                    className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors w-full"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 leading-tight">
+                        Dashboard
+                      </span>
+                      <span className="text-xs text-slate-500 font-normal leading-normal">
+                        Manage saved charts & templates
+                      </span>
+                    </div>
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

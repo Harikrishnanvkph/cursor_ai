@@ -49,6 +49,7 @@ const nextConfig = {
   },
   // Experimental features for better chunk handling
   experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', 'date-fns'],
     // Improve client-side navigation reliability
     optimisticClientCache: false,
     cpus: 1,

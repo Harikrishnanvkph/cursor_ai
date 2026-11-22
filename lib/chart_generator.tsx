@@ -629,7 +629,7 @@ export const ChartGenerator = memo(function ChartGenerator({
     ? { width: finalWidth, height: finalHeight }
     : {};
 
-  const responsiveOptionForZoom = useFixedDimensions ? false : (isInsideTemplateOrFormat ? true : isResponsive);
+  const responsiveOptionForZoom = readOnly ? false : (useFixedDimensions ? false : (isInsideTemplateOrFormat ? true : isResponsive));
 
   const layoutRef = useRef({ useFixedDimensions, finalWidth, finalHeight });
   useEffect(() => {
@@ -738,10 +738,12 @@ export const ChartGenerator = memo(function ChartGenerator({
   // from localStorage. Without this, the component renders first with empty/default
   // state, then re-renders with hydrated data — causing a visible double-load flicker.
   // In readOnly mode, data is provided via props so hydration isn't needed.
-  const [storeHydrated, setStoreHydrated] = useState(isStoreIsolated ? true : false);
+  const [storeHydrated, setStoreHydrated] = useState(() =>
+    isStoreIsolated || !!(useChartStore.persist as any)?.hasHydrated?.()
+  );
   const initialRenderRef = useRef(!isStoreIsolated);
   useEffect(() => {
-    if (isStoreIsolated) return; // Skip hydration gate when data is provided directly
+    if (isStoreIsolated || storeHydrated) return; // Skip hydration gate when data is provided directly or already hydrated
     // Check if already hydrated (can happen if persist completes synchronously)
     const alreadyHydrated = (useChartStore.persist as any)?.hasHydrated?.();
     if (alreadyHydrated) {
@@ -2453,7 +2455,7 @@ export const ChartGenerator = memo(function ChartGenerator({
     appliedOptions = {
       ...appliedOptions,
       animation: false,
-      responsive: true,
+      responsive: false,
       plugins: {
         ...appliedOptions.plugins,
         tooltip: { ...(appliedOptions.plugins?.tooltip || {}), enabled: false },

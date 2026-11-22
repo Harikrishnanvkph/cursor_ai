@@ -31,6 +31,7 @@ interface HistoryStore {
   conversations: Conversation[];
   snapshotCache: Record<string, ChartSnapshot>;
   loading: boolean;
+  lastSyncedAt: number | null;
   addConversation: (conv: Omit<Conversation, "id" | "timestamp">) => string;
   deleteConversation: (id: string) => Promise<void>;
   restoreConversation: (id: string) => Promise<void>;
@@ -47,6 +48,7 @@ export const useHistoryStore = create<HistoryStore>()(
       conversations: [],
       snapshotCache: {},
       loading: false,
+      lastSyncedAt: null,
       addConversation: (conv) => {
         const id = Date.now().toString();
         const timestamp = Date.now();
@@ -67,6 +69,7 @@ export const useHistoryStore = create<HistoryStore>()(
         set({
           conversations: get().conversations.filter((c) => c.id !== id),
           snapshotCache: remainingCache,
+          lastSyncedAt: null,
         });
 
         // Clean up snap state cache for this chart
@@ -606,7 +609,7 @@ export const useHistoryStore = create<HistoryStore>()(
         }
 
         // Clear local state
-        set({ conversations: [] });
+        set({ conversations: [], snapshotCache: {}, lastSyncedAt: null });
       },
       updateConversation: (id, updates) => {
         set({
@@ -625,9 +628,16 @@ export const useHistoryStore = create<HistoryStore>()(
         }));
       },
       loadConversationsFromBackend: async (forceRefresh = false, options) => {
+        const now = Date.now();
+        const state = get();
+        // Skip duplicate network requests during fast route navigation if data is fresh within 60s
+        if (!forceRefresh && state.lastSyncedAt && (now - state.lastSyncedAt < 60_000) && state.conversations.length > 0) {
+          return;
+        }
+
         const shouldClearSnapshotCache = options?.clearSnapshotCache === true;
         set({
-          loading: true,
+          loading: state.conversations.length === 0,
           ...(shouldClearSnapshotCache ? { snapshotCache: {} } : {}),
         });
         try {
@@ -636,7 +646,7 @@ export const useHistoryStore = create<HistoryStore>()(
           // Check if there was an error in the response
           if (response.error) {
             console.warn('Failed to load conversations from backend:', response.error);
-            set({ loading: false, conversations: [] });
+            set({ loading: false, conversations: [], lastSyncedAt: null });
             return;
           }
 
@@ -680,17 +690,18 @@ export const useHistoryStore = create<HistoryStore>()(
             set({
               conversations: lightweightConversations,
               snapshotCache: prunedCache,
-              loading: false
+              loading: false,
+              lastSyncedAt: Date.now()
             });
             console.log(`✅ Loaded ${lightweightConversations.length} conversations from backend`);
           } else {
-            set({ conversations: [], snapshotCache: {}, loading: false });
+            set({ conversations: [], snapshotCache: {}, loading: false, lastSyncedAt: Date.now() });
             console.log('No conversations found in backend');
           }
         } catch (error) {
           console.error('Failed to load conversations from backend:', error);
           // Set empty conversations array on error to prevent UI issues
-          set({ loading: false, conversations: [] });
+          set({ loading: false, conversations: [], lastSyncedAt: null });
         }
       },
       hydrateSnapshots: async (conversationIds: string[]) => {

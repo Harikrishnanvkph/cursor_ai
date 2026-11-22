@@ -19,14 +19,11 @@ export const authPrimaryButtonClassName =
  */
 export function AuthPageShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    const htmlEl = document.documentElement
     const bodyEl = document.body
-    htmlEl.classList.add(GeistSans.variable)
-    bodyEl.classList.add("home-page-active", GeistSans.variable, GeistSans.className)
+    bodyEl.classList.add("home-page-active")
 
     return () => {
-      htmlEl.classList.remove(GeistSans.variable)
-      bodyEl.classList.remove("home-page-active", GeistSans.variable, GeistSans.className)
+      bodyEl.classList.remove("home-page-active")
     }
   }, [])
 
@@ -125,10 +122,10 @@ export function AuthLoadingCard({
           className="absolute -inset-4 rounded-full bg-gradient-to-tr from-blue-600/20 via-indigo-600/25 to-violet-600/20 blur-xl animate-pulse pointer-events-none transform-gpu"
         />
 
-        {/* Orbiting accent spinner ring (runs strictly on GPU compositor thread) */}
+        {/* Orbiting accent spinner ring (GPU compositor-only rotation, zero reflow) */}
         <div
           aria-hidden="true"
-          className="absolute -inset-2.5 rounded-[22px] border-2 border-transparent border-t-indigo-600 dark:border-t-indigo-400 border-r-indigo-500/30 rounded-full animate-spin pointer-events-none transform-gpu"
+          className="absolute -inset-2.5 rounded-full border-2 border-transparent border-t-indigo-600 dark:border-t-indigo-400 border-r-indigo-500/30 animate-spin [will-change:transform] pointer-events-none"
         />
 
         {/* Brand Icon Container */}

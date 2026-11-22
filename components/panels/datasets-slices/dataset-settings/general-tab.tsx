@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect, useRef, useMemo } from "react"
+import dynamic from "next/dynamic"
 
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -28,7 +29,7 @@ import {
     Check,
     X,
 } from "lucide-react"
-import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
+import type { ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
@@ -43,6 +44,10 @@ import {
     CarouselPrevious,
 } from "@/components/ui/carousel"
 
+const ChartSetupDialog = dynamic(
+    () => import("@/components/dialogs/chart-setup-dialog").then(m => m.ChartSetupDialog),
+    { ssr: false }
+)
 
 interface GeneralTabProps {
     chartMode: string

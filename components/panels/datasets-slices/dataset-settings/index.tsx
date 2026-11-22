@@ -753,56 +753,16 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                                                             const {
                                                                 compressImage,
                                                                 validateImageFile,
-                                                                getAvailableLocalStorageSpace,
-                                                                shouldCleanupImages,
-                                                                getImagesToCleanup,
-                                                                wouldExceedQuota
                                                             } = await import('@/lib/image-utils')
 
                                                             if (!validateImageFile(file, 10)) {
-                                                                toast.error('Invalid image file. Please select an image file under 10MB.')
+                                                                toast.error('Invalid image file. Please select an image under 10MB.')
                                                                 return
                                                             }
 
                                                             try {
-                                                                const availableSpace = getAvailableLocalStorageSpace()
-                                                                if (availableSpace < 200 * 1024) {
-                                                                    const cleanupInfo = shouldCleanupImages(chartData, 1 * 1024 * 1024)
-                                                                    if (cleanupInfo.needed) {
-                                                                        chartData.datasets.forEach((dataset: any, dsIdx: number) => {
-                                                                            const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
-                                                                            if (indicesToRemove.length > 0) {
-                                                                                const newPointImages = [...(dataset.pointImages || [])]
-                                                                                indicesToRemove.forEach((idx: number) => {
-                                                                                    newPointImages[idx] = null
-                                                                                })
-                                                                                updateDataset(dsIdx, { pointImages: newPointImages })
-                                                                            }
-                                                                        })
-                                                                    }
-                                                                }
-
-                                                                const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true)
-
-                                                                if (wouldExceedQuota(compressedImageUrl)) {
-                                                                    const cleanupInfo = shouldCleanupImages(chartData, 2 * 1024 * 1024)
-                                                                    if (cleanupInfo.needed) {
-                                                                        chartData.datasets.forEach((dataset: any, dsIdx: number) => {
-                                                                            const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
-                                                                            if (indicesToRemove.length > 0) {
-                                                                                const newPointImages = [...(dataset.pointImages || [])]
-                                                                                indicesToRemove.forEach((idx: number) => {
-                                                                                    newPointImages[idx] = null
-                                                                                })
-                                                                                updateDataset(dsIdx, { pointImages: newPointImages })
-                                                                            }
-                                                                        })
-                                                                        if (wouldExceedQuota(compressedImageUrl)) {
-                                                                            toast.error('Storage quota exceeded. Please remove some images.')
-                                                                            return
-                                                                        }
-                                                                    }
-                                                                }
+                                                                // Chart state persists in IndexedDB (not 5MB localStorage); compress directly without deleting other slices' images
+                                                                const compressedImageUrl = await compressImage(file, 600, 600, 0.75, false, true)
 
                                                                 setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: compressedImageUrl } : r))
                                                             } catch (error: any) {
