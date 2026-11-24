@@ -15,12 +15,14 @@ export const ChartBgColorPicker = memo(({
     className, 
     innerClassName, 
     disabled, 
-    variant = "button" 
+    variant = "button",
+    tooltipSide = "bottom",
 }: { 
     className?: string, 
     innerClassName?: string, 
     disabled?: boolean, 
-    variant?: "button" | "dropdown-item" 
+    variant?: "button" | "dropdown-item",
+    tooltipSide?: "top" | "bottom",
 }) => {
     const canvasBgType = useUIStore(s => s.canvasBgType);
     const canvasBgColor = useUIStore(s => s.canvasBgColor);
@@ -159,7 +161,7 @@ export const ChartBgColorPicker = memo(({
                             </button>
                         </PopoverTrigger>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
+                    <TooltipContent side={tooltipSide} sideOffset={5} className="z-[100] text-xs font-medium">
                         Canvas Background
                     </TooltipContent>
                 </Tooltip>

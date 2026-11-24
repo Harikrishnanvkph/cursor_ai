@@ -218,27 +218,27 @@ export function TemplateChartZonePanel({ onTabChange }: TemplateChartZonePanelPr
                     type="button"
                     onClick={() => handleGoToChartEditor('styling')}
                     className="text-[10px] font-medium text-indigo-700 hover:text-indigo-900 hover:bg-indigo-100/60 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
-                    title="Jump to Appearance & Colors"
+                    title="Jump to Style & Colors"
                   >
-                    Appearance
+                    Style
                   </button>
                   <span className="text-slate-300 text-[10px]">·</span>
                   <button
                     type="button"
                     onClick={() => handleGoToChartEditor('datasets_slices')}
                     className="text-[10px] font-medium text-indigo-700 hover:text-indigo-900 hover:bg-indigo-100/60 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
-                    title="Jump to Datasets & Slices"
+                    title="Jump to Data & Slices"
                   >
-                    Datasets
+                    Data
                   </button>
                   <span className="text-slate-300 text-[10px]">·</span>
                   <button
                     type="button"
                     onClick={() => handleGoToChartEditor('axes')}
                     className="text-[10px] font-medium text-indigo-700 hover:text-indigo-900 hover:bg-indigo-100/60 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
-                    title="Jump to Scales & Axes"
+                    title="Jump to Axes & Scales"
                   >
-                    Scales
+                    Axes
                   </button>
                 </div>
               </div>

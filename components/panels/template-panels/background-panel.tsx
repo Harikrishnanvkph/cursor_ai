@@ -14,6 +14,8 @@ import { AddImageButton, type AddImageResult } from "@/components/shared/add-ima
 import { compressImage as sharedCompressImage, validateImageFile } from "@/lib/image-utils"
 import { toast } from "sonner"
 import type { FormatBlueprintRow } from "@/lib/format-types"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 async function validateAndCompressBgImage(file: File, maxDim: number): Promise<string> {
   if (!validateImageFile(file, 10)) {
@@ -29,6 +31,7 @@ type BackgroundMode = 'document' | 'section'
  * Templates and Formats with "Whole Document" / "Selected Section" toggle.
  */
 export function BackgroundPanel() {
+  const isModern = useIsModernPanel()
   const { selectedFormatId, selectedZoneId, formats, selectedFormatSnapshot } = useFormatGalleryStore(useShallow(s => ({
     selectedFormatId: s.selectedFormatId,
     selectedZoneId: s.selectedZoneId,
@@ -64,26 +67,44 @@ export function BackgroundPanel() {
   }
 
   const renderModeToggle = () => (
-    <div className="mb-4">
-      <div className="flex bg-gray-100 rounded-lg p-0.5">
+    <div className={isModern ? "mb-3" : "mb-4"}>
+      <div className={isModern ? cn("grid grid-cols-2 gap-1", MODERN_PANEL_UI.segTrack) : "flex bg-gray-100 rounded-lg p-0.5"}>
         <button
+          type="button"
           onClick={() => setBgMode('document')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
-            bgMode === 'document'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={
+            isModern
+              ? cn(
+                  MODERN_PANEL_UI.segItemBase,
+                  "flex items-center justify-center gap-1.5",
+                  bgMode === 'document' && MODERN_PANEL_UI.segItemActive
+                )
+              : `flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                  bgMode === 'document'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`
+          }
         >
           <Layers className="w-3.5 h-3.5" />
           Whole Document
         </button>
         <button
+          type="button"
           onClick={() => setBgMode('section')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
-            bgMode === 'section'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={
+            isModern
+              ? cn(
+                  MODERN_PANEL_UI.segItemBase,
+                  "flex items-center justify-center gap-1.5",
+                  bgMode === 'section' && MODERN_PANEL_UI.segItemActive
+                )
+              : `flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                  bgMode === 'section'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`
+          }
         >
           <MousePointerClick className="w-3.5 h-3.5" />
           Selected Section

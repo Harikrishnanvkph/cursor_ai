@@ -9,8 +9,11 @@ import { Switch } from "@/components/ui/switch"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 import { Sparkles } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 export function TypesTogglesPanel() {
+  const isModern = useIsModernPanel()
   const {
     chartType,
     chartData,
@@ -84,34 +87,60 @@ export function TypesTogglesPanel() {
   return (
     <div className="space-y-3">
       {/* Mode Toggle - Chart/Template */}
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <span className="text-xs font-medium text-gray-700">Mode</span>
+      <div className="flex items-center justify-between gap-3">
+        <span className={isModern ? "text-xs font-semibold text-slate-700" : "text-xs font-medium text-gray-700"}>
+          Mode
+        </span>
         <div
-          className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
+          className={
+            isModern
+              ? cn("flex items-center gap-0.5 h-8", MODERN_PANEL_UI.segTrack)
+              : "flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
+          }
         >
           <button
+            type="button"
             onClick={() => setEditorMode('chart')}
-            className={`px-3 py-1 text-xs font-medium rounded-full transition-all min-w-[60px] ${editorMode === 'chart'
-              ? 'bg-blue-500 text-white shadow-sm'
-              : 'bg-transparent text-gray-500 hover:text-gray-700'
-              }`}
+            className={
+              isModern
+                ? cn(
+                    "h-full px-3 text-xs leading-none rounded-[6px] flex items-center justify-center transition-colors cursor-pointer min-w-[64px]",
+                    editorMode === 'chart'
+                      ? MODERN_PANEL_UI.segItemActive
+                      : "text-slate-600 hover:text-slate-900 font-medium"
+                  )
+                : `px-3 py-1 text-xs font-medium rounded-full transition-all min-w-[60px] ${editorMode === 'chart'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-transparent text-gray-500 hover:text-gray-700'
+                  }`
+            }
           >
             Chart
           </button>
           <button
+            type="button"
             onClick={() => setEditorMode('template')}
-            className={`px-3 py-1 text-xs font-medium rounded-full transition-all min-w-[60px] ${editorMode === 'template'
-              ? 'bg-blue-500 text-white shadow-sm'
-              : 'bg-transparent text-gray-500 hover:text-gray-700'
-              }`}
+            className={
+              isModern
+                ? cn(
+                    "h-full px-3 text-xs leading-none rounded-[6px] flex items-center justify-center transition-colors cursor-pointer min-w-[64px]",
+                    editorMode === 'template'
+                      ? MODERN_PANEL_UI.segItemActive
+                      : "text-slate-600 hover:text-slate-900 font-medium"
+                  )
+                : `px-3 py-1 text-xs font-medium rounded-full transition-all min-w-[60px] ${editorMode === 'template'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-transparent text-gray-500 hover:text-gray-700'
+                  }`
+            }
           >
             Template
           </button>
         </div>
       </div>
 
-      <div className="space-y-1">
-        <Label>Chart Type</Label>
+      <div className="space-y-1.5">
+        <Label className={isModern ? "text-xs font-semibold text-slate-700" : undefined}>Chart Type</Label>
         <ChartTypeSelector
           value={chartType}
           onChange={handleChartTypeChange}
@@ -119,70 +148,102 @@ export function TypesTogglesPanel() {
         />
       </div>
 
-      <div className="flex items-center justify-between gap-1 px-1 mb-2">
-        <div className="flex flex-col items-center gap-1">
+      <div
+        className={
+          isModern
+            ? "grid grid-cols-5 gap-1 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70"
+            : "flex items-center justify-between gap-1 px-1 mb-2"
+        }
+      >
+        <div className="flex flex-col items-center gap-1.5">
           <Switch 
             id="fill-toggle" 
             checked={fillArea} 
             onCheckedChange={toggleFillArea} 
-            className="scale-75 data-[state=unchecked]:bg-input/50" 
+            className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"} 
           />
-          <Label htmlFor="fill-toggle" className="text-xs text-gray-600">Fill</Label>
+          <Label htmlFor="fill-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Fill</Label>
         </div>
-        <div className="flex flex-col items-center gap-1">
-          <Switch id="border-toggle" checked={showBorder} onCheckedChange={toggleShowBorder} disabled={!fillArea} className="scale-75 data-[state=unchecked]:bg-input/50" />
-          <Label htmlFor="border-toggle" className="text-xs text-gray-600">Border</Label>
+        <div className="flex flex-col items-center gap-1.5">
+          <Switch id="border-toggle" checked={showBorder} onCheckedChange={toggleShowBorder} disabled={!fillArea} className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"} />
+          <Label htmlFor="border-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Border</Label>
         </div>
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center gap-1.5">
           <Switch 
             id="show-images-toggle" 
             checked={chartType === 'timeline' ? false : showImages} 
             onCheckedChange={toggleShowImages} 
             disabled={chartType === 'timeline'}
-            className="scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50" 
+            className={isModern ? "disabled:opacity-50" : "scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50"} 
           />
-          <Label htmlFor="show-images-toggle" className={`text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Image</Label>
+          <Label htmlFor="show-images-toggle" className={isModern ? `text-[11px] font-medium cursor-pointer ${chartType === 'timeline' ? 'text-slate-400' : 'text-slate-600'}` : `text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Image</Label>
         </div>
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center gap-1.5">
           <Switch 
             id="show-labels-toggle" 
             checked={chartType === 'timeline' ? false : labelChecked} 
             onCheckedChange={toggleShowLabels} 
             disabled={chartType === 'timeline'}
-            className="scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50" 
+            className={isModern ? "disabled:opacity-50" : "scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50"} 
           />
-          <Label htmlFor="show-labels-toggle" className={`text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Label</Label>
+          <Label htmlFor="show-labels-toggle" className={isModern ? `text-[11px] font-medium cursor-pointer ${chartType === 'timeline' ? 'text-slate-400' : 'text-slate-600'}` : `text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Label</Label>
         </div>
-        <div className="flex flex-col items-center gap-1">
-          <Switch id="show-legend-toggle" checked={legendChecked} onCheckedChange={toggleShowLegend} className="scale-75 data-[state=unchecked]:bg-input/50" />
-          <Label htmlFor="show-legend-toggle" className="text-xs text-gray-600">Legend</Label>
+        <div className="flex flex-col items-center gap-1.5">
+          <Switch id="show-legend-toggle" checked={legendChecked} onCheckedChange={toggleShowLegend} className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"} />
+          <Label htmlFor="show-legend-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Legend</Label>
         </div>
       </div>
 
       {/* Modern Gradient Area Fill Toggle (for Area & Line charts) */}
       {isAreaOrLine && fillArea && (
-        <div className="p-2.5 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 rounded-xl border border-blue-100 space-y-2">
+        <div
+          className={
+            isModern
+              ? "p-2.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2"
+              : "p-2.5 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 rounded-xl border border-blue-100 space-y-2"
+          }
+        >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-950">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <div className={cn("flex items-center gap-1.5 text-xs font-semibold", isModern ? "text-slate-800" : "text-blue-950")}>
+              <Sparkles className={cn("w-3.5 h-3.5", isModern ? "text-indigo-600" : "text-blue-600")} />
               <span>Area Fill Style</span>
             </div>
-            <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-gray-200 shadow-2xs">
+            <div
+              className={
+                isModern
+                  ? cn("flex items-center gap-0.5", MODERN_PANEL_UI.subSegTrack)
+                  : "flex items-center gap-1 bg-white p-0.5 rounded-lg border border-gray-200 shadow-2xs"
+              }
+            >
               <button
                 type="button"
                 onClick={() => handleGradientModeToggle(false)}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded-md transition-all ${
-                  !isGradientActive ? 'bg-blue-600 text-white shadow-xs font-semibold' : 'text-gray-500 hover:text-gray-800'
-                }`}
+                className={
+                  isModern
+                    ? cn(
+                        "px-2.5 py-0.5 text-[11px] rounded-[5px] transition-colors cursor-pointer",
+                        !isGradientActive ? MODERN_PANEL_UI.subSegItemActive : "text-slate-500 hover:text-slate-800 font-medium"
+                      )
+                    : `px-2 py-0.5 text-[10px] font-medium rounded-md transition-all ${
+                        !isGradientActive ? 'bg-blue-600 text-white shadow-xs font-semibold' : 'text-gray-500 hover:text-gray-800'
+                      }`
+                }
               >
                 Solid
               </button>
               <button
                 type="button"
                 onClick={() => handleGradientModeToggle(true)}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded-md transition-all ${
-                  isGradientActive ? 'bg-blue-600 text-white shadow-xs font-semibold' : 'text-gray-500 hover:text-gray-800'
-                }`}
+                className={
+                  isModern
+                    ? cn(
+                        "px-2.5 py-0.5 text-[11px] rounded-[5px] transition-colors cursor-pointer",
+                        isGradientActive ? MODERN_PANEL_UI.subSegItemActive : "text-slate-500 hover:text-slate-800 font-medium"
+                      )
+                    : `px-2 py-0.5 text-[10px] font-medium rounded-md transition-all ${
+                        isGradientActive ? 'bg-blue-600 text-white shadow-xs font-semibold' : 'text-gray-500 hover:text-gray-800'
+                      }`
+                }
               >
                 Gradient
               </button>
@@ -190,10 +251,10 @@ export function TypesTogglesPanel() {
           </div>
 
           {isGradientActive && (
-            <div className="flex items-center gap-2 pt-1 border-t border-blue-100/70">
-              <span className="text-[10px] text-gray-500 shrink-0 font-medium">Glow Preset:</span>
+            <div className={cn("flex items-center gap-2 pt-2 border-t", isModern ? "border-slate-200/70" : "border-blue-100/70")}>
+              <span className="text-[11px] text-slate-500 shrink-0 font-medium">Glow Preset</span>
               <Select value={currentGradientPreset} onValueChange={handleGradientPresetChange}>
-                <SelectTrigger className="h-7 text-[11px] bg-white border-blue-200 flex-1">
+                <SelectTrigger className={cn("h-7 text-xs bg-white flex-1", isModern ? "border-slate-200/80" : "border-blue-200 text-[11px]")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

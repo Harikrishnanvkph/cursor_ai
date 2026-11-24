@@ -6,8 +6,8 @@ import { useShallow } from "zustand/react/shallow"
 import { useRouter } from "next/navigation"
 import { Square } from "lucide-react"
 import { saveChartToCloud } from "@/lib/save-utils"
-import { getEffectiveChartTitle, resolveActiveCloudConversationId } from "@/lib/hooks/use-chart-rename"
-import { useChartStore } from "@/lib/chart-store"
+import { getEffectiveChartTitle, resolveActiveCloudConversationId, useChartRename } from "@/lib/hooks/use-chart-rename"
+import { useChartStore, prepareChartDataForSave } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { ChartLayout } from "@/components/chart-layout"
 import { useHistoryStore } from "@/lib/history-store"
@@ -20,13 +20,29 @@ import { UpgradeProDialog } from "@/components/dialogs/upgrade-pro-dialog"
 import { toast } from "sonner"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
+import { useSettingsStore } from "@/lib/stores/settings-store"
+import { useUIStore } from "@/lib/stores/ui-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
+import { useChartExport } from "@/lib/hooks/use-chart-export"
+import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
+import { dataService } from "@/lib/data-service"
+import { DatasetService } from "@/lib/services/dataset-service"
+import { GroupService } from "@/lib/services/group-service"
+import { parseDimension } from "@/lib/utils/dimension-utils"
 import { useSidebarContext, useSidebarInputDispatch } from "@/components/landing/sidebar-context"
 import { useIsMobile, useIsTablet } from "@/lib/hooks/use-screen-dimensions"
 import { PromptTemplate, chartTemplate } from "@/components/landing/prompt_template"
 import { ChartAreaSkeleton, GenerationProgressView } from "@/components/landing/landing-helpers"
+import { ChartPreview } from "@/components/chart-preview"
+import { ModernEditorTopBar } from "@/components/editor/modern-editor-topbar"
+import { ModernWorkspaceBottomBar } from "@/components/editor/modern-workspace-bottombar"
+import { ModernLandingLeftSidebar, type ModernLandingRailTab } from "@/components/landing/modern-landing-left-sidebar"
 
 const SaveChartDialog = dynamic(() => import("@/components/ui/save-chart-dialog").then(m => m.SaveChartDialog), { ssr: false })
 const ModeChangeConfirmDialog = dynamic(() => import("@/components/dialogs/mode-change-confirm-dialog").then(m => m.ModeChangeConfirmDialog), { ssr: false })
+const DimensionMismatchDialog = dynamic(() => import("@/components/dialogs/dimension-mismatch-dialog").then(m => m.DimensionMismatchDialog), { ssr: false })
+const SaveModeConflictDialog = dynamic(() => import("@/components/dialogs/save-mode-conflict-dialog").then(m => m.SaveModeConflictDialog), { ssr: false })
+const ClearChartDialog = dynamic(() => import("@/components/dialogs/clear-chart-dialog").then(m => m.ClearChartDialog), { ssr: false })
 const FormatGallery = dynamic(() => import("@/components/gallery/FormatGallery").then(m => m.FormatGallery), { ssr: false })
 const ChartStyleGalleryPage = dynamic(() => import("@/components/chart-style-gallery/ChartStyleGalleryPage").then(m => m.ChartStyleGalleryPage), { ssr: false })
 const TabletLandingView = dynamic(
@@ -510,6 +526,546 @@ function LandingPageContent() {
     })
     return () => cancelAnimationFrame(raf)
   }, [storeHydrated, contentReady])
+
+  // ── Modern Interface State & Handlers (/landing Desktop & Tablet) ──
+  const editorInterface = useSettingsStore(s => s.editorInterface)
+  const isModern = storeHydrated && !isMobile && editorInterface === "modern"
+
+  const [modernRailTab, setModernRailTab] = useState<ModernLandingRailTab>("chat")
+  const [modernPanelCollapsed, setModernPanelCollapsed] = useState(false)
+  const chartContainerRef = useRef<HTMLDivElement | null>(null)
+  const zoomPan = useZoomPan()
+  const rename = useChartRename()
+  const exports = useChartExport({
+    onToggleLeftSidebar: () => setModernPanelCollapsed(v => !v),
+    isLeftSidebarCollapsed: modernPanelCollapsed,
+  })
+  const { setChartType: applyChartTypeChange } = useChartActions()
+  const canvasBgType = useUIStore(s => s.canvasBgType)
+  const canvasBgColor = useUIStore(s => s.canvasBgColor)
+
+  const [showDimensionDialog, setShowDimensionDialog] = useState(false)
+  const [dimensionMismatchInfo, setDimensionMismatchInfo] = useState<{
+    templateDimensions: { width: number; height: number }
+    currentDimensions: { width: number; height: number }
+  } | null>(null)
+  const [showModeConflictDialog, setShowModeConflictDialog] = useState(false)
+  const [showClearDialog, setShowClearDialog] = useState(false)
+  const [isSharingLink, setIsSharingLink] = useState(false)
+
+  const checkModeConflict = useCallback((): boolean => {
+    const templateState = useTemplateStore.getState()
+    const formatState = useFormatGalleryStore.getState()
+    const hasTemplate = !!(
+      templateState.currentTemplate ||
+      templateState.templateInBackground ||
+      formatState.selectedFormatId
+    )
+    return templateState.editorMode === "chart" && templateState.templateSavedToCloud && hasTemplate
+  }, [])
+
+  const checkDimensionMismatch = useCallback((): boolean => {
+    const templateState = useTemplateStore.getState()
+    const templateToCheck = templateState.currentTemplate || templateState.templateInBackground
+    if (!templateToCheck || !templateToCheck.chartArea) return false
+    if (templateState.editorMode === "template") return false
+
+    const templateWidth = templateToCheck.chartArea.width
+    const templateHeight = templateToCheck.chartArea.height
+    const currentWidth = parseDimension(chartConfig.width)
+    const currentHeight = parseDimension(chartConfig.height)
+    const isResponsiveMode =
+      chartConfig.responsive === true && !chartConfig.manualDimensions && !chartConfig.templateDimensions
+
+    if (isResponsiveMode || templateWidth !== currentWidth || templateHeight !== currentHeight) {
+      setDimensionMismatchInfo({
+        templateDimensions: { width: templateWidth, height: templateHeight },
+        currentDimensions: isResponsiveMode
+          ? { width: 0, height: 0 }
+          : { width: currentWidth, height: currentHeight },
+      })
+      return true
+    }
+    return false
+  }, [chartConfig])
+
+  const handleModernSaveClick = useCallback(() => {
+    if (!hasJSON) {
+      toast.error("No chart to save")
+      return
+    }
+    if (checkModeConflict()) {
+      setShowModeConflictDialog(true)
+      return
+    }
+    if (checkDimensionMismatch()) {
+      setShowDimensionDialog(true)
+      return
+    }
+    handleSaveToCloudClick()
+  }, [hasJSON, checkModeConflict, checkDimensionMismatch, handleSaveToCloudClick])
+
+  const handleGoToTemplateMode = useCallback(() => {
+    setShowDimensionDialog(false)
+    setDimensionMismatchInfo(null)
+    useTemplateStore.getState().setEditorMode("template")
+  }, [])
+
+  const handleSaveAsChartOnly = useCallback(async () => {
+    if (!user) {
+      toast.error("Please sign in to save charts")
+      return
+    }
+    setIsSaving(true)
+    try {
+      const baseTitle = getEffectiveChartTitle()
+      const conversationTitle =
+        baseTitle && baseTitle !== "No Chart Available" && baseTitle !== "Untitled Chart"
+          ? `${baseTitle} (Copy)`
+          : `Chart copy - ${new Date().toLocaleDateString()}`
+      const response = await dataService.createConversation(
+        conversationTitle,
+        "Standalone chart copy (no template)"
+      )
+      if (response.error || !response.data) {
+        toast.error("Failed to create chart copy")
+        return
+      }
+      const newConversationId = response.data.id
+      const liveStore = useChartStore.getState()
+      const chartDataToSave = prepareChartDataForSave(
+        liveStore.chartData,
+        liveStore.chartMode,
+        liveStore.activeDatasetIndex,
+        liveStore.activeGroupId,
+        conversationTitle,
+        newConversationId,
+        true
+      )
+      const snapshotResult = await dataService.saveChartSnapshot(
+        newConversationId,
+        liveStore.chartType,
+        chartDataToSave,
+        liveStore.getActiveChartConfig(),
+        null,
+        null
+      )
+      if (snapshotResult.error) {
+        toast.error("Failed to save chart snapshot")
+        return
+      }
+      useTemplateStore.getState().clearAllTemplateState()
+      const newSnapshotId = snapshotResult.data?.id || null
+      if (liveStore.chartMode === "single" && liveStore.chartData.datasets[liveStore.activeDatasetIndex]) {
+        const updated = DatasetService.updateDataset(
+          liveStore.activeDatasetIndex,
+          {
+            sourceId: newConversationId,
+            sourceSnapshotId: newSnapshotId || undefined,
+            sourceTitle: conversationTitle,
+          },
+          {
+            chartType: liveStore.chartType,
+            chartData: liveStore.chartData,
+            chartConfig: liveStore.chartConfig,
+            chartMode: liveStore.chartMode,
+            hasJSON: liveStore.hasJSON,
+            singleModeData: liveStore.singleModeData,
+            groupedModeData: liveStore.groupedModeData,
+          }
+        )
+        if (updated) useChartStore.setState({ ...updated, chartTitle: conversationTitle })
+      } else if (liveStore.chartMode === "grouped" && liveStore.activeGroupId && liveStore.groups) {
+        const updated = GroupService.updateGroup(
+          liveStore.activeGroupId,
+          {
+            name: conversationTitle,
+            sourceId: newConversationId,
+            sourceSnapshotId: newSnapshotId || undefined,
+            sourceTitle: conversationTitle,
+          },
+          { groups: liveStore.groups }
+        )
+        useChartStore.setState({ ...updated, chartTitle: conversationTitle })
+      }
+      useChatStore.getState().setBackendConversationId(newConversationId)
+      if (newSnapshotId) {
+        useChartStore.getState().setCurrentSnapshotId(newSnapshotId)
+      }
+      try {
+        await useHistoryStore.getState().loadConversationsFromBackend(true)
+      } catch {}
+      setShowDimensionDialog(false)
+      setDimensionMismatchInfo(null)
+      toast.success("Chart saved as standalone copy!")
+    } catch {
+      toast.error("Failed to save chart copy")
+    } finally {
+      setIsSaving(false)
+    }
+  }, [user])
+
+  const handleSaveChartDiscardTemplate = useCallback(() => {
+    setShowModeConflictDialog(false)
+    useTemplateStore.getState().clearAllTemplateState()
+    useFormatGalleryStore.getState().setSelectedFormat(null, "bar")
+    handleSaveToCloudClick()
+  }, [handleSaveToCloudClick])
+
+  const handleSaveAsSeparateChart = useCallback(async () => {
+    setShowModeConflictDialog(false)
+    if (!user) {
+      toast.error("Please sign in to save charts")
+      return
+    }
+    setIsSaving(true)
+    try {
+      const baseTitle = getEffectiveChartTitle()
+      const conversationTitle =
+        baseTitle && baseTitle !== "No Chart Available" && baseTitle !== "Untitled Chart"
+          ? `${baseTitle} (Copy)`
+          : `Chart copy - ${new Date().toLocaleDateString()}`
+      const response = await dataService.createConversation(
+        conversationTitle,
+        "Standalone chart copy (no template)"
+      )
+      if (response.error || !response.data) {
+        toast.error("Failed to create chart copy")
+        return
+      }
+      const newConversationId = response.data.id
+      const liveStore = useChartStore.getState()
+      const chartDataToSave = prepareChartDataForSave(
+        liveStore.chartData,
+        liveStore.chartMode,
+        liveStore.activeDatasetIndex,
+        liveStore.activeGroupId,
+        conversationTitle,
+        newConversationId,
+        true
+      )
+      const snapshotResult = await dataService.saveChartSnapshot(
+        newConversationId,
+        liveStore.chartType,
+        chartDataToSave,
+        liveStore.getActiveChartConfig(),
+        null,
+        null
+      )
+      if (snapshotResult.error) {
+        toast.error("Failed to save chart snapshot")
+        return
+      }
+      const newSnapshotId = snapshotResult.data?.id || null
+      if (liveStore.chartMode === "single" && liveStore.chartData.datasets[liveStore.activeDatasetIndex]) {
+        const updated = DatasetService.updateDataset(
+          liveStore.activeDatasetIndex,
+          {
+            sourceId: newConversationId,
+            sourceSnapshotId: newSnapshotId || undefined,
+            sourceTitle: conversationTitle,
+          },
+          {
+            chartType: liveStore.chartType,
+            chartData: liveStore.chartData,
+            chartConfig: liveStore.chartConfig,
+            chartMode: liveStore.chartMode,
+            hasJSON: liveStore.hasJSON,
+            singleModeData: liveStore.singleModeData,
+            groupedModeData: liveStore.groupedModeData,
+          }
+        )
+        if (updated) useChartStore.setState({ ...updated, chartTitle: conversationTitle })
+      } else if (liveStore.chartMode === "grouped" && liveStore.activeGroupId && liveStore.groups) {
+        const updated = GroupService.updateGroup(
+          liveStore.activeGroupId,
+          {
+            name: conversationTitle,
+            sourceId: newConversationId,
+            sourceSnapshotId: newSnapshotId || undefined,
+            sourceTitle: conversationTitle,
+          },
+          { groups: liveStore.groups }
+        )
+        useChartStore.setState({ ...updated, chartTitle: conversationTitle })
+      }
+      useChatStore.getState().setBackendConversationId(newConversationId)
+      if (newSnapshotId) {
+        useChartStore.getState().setCurrentSnapshotId(newSnapshotId)
+      }
+      useTemplateStore.getState().clearAllTemplateState()
+      useFormatGalleryStore.getState().setSelectedFormat(null, "bar")
+      try {
+        await useHistoryStore.getState().loadConversationsFromBackend(true)
+      } catch {}
+      toast.success("Chart saved as separate copy!")
+    } catch {
+      toast.error("Failed to save chart copy")
+    } finally {
+      setIsSaving(false)
+    }
+  }, [user])
+
+  const handleCopyShareLink = useCallback(async () => {
+    if (!currentSnapshotId) {
+      toast.error("Please ensure the chart is saved before sharing.")
+      return
+    }
+    try {
+      setIsSharingLink(true)
+      toast.loading("Generating share link...", { id: "share-link" })
+      const response = await dataService.generateShareLink(currentSnapshotId)
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to generate link")
+      }
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`
+      await navigator.clipboard.writeText(shareUrl)
+      toast.success("Share link copied to clipboard!", { id: "share-link" })
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate share link.", { id: "share-link" })
+    } finally {
+      setIsSharingLink(false)
+    }
+  }, [currentSnapshotId])
+
+  const handleOpenShareLink = useCallback(async () => {
+    if (!currentSnapshotId) {
+      toast.error("Please ensure the chart is saved before sharing.")
+      return
+    }
+    const newWindow = window.open("about:blank", "_blank")
+    if (!newWindow) {
+      toast.error("Pop-up blocked! Please allow popups for this site.")
+      return
+    }
+    try {
+      setIsSharingLink(true)
+      toast.loading("Generating share link...", { id: "share-link" })
+      const response = await dataService.generateShareLink(currentSnapshotId)
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to generate link")
+      }
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`
+      newWindow.location.href = shareUrl
+      toast.dismiss("share-link")
+    } catch (err: any) {
+      newWindow.close()
+      toast.error(err.message || "Failed to generate share link.", { id: "share-link" })
+    } finally {
+      setIsSharingLink(false)
+    }
+  }, [currentSnapshotId])
+
+  const handleModernNewChat = useCallback(() => {
+    handleNewConversation()
+    setInput("")
+    setSidebarChatInput("")
+    setModernRailTab("chat")
+    setModernPanelCollapsed(false)
+  }, [handleNewConversation, setSidebarChatInput])
+
+  // Modern Landing Layout (Desktop & Tablet >= 768px when editorInterface === "modern")
+  if (isModern) {
+    return (
+      <div className="flex-1 flex flex-col min-w-0 h-screen w-full overflow-hidden bg-white">
+        <ModernEditorTopBar
+          activeApp="landing"
+          chartType={chartType}
+          onChartTypeChange={(type) => applyChartTypeChange(type as any)}
+          chartContainerRef={chartContainerRef}
+          rename={rename}
+          zoomPan={zoomPan}
+          exports={exports}
+          hasJSON={hasJSON}
+          hasData={hasVisualContent}
+          isSaving={isSaving}
+          isSharingLink={isSharingLink}
+          currentSnapshotId={currentSnapshotId}
+          onSaveClick={handleModernSaveClick}
+          onClearClick={() => setShowClearDialog(true)}
+          onCopyShareLink={handleCopyShareLink}
+          onOpenShareLink={handleOpenShareLink}
+          onNewChatClick={handleModernNewChat}
+        />
+
+        {/* Main Workspace Row */}
+        <div className="flex-1 flex min-w-0 min-h-0 w-full bg-white overflow-hidden relative">
+          <ModernLandingLeftSidebar
+            activeTab={modernRailTab}
+            onTabChange={setModernRailTab}
+            collapsed={modernPanelCollapsed}
+            onCollapsedChange={setModernPanelCollapsed}
+            isTablet={isTablet}
+            messages={messages}
+            input={input}
+            setInput={setInput}
+            onSend={handleSend}
+            onInputChange={handleInputChange}
+            onPaste={handlePaste}
+            onNewChat={handleModernNewChat}
+            isProcessing={isProcessing}
+            isChatDisabled={isChatDisabled}
+            hasActiveChart={hasActiveChart}
+            showActiveBanner={showActiveBanner}
+            setShowActiveBanner={setShowActiveBanner}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            includeImages={includeImages}
+            setIncludeImages={setIncludeImages}
+            aiCreditsRemaining={aiCreditsRemaining}
+            aiCreditsLimit={aiCreditsLimit}
+            freeAiCreditsRemaining={freeAiCreditsRemaining}
+            purchasedAiCredits={purchasedAiCredits}
+            onOpenUpgrade={() => setIsUpgradeOpen(true)}
+            textareaRef={textareaRef}
+            messagesEndRef={messagesEndRef}
+            currentChartState={currentChartState}
+          />
+
+          {/* Center Canvas / Content Area */}
+          <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative bg-white">
+            {!contentReady && hasJSON && !isGalleryOpen && !isStyleGalleryOpen && (
+              <div className="absolute inset-0 z-20 bg-white">
+                <ChartAreaSkeleton />
+              </div>
+            )}
+
+            {isGalleryOpen ? (
+              <FormatGallery
+                leftSidebarOpen={!modernPanelCollapsed}
+                setLeftSidebarOpen={(open) => setModernPanelCollapsed(!open)}
+              />
+            ) : isStyleGalleryOpen ? (
+              <ChartStyleGalleryPage />
+            ) : hasVisualContent ? (
+              <div
+                className="flex-1 min-h-0 w-full flex flex-col overflow-hidden relative"
+                style={{
+                  backgroundColor: canvasBgType === "transparent" ? "transparent" : canvasBgColor,
+                  backgroundImage:
+                    canvasBgType === "transparent"
+                      ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)`
+                      : undefined,
+                  backgroundSize: canvasBgType === "transparent" ? "20px 20px" : undefined,
+                  backgroundPosition:
+                    canvasBgType === "transparent" ? "0 0, 0 10px, 10px -10px, -10px 0px" : undefined,
+                }}
+              >
+                {isProcessing && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-md px-4 py-2 rounded-full border border-indigo-200/80 shadow-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-ping" />
+                    <span className="text-xs font-semibold text-slate-800">
+                      Updating chart with AI...
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => useChatStore.getState().stopGeneration()}
+                      className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 font-medium transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Square className="w-2.5 h-2.5 fill-current text-red-500" />
+                      <span>Cancel</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
+                  <ChartPreview
+                    variant="landing"
+                    hideToolbar={true}
+                    externalZoomPan={zoomPan}
+                    externalContainerRef={chartContainerRef}
+                    onToggleLeftSidebar={() => setModernPanelCollapsed(v => !v)}
+                    isLeftSidebarCollapsed={modernPanelCollapsed}
+                  />
+                </div>
+
+                <ModernWorkspaceBottomBar
+                  chartContainerRef={chartContainerRef}
+                  zoomPan={zoomPan}
+                  isSidebarCollapsed={modernPanelCollapsed}
+                  onOpenDimensionsPanel={() => {
+                    useUIStore.getState().setActiveSidebarTab("general")
+                    setModernRailTab("tools")
+                    setModernPanelCollapsed(false)
+                  }}
+                />
+              </div>
+            ) : isProcessing ? (
+              <GenerationProgressView />
+            ) : (
+              <PromptTemplate
+                size="large"
+                onSampleClick={() => {
+                  handleTemplateClick()
+                  setModernRailTab("chat")
+                  setModernPanelCollapsed(false)
+                }}
+                isTemplateModalOpen={isTemplateModalOpen}
+                setIsTemplateModalOpen={setIsTemplateModalOpen}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Modern Landing Dialogs */}
+        {dimensionMismatchInfo && (
+          <DimensionMismatchDialog
+            isOpen={showDimensionDialog}
+            onClose={() => {
+              setShowDimensionDialog(false)
+              setDimensionMismatchInfo(null)
+            }}
+            templateDimensions={dimensionMismatchInfo.templateDimensions}
+            currentDimensions={dimensionMismatchInfo.currentDimensions}
+            onGoToTemplateMode={handleGoToTemplateMode}
+            onSaveAsChartOnly={handleSaveAsChartOnly}
+            isSaving={isSaving}
+          />
+        )}
+
+        <SaveModeConflictDialog
+          isOpen={showModeConflictDialog}
+          onClose={() => setShowModeConflictDialog(false)}
+          onSaveChartDiscardTemplate={handleSaveChartDiscardTemplate}
+          onSaveAsSeparateChart={handleSaveAsSeparateChart}
+          isSaving={isSaving}
+        />
+
+        <ClearChartDialog
+          open={showClearDialog}
+          onOpenChange={setShowClearDialog}
+          onSuccess={() => {
+            setShowActiveBanner(false)
+            lastShownChartKeyRef.current = null
+          }}
+        />
+
+        <SaveChartDialog
+          open={showSaveChartDialog}
+          defaultName={saveChartDialogName}
+          isUpdate={!!resolveActiveCloudConversationId()}
+          isSaving={isSaving}
+          onSave={handleSaveChart}
+          onCancel={() => setShowSaveChartDialog(false)}
+        />
+
+        <ModeChangeConfirmDialog
+          open={showModeChangeConfirm}
+          onOpenChange={setModeChangeConfirm}
+          onConfirm={confirmModeChange}
+          onCancel={cancelModeChange}
+        />
+
+        <UpgradeProDialog
+          open={isUpgradeOpen}
+          onOpenChange={setIsUpgradeOpen}
+          featureHighlight="ai"
+          title="Need More AI Credits?"
+          description={`You have ${aiCreditsRemaining} AI credits remaining. Choose a top-up pack to keep generating charts.`}
+        />
+      </div>
+    )
+  }
 
   // Universal Gallery views (accessible across Desktop, Tablet, and Mobile)
   if (isGalleryOpen) {

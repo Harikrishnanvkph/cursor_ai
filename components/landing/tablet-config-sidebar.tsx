@@ -16,9 +16,9 @@ import { TemplatesPanel, TemplateContentPanel } from "@/components/panels/templa
 
 const TABLET_TABS = [
   { id: "types_toggles", label: "General", icon: AlignEndHorizontal },
-  { id: "datasets_slices", label: "Datasets", icon: Database },
-  { id: "styling", label: "Appearance", icon: Palette },
-  { id: "axes", label: "Scales", icon: Grid },
+  { id: "datasets_slices", label: "Data", icon: Database },
+  { id: "styling", label: "Style", icon: Palette },
+  { id: "axes", label: "Axes", icon: Grid },
   { id: "templates", label: "Templates", icon: FileText },
   { id: "tpl_content", label: "Content", icon: FileText },
   { id: "advanced", label: "More", icon: Settings },

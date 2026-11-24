@@ -5,6 +5,7 @@ import { useState, useCallback } from "react"
 import { GeneralTab } from "./general-tab"
 import { TicksTab } from "./ticks-tab"
 import { MoreTab } from "./more-tab"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
 
 interface AxisSettingsProps {
     axis: 'x' | 'y' | 'y1'
@@ -17,6 +18,7 @@ interface AxisSettingsProps {
 type AxisTab = 'general' | 'ticks' | 'more'
 
 export function AxisSettings({ axis, config, onUpdate, className, chartType }: AxisSettingsProps) {
+    const isModern = useIsModernPanel()
     const [activeTab, setActiveTab] = useState<AxisTab>('general')
 
     const updateConfig = useCallback((path: string, value: any) => {
@@ -83,35 +85,53 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
 
     return (
         <div className={cn("flex flex-col h-full overflow-hidden", className)}>
-            {/* Tab Navigation with Better Overflow Handling */}
-            <div className="flex items-center border-b bg-white relative">
-                {/* Scrollable Tab Container */}
-                <div
-                    className="flex items-center overflow-x-auto flex-1 px-2"
-                    style={{
-                        scrollbarWidth: 'thin',
-                        scrollbarColor: '#cbd5e1 transparent'
-                    }}
-                >
-                    <div className="flex items-center gap-1 min-w-max py-1">
-                        {/* Full tabs for larger screens */}
-                        <div className="hidden md:flex items-center gap-1">
-                            {renderTabButton('general', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><path d="M3 9h18" /><path d="M9 21V9" /></svg>)}
-                            {renderTabButton('ticks', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 20h13" /><path d="M12 14h13" /><path d="M3 4h13" /><path d="M3 10h13" /><path d="M3 16h7" /><path d="M3 22h7" /></svg>)}
-                            {renderTabButton('more', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>)}
-                        </div>
+            {isModern ? (
+                <div className={cn("grid grid-cols-3 gap-1 mb-3", MODERN_PANEL_UI.subSegTrack)}>
+                    {(['general', 'ticks', 'more'] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setActiveTab(tab)}
+                            className={cn(
+                                MODERN_PANEL_UI.subSegItemBase,
+                                activeTab === tab && MODERN_PANEL_UI.subSegItemActive
+                            )}
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                    ))}
+                </div>
+            ) : (
+                /* Tab Navigation with Better Overflow Handling */
+                <div className="flex items-center border-b bg-white relative">
+                    {/* Scrollable Tab Container */}
+                    <div
+                        className="flex items-center overflow-x-auto flex-1 px-2"
+                        style={{
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: '#cbd5e1 transparent'
+                        }}
+                    >
+                        <div className="flex items-center gap-1 min-w-max py-1">
+                            {/* Full tabs for larger screens */}
+                            <div className="hidden md:flex items-center gap-1">
+                                {renderTabButton('general', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><path d="M3 9h18" /><path d="M9 21V9" /></svg>)}
+                                {renderTabButton('ticks', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 20h13" /><path d="M12 14h13" /><path d="M3 4h13" /><path d="M3 10h13" /><path d="M3 16h7" /><path d="M3 22h7" /></svg>)}
+                                {renderTabButton('more', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>)}
+                            </div>
 
-                        {/* Compact icon-only tabs for smaller screens */}
-                        <div className="flex md:hidden items-center gap-0.5">
-                            {renderTabButton('general', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><path d="M3 9h18" /><path d="M9 21V9" /></svg>, true)}
-                            {renderTabButton('ticks', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 20h13" /><path d="M12 14h13" /><path d="M3 4h13" /><path d="M3 10h13" /><path d="M3 16h7" /><path d="M3 22h7" /></svg>, true)}
-                            {renderTabButton('more', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>, true)}
+                            {/* Compact icon-only tabs for smaller screens */}
+                            <div className="flex md:hidden items-center gap-0.5">
+                                {renderTabButton('general', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><path d="M3 9h18" /><path d="M9 21V9" /></svg>, true)}
+                                {renderTabButton('ticks', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 20h13" /><path d="M12 14h13" /><path d="M3 4h13" /><path d="M3 10h13" /><path d="M3 16h7" /><path d="M3 22h7" /></svg>, true)}
+                                {renderTabButton('more', <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>, true)}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
-            <div key={activeTab} className="flex-1 overflow-y-auto py-2 px-0">
+            <div key={activeTab} className={isModern ? "flex-1 overflow-y-auto px-0" : "flex-1 overflow-y-auto py-2 px-0"}>
                 {renderTabContent(activeTab)}
             </div>
         </div>

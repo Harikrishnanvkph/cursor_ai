@@ -8,10 +8,13 @@ import { useChartActions } from "@/lib/hooks/use-chart-actions";
 import { useTemplateStore } from "@/lib/template-store";
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store";
 import React, { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, ArrowUpNarrowWide, ArrowDownWideNarrow, ArrowUpAZ, ArrowDownZA, ArrowUpDown, Trophy, TrendingUp, TrendingDown, BarChart3, Percent, Hash, X, Divide, Undo2 } from "lucide-react";
+import { Eye, EyeOff, ArrowUpNarrowWide, ArrowDownWideNarrow, ArrowUpAZ, ArrowDownZA, ArrowUpDown, Trophy, TrendingUp, TrendingDown, BarChart3, Percent, Hash, X, Divide, Undo2, ChevronDown, Filter, Wrench, Maximize2 } from "lucide-react";
 import { type DimensionUnit, convertFromPixels, convertToPixels } from "@/lib/utils/dimension-utils";
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context";
+import { cn } from "@/lib/utils";
 
 export function ResponsiveAnimationsPanel() {
+  const isModern = useIsModernPanel();
   const {
     chartData,
     chartConfig,
@@ -246,37 +249,38 @@ export function ResponsiveAnimationsPanel() {
   const sliceLabels = chartData.labels || [];
 
   return (
-    <div className="space-y-3 mt-4">
+    <div className={isModern ? "space-y-2.5 mt-3" : "space-y-3 mt-4"}>
       {/* Quick Slice Filter - Only show when there are labels */}
       {sliceLabels.length > 0 && (
-        <div className="space-y-0">
+        <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
           <div
-            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+            className={
+              isModern
+                ? cn(MODERN_PANEL_UI.cardHeader, sliceVisibilityOpen && MODERN_PANEL_UI.cardHeaderOpen)
+                : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+            }
             onClick={() => setSliceVisibilityOpen(!sliceVisibilityOpen)}
           >
-            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-            <h3 className="text-xs font-semibold text-gray-900">Quick Slice Filter</h3>
+            {isModern ? (
+              <Filter className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            ) : (
+              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+            )}
+            <h3 className={isModern ? MODERN_PANEL_UI.cardTitle : "text-xs font-semibold text-gray-900"}>Quick Slice Filter</h3>
             <div className="ml-auto flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transform transition-transform ${sliceVisibilityOpen ? 'rotate-180' : ''}`}
-              >
-                <path d="M6 9L12 15L18 9" />
-              </svg>
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 transition-transform duration-150",
+                  isModern ? "text-slate-400" : "text-current",
+                  sliceVisibilityOpen && "rotate-180"
+                )}
+              />
             </div>
           </div>
 
           {sliceVisibilityOpen && (
-            <div className="bg-blue-50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
-              <p className="text-xs text-gray-600 mb-2">Click to hide/show slices from the chart</p>
+            <div className={isModern ? MODERN_PANEL_UI.cardBodyMuted : "bg-blue-50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100"}>
+              <p className={isModern ? "text-[11px] text-slate-500" : "text-xs text-gray-600 mb-2"}>Click to hide/show slices from the chart</p>
               <div className="flex flex-wrap gap-1.5">
                 {sliceLabels.map((label: any, index: number) => {
                   // Check if slice is hidden using legendFilter
@@ -288,12 +292,21 @@ export function ResponsiveAnimationsPanel() {
                       variant={isHidden ? "outline" : "default"}
                       size="sm"
                       onClick={() => handleToggleSliceVisibility(index)}
-                      className={`h-6 text-[10px] px-2 max-w-[140px] ${isHidden
-                        ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-300'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }`}
+                      className={
+                        isModern
+                          ? cn(
+                              "h-6 text-[11px] px-2 max-w-[140px] rounded-md shadow-none transition-colors",
+                              isHidden
+                                ? "bg-white text-slate-400 hover:bg-slate-100 border-slate-200"
+                                : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                            )
+                          : `h-6 text-[10px] px-2 max-w-[140px] ${isHidden
+                            ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-300'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            }`
+                      }
                     >
-                      {isHidden ? <EyeOff className="h-2.5 w-2.5 mr-0.5 shrink-0" /> : <Eye className="h-2.5 w-2.5 mr-0.5 shrink-0" />}
+                      {isHidden ? <EyeOff className="h-2.5 w-2.5 mr-1 shrink-0" /> : <Eye className="h-2.5 w-2.5 mr-1 shrink-0" />}
                       <span className="truncate">{String(label)}</span>
                     </Button>
                   );
@@ -306,132 +319,138 @@ export function ResponsiveAnimationsPanel() {
 
       {/* Quick Tools Section - Only for Single Mode */}
       {chartMode !== 'grouped' && (
-        <div className="space-y-0">
+        <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
           <div
-            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+            className={
+              isModern
+                ? cn(MODERN_PANEL_UI.cardHeader, quickToolsOpen && MODERN_PANEL_UI.cardHeaderOpen)
+                : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+            }
             onClick={() => setQuickToolsOpen(!quickToolsOpen)}
           >
-            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-            <h3 className="text-xs font-semibold text-gray-900 flex-1">Quick Tools</h3>
+            {isModern ? (
+              <Wrench className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            ) : (
+              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+            )}
+            <h3 className={cn(isModern ? MODERN_PANEL_UI.cardTitle : "text-xs font-semibold text-gray-900", "flex-1")}>Quick Tools</h3>
             <div className="ml-auto flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transform transition-transform ${quickToolsOpen ? 'rotate-180' : ''}`}
-              >
-                <path d="M6 9L12 15L18 9" />
-              </svg>
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 transition-transform duration-150",
+                  isModern ? "text-slate-400" : "text-current",
+                  quickToolsOpen && "rotate-180"
+                )}
+              />
             </div>
           </div>
           {quickToolsOpen && (
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100">
+            <div className={isModern ? cn(MODERN_PANEL_UI.cardBodyMuted, "space-y-3") : "bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100"}>
               {/* Reordering Operations */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-blue-900">🔄 Reordering</Label>
+                <Label className={isModern ? "text-[11px] font-semibold text-slate-600 uppercase tracking-wider" : "text-xs font-semibold text-blue-900"}>
+                  {isModern ? "Reordering" : "🔄 Reordering"}
+                </Label>
                 <div className="grid grid-cols-4 gap-1.5">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleSortAscending}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Sort Ascending (Low to High)"
                   >
-                    <ArrowUpNarrowWide className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <ArrowUpNarrowWide className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleSortDescending}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Sort Descending (High to Low)"
                   >
-                    <ArrowDownWideNarrow className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <ArrowDownWideNarrow className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleSortLabelAZ}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Sort by Label A-Z"
                   >
-                    <ArrowUpAZ className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <ArrowUpAZ className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleSortLabelZA}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Sort by Label Z-A"
                   >
-                    <ArrowDownZA className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <ArrowDownZA className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleReverse}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group col-span-4"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors col-span-4 gap-1.5 text-xs font-medium" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group col-span-4"}
                     title="Reverse Order"
                   >
-                    <ArrowUpDown className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <ArrowUpDown className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
+                    {isModern && <span>Reverse Order</span>}
                   </Button>
                 </div>
               </div>
 
               {/* Filtering Operations */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-blue-900">🔍 Filtering</Label>
+                <Label className={isModern ? "text-[11px] font-semibold text-slate-600 uppercase tracking-wider" : "text-xs font-semibold text-blue-900"}>
+                  {isModern ? "Filtering" : "🔍 Filtering"}
+                </Label>
                 <div className="grid grid-cols-4 gap-1.5">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleTop5}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Show Top 5 Values"
                   >
-                    <Trophy className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <Trophy className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleTop10}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Show Top 10 Values"
                   >
-                    <Trophy className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <Trophy className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleAboveThreshold}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title={`Show values above ${thresholdValue}`}
                   >
-                    <TrendingUp className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <TrendingUp className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleBelowThreshold}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title={`Show values below ${thresholdValue}`}
                   >
-                    <TrendingDown className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <TrendingDown className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-gray-600">Threshold:</Label>
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                  <Label className={isModern ? "text-xs font-medium text-slate-600" : "text-xs text-gray-600"}>Threshold</Label>
                   <input
                     type="number"
                     value={thresholdValue}
                     onChange={(e) => setThresholdValue(Number(e.target.value))}
-                    className="w-16 px-2 py-1 text-xs border rounded bg-white"
+                    className={isModern ? "w-20 h-7 px-2 text-xs border border-slate-200 rounded-lg bg-white text-slate-800" : "w-16 px-2 py-1 text-xs border rounded bg-white"}
                     min="0"
                   />
                 </div>
@@ -439,83 +458,85 @@ export function ResponsiveAnimationsPanel() {
 
               {/* Value Transformations */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-blue-900">📈 Transformations</Label>
+                <Label className={isModern ? "text-[11px] font-semibold text-slate-600 uppercase tracking-wider" : "text-xs font-semibold text-blue-900"}>
+                  {isModern ? "Transformations" : "📈 Transformations"}
+                </Label>
                 <div className="grid grid-cols-4 gap-1.5">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleNormalize}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Normalize to 0-100 range"
                   >
-                    <BarChart3 className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <BarChart3 className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleConvertToPercentage}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Convert to percentages"
                   >
-                    <Percent className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <Percent className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleRound1Decimal}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Round to 1 decimal place"
                   >
-                    <Hash className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <Hash className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleRound2Decimals}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Round to 2 decimal places"
                   >
-                    <Hash className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <Hash className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleDoubleValues}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Double all values"
                   >
-                    <X className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <X className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleHalfValues}
-                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                    className={isModern ? "h-8 bg-white border-slate-200/90 hover:bg-indigo-50/70 hover:border-indigo-200 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors" : "h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"}
                     title="Half all values"
                   >
-                    <Divide className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <Divide className={isModern ? "h-3.5 w-3.5" : "h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"} />
                   </Button>
                 </div>
               </div>
 
               {/* Reset Button */}
               {hasBackup && (
-                <div className="pt-2 border-t border-blue-200">
+                <div className={cn("pt-2 border-t", isModern ? "border-slate-200/70" : "border-blue-200")}>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleResetOperations}
-                    className="w-full h-8 bg-white hover:bg-red-50 hover:border-red-300 text-red-600 hover:text-red-700 transition-all group"
+                    className={isModern ? "w-full h-8 bg-white border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700 rounded-lg transition-colors" : "w-full h-8 bg-white hover:bg-red-50 hover:border-red-300 text-red-600 hover:text-red-700 transition-all group"}
                   >
-                    <Undo2 className="h-3.5 w-3.5 mr-2 group-hover:scale-110 transition-transform" />
+                    <Undo2 className="h-3.5 w-3.5 mr-1.5" />
                     <span className="text-xs font-medium">Reset to Original</span>
                   </Button>
                 </div>
               )}
 
               {!hasBackup && (
-                <div className="pt-2 border-t border-blue-200">
-                  <p className="text-xs text-center text-gray-500 py-2">
+                <div className={cn("pt-2 border-t", isModern ? "border-slate-200/70" : "border-blue-200")}>
+                  <p className="text-[11px] text-center text-slate-400 py-1">
                     No changes to reset
                   </p>
                 </div>
@@ -526,32 +547,33 @@ export function ResponsiveAnimationsPanel() {
       )}
 
       {/* Layout and Dimensions - Expanded by default */}
-      <div className="space-y-0">
+      <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          className={
+            isModern
+              ? cn(MODERN_PANEL_UI.cardHeader, responsiveDropdownOpen && MODERN_PANEL_UI.cardHeaderOpen)
+              : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          }
           onClick={() => setResponsiveDropdownOpen(!responsiveDropdownOpen)}
         >
-          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-          <h3 className="text-xs font-semibold text-gray-900">Layout and Dimensions</h3>
+          {isModern ? (
+            <Maximize2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          ) : (
+            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+          )}
+          <h3 className={isModern ? MODERN_PANEL_UI.cardTitle : "text-xs font-semibold text-gray-900"}>Layout and Dimensions</h3>
           <div className="ml-auto flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`transform transition-transform ${responsiveDropdownOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9L12 15L18 9" />
-            </svg>
+            <ChevronDown
+              className={cn(
+                "w-4 h-4 transition-transform duration-150",
+                isModern ? "text-slate-400" : "text-current",
+                responsiveDropdownOpen && "rotate-180"
+              )}
+            />
           </div>
         </div>
         {responsiveDropdownOpen && (
-          <div className="bg-slate-50/70 rounded-b-lg p-2.5 space-y-2.5 border-x border-b border-slate-200/80 overflow-hidden min-w-0">
+          <div className={isModern ? cn(MODERN_PANEL_UI.cardBodyMuted, "overflow-hidden min-w-0") : "bg-slate-50/70 rounded-b-lg p-2.5 space-y-2.5 border-x border-b border-slate-200/80 overflow-hidden min-w-0"}>
             {/* Template Mode Notice */}
             {isTemplateMode && (
               <div className="text-[11px] text-amber-700 bg-amber-50/90 p-2 rounded-md border border-amber-200">
@@ -602,11 +624,20 @@ export function ResponsiveAnimationsPanel() {
                 return (
                   <div
                     onClick={handleSelectFixed}
-                    className={`rounded-lg border transition-all cursor-pointer p-2.5 ${
-                      isFixedActive
-                        ? 'bg-white border-blue-400 shadow-2xs'
-                        : 'bg-white/60 border-slate-200/80 hover:bg-white hover:border-slate-300'
-                    }`}
+                    className={
+                      isModern
+                        ? cn(
+                            "rounded-lg border transition-colors cursor-pointer p-2.5",
+                            isFixedActive
+                              ? "bg-white border-indigo-400/80 shadow-sm"
+                              : "bg-white/70 border-slate-200/80 hover:bg-white hover:border-slate-300"
+                          )
+                        : `rounded-lg border transition-all cursor-pointer p-2.5 ${
+                            isFixedActive
+                              ? 'bg-white border-blue-400 shadow-2xs'
+                              : 'bg-white/60 border-slate-200/80 hover:bg-white hover:border-slate-300'
+                          }`
+                    }
                   >
                     <div className="flex items-start gap-2.5">
                       <input
@@ -615,7 +646,10 @@ export function ResponsiveAnimationsPanel() {
                         name="chart-mode-anim"
                         checked={isFixedActive}
                         onChange={handleSelectFixed}
-                        className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-slate-300 mt-0.5 cursor-pointer shrink-0"
+                        className={cn(
+                          "h-3.5 w-3.5 border-slate-300 mt-0.5 cursor-pointer shrink-0",
+                          isModern ? "text-indigo-600 focus:ring-indigo-500" : "text-blue-600 focus:ring-blue-500"
+                        )}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
@@ -623,7 +657,13 @@ export function ResponsiveAnimationsPanel() {
                             Fixed Dimensions
                           </label>
                           {isFixedActive && (
-                            <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full">
+                            <span
+                              className={
+                                isModern
+                                  ? "text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-1.5 py-0.5 rounded-md leading-none"
+                                  : "text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full"
+                              }
+                            >
                               Active
                             </span>
                           )}
@@ -758,11 +798,20 @@ export function ResponsiveAnimationsPanel() {
                             });
                           }
                         }}
-                        className={`rounded-lg border transition-all cursor-pointer p-2.5 ${
-                          isTemplateActive
-                            ? 'bg-white border-blue-400 shadow-2xs'
-                            : 'bg-white/60 border-slate-200/80 hover:bg-white hover:border-slate-300'
-                        }`}
+                        className={
+                          isModern
+                            ? cn(
+                                "rounded-lg border transition-colors cursor-pointer p-2.5",
+                                isTemplateActive
+                                  ? "bg-white border-indigo-400/80 shadow-sm"
+                                  : "bg-white/70 border-slate-200/80 hover:bg-white hover:border-slate-300"
+                              )
+                            : `rounded-lg border transition-all cursor-pointer p-2.5 ${
+                                isTemplateActive
+                                  ? 'bg-white border-blue-400 shadow-2xs'
+                                  : 'bg-white/60 border-slate-200/80 hover:bg-white hover:border-slate-300'
+                              }`
+                        }
                       >
                         <div className="flex items-start gap-2.5">
                           <input
@@ -783,7 +832,10 @@ export function ResponsiveAnimationsPanel() {
                                 });
                               }
                             }}
-                            className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-slate-300 mt-0.5 cursor-pointer shrink-0"
+                            className={cn(
+                              "h-3.5 w-3.5 border-slate-300 mt-0.5 cursor-pointer shrink-0",
+                              isModern ? "text-indigo-600 focus:ring-indigo-500" : "text-blue-600 focus:ring-blue-500"
+                            )}
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1">
@@ -791,7 +843,13 @@ export function ResponsiveAnimationsPanel() {
                                 Template Dimensions
                               </label>
                               {isTemplateActive && (
-                                <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full">
+                                <span
+                                  className={
+                                    isModern
+                                      ? "text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-1.5 py-0.5 rounded-md leading-none"
+                                      : "text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full"
+                                  }
+                                >
                                   Active
                                 </span>
                               )}
@@ -817,11 +875,20 @@ export function ResponsiveAnimationsPanel() {
                           height: `${origHNum}px`
                         });
                       }}
-                      className={`rounded-lg border transition-all cursor-pointer p-2.5 ${
-                        isOriginalActive
-                          ? 'bg-white border-blue-400 shadow-2xs'
-                          : 'bg-white/60 border-slate-200/80 hover:bg-white hover:border-slate-300'
-                      }`}
+                      className={
+                        isModern
+                          ? cn(
+                              "rounded-lg border transition-colors cursor-pointer p-2.5",
+                              isOriginalActive
+                                ? "bg-white border-indigo-400/80 shadow-sm"
+                                : "bg-white/70 border-slate-200/80 hover:bg-white hover:border-slate-300"
+                            )
+                          : `rounded-lg border transition-all cursor-pointer p-2.5 ${
+                              isOriginalActive
+                                ? 'bg-white border-blue-400 shadow-2xs'
+                                : 'bg-white/60 border-slate-200/80 hover:bg-white hover:border-slate-300'
+                            }`
+                      }
                     >
                       <div className="flex items-start gap-2.5">
                         <input
@@ -840,7 +907,10 @@ export function ResponsiveAnimationsPanel() {
                               height: `${origHNum}px`
                             });
                           }}
-                          className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-slate-300 mt-0.5 cursor-pointer shrink-0"
+                          className={cn(
+                            "h-3.5 w-3.5 border-slate-300 mt-0.5 cursor-pointer shrink-0",
+                            isModern ? "text-indigo-600 focus:ring-indigo-500" : "text-blue-600 focus:ring-blue-500"
+                          )}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
@@ -848,7 +918,13 @@ export function ResponsiveAnimationsPanel() {
                               Original Chart Dimensions
                             </label>
                             {isOriginalActive && (
-                              <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full">
+                              <span
+                                className={
+                                  isModern
+                                    ? "text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-1.5 py-0.5 rounded-md leading-none"
+                                    : "text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full"
+                                }
+                              >
                                 Active
                               </span>
                             )}

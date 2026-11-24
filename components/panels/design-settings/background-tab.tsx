@@ -9,6 +9,8 @@ import { Layers, Info } from "lucide-react"
 import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
 import { compressImage, validateImageFile } from "@/lib/image-utils"
 import { toast } from "sonner"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 interface BackgroundTabProps {
     chartConfig: any
@@ -16,17 +18,28 @@ interface BackgroundTabProps {
 }
 
 export function BackgroundTab({ chartConfig, handleConfigUpdate }: BackgroundTabProps) {
+    const isModern = useIsModernPanel()
     return (
-        <div className="space-y-3 mt-4">
+        <div className={isModern ? "space-y-3" : "space-y-3 mt-4"}>
             {/* Background Settings */}
             <div className="space-y-3">
-                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <Layers className="h-4 w-4 text-blue-900" />
-                    <h3 className="text-sm font-semibold text-blue-900 flex-1">Background Settings</h3>
+                <div
+                    className={
+                        isModern
+                            ? MODERN_PANEL_UI.sectionBanner
+                            : "flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100"
+                    }
+                >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Layers className={cn("h-4 w-4 shrink-0", isModern ? "text-indigo-600" : "text-blue-900")} />
+                        <h3 className={cn("font-semibold truncate", isModern ? "text-xs text-slate-800" : "text-sm text-blue-900")}>
+                            Background Settings
+                        </h3>
+                    </div>
                     <TooltipProvider>
                         <Tooltip delayDuration={300}>
                             <TooltipTrigger asChild>
-                                <Info className="h-4 w-4 text-blue-400 cursor-help hover:text-blue-600 transition-colors" />
+                                <Info className={cn("h-3.5 w-3.5 cursor-help transition-colors shrink-0", isModern ? "text-slate-400 hover:text-slate-600" : "h-4 w-4 text-blue-400 hover:text-blue-600")} />
                             </TooltipTrigger>
                             <TooltipContent className="max-w-[200px] text-xs bg-slate-900 text-slate-50 border-slate-800">
                                 <p>Customize your chart background with solid colors, gradients, or images. Adjust opacity and blur for visual depth.</p>

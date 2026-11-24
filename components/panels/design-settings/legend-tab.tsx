@@ -9,6 +9,7 @@ import {
     applyChartJsFontPatch,
 } from "@/components/ui/font-setting-section"
 import { PiePanel } from "../pie-panel"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
 
 type ConfigPathUpdate = {
     path: string;
@@ -26,11 +27,18 @@ export function LegendTab({
     handleConfigUpdate: (path: string, value: any) => void;
     applyConfigUpdates: (updates: ConfigPathUpdate[]) => void;
 }) {
+    const isModern = useIsModernPanel()
     return (
-        <div className="space-y-4 mt-4">
+        <div className={isModern ? "space-y-3.5" : "space-y-4 mt-4"}>
             {/* Show Legend Toggle */}
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-                <Label className="text-sm font-medium text-blue-900">Show Legend</Label>
+            <div
+                className={
+                    isModern
+                        ? MODERN_PANEL_UI.sectionBanner
+                        : "flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100"
+                }
+            >
+                <Label className={isModern ? "text-xs font-semibold text-slate-800" : "text-sm font-medium text-blue-900"}>Show Legend</Label>
                 <Switch
                     checked={chartConfig.plugins?.legend?.display !== false}
                     onCheckedChange={(checked) => handleConfigUpdate("plugins.legend.display", checked)}
@@ -39,9 +47,9 @@ export function LegendTab({
             </div>
 
             {chartConfig.plugins?.legend?.display === false && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-xs text-blue-800 leading-relaxed">
-                        <strong>Enable Legend</strong> to display a color-coded key that helps viewers understand what each data series represents.
+                <div className={isModern ? "p-3 bg-slate-50 border border-slate-200/80 rounded-xl" : "p-3 bg-blue-50 border border-blue-200 rounded-lg"}>
+                    <p className={isModern ? "text-xs text-slate-600 leading-relaxed" : "text-xs text-blue-800 leading-relaxed"}>
+                        <strong className={isModern ? "text-slate-800" : undefined}>Enable Legend</strong> to display a color-coded key that helps viewers understand what each data series represents.
                     </p>
                 </div>
             )}

@@ -125,6 +125,33 @@ export function getHexFromColor(color: string): string {
     return color
 }
 
+/**
+ * Determine if a color (hex, rgb, rgba, hsl) is dark.
+ * Uses ITU-R BT.709 perceived luminance formula.
+ * Returns true if luminance < 0.5.
+ */
+export function isDarkColor(color: string | null | undefined): boolean {
+    if (!color || color === 'transparent') return false
+    const hex = getHexFromColor(color)
+    if (!hex || !hex.startsWith('#')) return false
+    const clean = hex.replace('#', '')
+    if (clean.length === 3) {
+        const r = parseInt(clean[0] + clean[0], 16)
+        const g = parseInt(clean[1] + clean[1], 16)
+        const b = parseInt(clean[2] + clean[2], 16)
+        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+        return lum < 0.5
+    }
+    if (clean.length >= 6) {
+        const r = parseInt(clean.substring(0, 2), 16)
+        const g = parseInt(clean.substring(2, 4), 16)
+        const b = parseInt(clean.substring(4, 6), 16)
+        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+        return lum < 0.5
+    }
+    return false
+}
+
 // ──────────────────── Opacity ────────────────────
 
 /** Apply opacity to any color format (hex, rgba, rgb, hsl). */

@@ -18,6 +18,8 @@ import { ColorsTab } from "./colors-tab"
 import { ImagesTab } from "./images-tab"
 import { rgbaToHex } from "@/lib/utils/color-utils" // Replacing inline rgbaToHex
 import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 interface SliceSettingsProps {
     className?: string
@@ -26,6 +28,7 @@ interface SliceSettingsProps {
 type SliceTab = 'data' | 'colors' | 'images'
 
 export function SliceSettings({ className }: SliceSettingsProps) {
+    const isModern = useIsModernPanel()
     const { setActiveTab: setSidebarActiveTab } = useEditorSidebarContext()
     const {
         chartData,
@@ -520,9 +523,13 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                             size="sm"
                             variant="outline"
                             onClick={() => setShowEditSlicesModal(true)}
-                            className="w-full gap-2 bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 text-blue-700 font-medium shadow-sm"
+                            className={
+                                isModern
+                                    ? "w-full h-8 text-xs gap-1.5 bg-indigo-50/70 border-indigo-200/80 hover:bg-indigo-100/70 text-indigo-700 font-medium rounded-lg shadow-sm"
+                                    : "w-full gap-2 bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 text-blue-700 font-medium shadow-sm"
+                            }
                         >
-                            <Layers className="w-4 h-4" />
+                            <Layers className="w-3.5 h-3.5" />
                             Edit All Group Datasets
                         </Button>
                     </div>
@@ -546,7 +553,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                         }
                                     }}
                                 >
-                                    <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">
+                                    <SelectTrigger className={isModern ? "h-8 w-full text-xs bg-white border-slate-200/90" : "h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100"}>
                                         <SelectValue placeholder="Select Group" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -575,7 +582,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
                                     return (
                                         <Select value={String(currentDatasetIndex >= 0 ? currentDatasetIndex : selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
-                                            <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">
+                                            <SelectTrigger className={isModern ? "h-8 w-full text-xs bg-white border-slate-200/90" : "h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100"}>
                                                 <span className="text-xs truncate">
                                                     {currentDataset?.label || `Dataset ${currentDatasetIndex >= 0 ? currentDatasetIndex + 1 : 1}`}
                                                 </span>
@@ -626,7 +633,13 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                 </div>
             </div>
 
-            <div className="flex border-b border-gray-200 overflow-x-auto whitespace-nowrap max-w-full px-2">
+            <div
+                className={
+                    isModern
+                        ? cn("grid grid-cols-3 gap-1", MODERN_PANEL_UI.subSegTrack)
+                        : "flex border-b border-gray-200 overflow-x-auto whitespace-nowrap max-w-full px-2"
+                }
+            >
                 {[
                     { id: 'data' as const, label: 'Data' },
                     { id: 'colors' as const, label: 'Colors' },
@@ -634,11 +647,19 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                 ].map((tab) => (
                     <button
                         key={tab.id}
+                        type="button"
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === tab.id
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
-                            }`}
+                        className={
+                            isModern
+                                ? cn(
+                                    MODERN_PANEL_UI.subSegItemBase,
+                                    activeTab === tab.id && MODERN_PANEL_UI.subSegItemActive
+                                )
+                                : `px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === tab.id
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`
+                        }
                     >
                         {tab.label}
                     </button>

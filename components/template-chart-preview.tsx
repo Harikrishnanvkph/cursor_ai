@@ -74,6 +74,8 @@ interface TemplateChartPreviewProps {
   readOnly?: boolean
   zoomPan?: any
   variant?: 'landing' | 'default'
+  hideToolbar?: boolean
+  externalContainerRef?: React.RefObject<HTMLDivElement | null>
 }
 
 export function TemplateChartPreview({
@@ -87,6 +89,8 @@ export function TemplateChartPreview({
   readOnly = false,
   zoomPan,
   variant = 'default',
+  hideToolbar = false,
+  externalContainerRef,
 }: TemplateChartPreviewProps) {
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
@@ -198,7 +202,8 @@ export function TemplateChartPreview({
   } = useChartRename()
   const drawingMode = useDecorationStore(s => s.drawingMode)
 
-  const containerRef = useRef<HTMLDivElement>(null)
+  const internalContainerRef = useRef<HTMLDivElement>(null)
+  const containerRef = externalContainerRef || internalContainerRef
   const exportCanvasRef = useRef<HTMLDivElement>(null)
 
   const [mobileExportQuality, setMobileExportQuality] = useState<number>(4)
@@ -246,7 +251,7 @@ export function TemplateChartPreview({
     })
     observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+  }, [containerRef])
 
   // Mobile state and resize listener
   const [isMobile, setIsMobile] = useState(false)
@@ -1419,7 +1424,7 @@ export function TemplateChartPreview({
       )}
 
       {/* Template Controls */}
-      {!readOnly && !isMobile && (
+      {!readOnly && !isMobile && !hideToolbar && (
         <div className={cn(
           variant === 'landing'
             ? 'h-[52px] min-h-[52px] px-3.5 border-b border-slate-200/80 bg-white/40 backdrop-blur-xl flex items-center justify-between flex-shrink-0 z-10 w-full'
@@ -1815,7 +1820,10 @@ export function TemplateChartPreview({
           {/* Layout wrapper — sized to the scaled template so the scrollable
               area matches the visual size (CSS transform doesn't affect layout). */}
           <div
-            className="relative mx-auto flex-shrink-0"
+            className={cn(
+              "relative mx-auto flex-shrink-0",
+              hideToolbar && panOffset.x === 0 && panOffset.y === 0 && "shadow-[0_4px_20px_-2px_rgba(15,23,42,0.08),0_1px_3px_0_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04]"
+            )}
             style={{
               width: width * scale,
               height: height * scale,

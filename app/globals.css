@@ -621,4 +621,120 @@ kbd {
   margin: 0 0 0.25em 0;
   font-family: inherit;
   color: inherit;
-}
+}
+
+/* ==========================================================================
+   Modern Tools Sidebar Scoped Design System (.modern-tools-scope)
+   Strictly isolated to the Modern editor & landing tools drawers.
+   Lightweight pure CSS — zero backdrop-filter, zero heavy shadows/animations.
+   ========================================================================== */
+.modern-tools-scope {
+  --primary: 239 84% 60%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 239 84% 60%;
+  --border: 214 32% 91%;
+  --input: 214 32% 88%;
+  --muted-foreground: 215 16% 47%;
+  --radius: 0.5rem;
+  accent-color: #4f46e5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Uniform crisp Switches (cancels legacy scale-75/scale-90 blur and black/blue mismatch) */
+.modern-tools-scope button[role="switch"] {
+  width: 2rem !important;
+  height: 1.125rem !important;
+  border-width: 2px !important;
+  transform: none !important;
+  transition: background-color 150ms ease !important;
+}
+.modern-tools-scope button[role="switch"][data-state="unchecked"] {
+  background-color: #cbd5e1 !important;
+}
+.modern-tools-scope button[role="switch"][data-state="checked"] {
+  background-color: #4f46e5 !important;
+}
+.modern-tools-scope button[role="switch"] > span {
+  width: 0.875rem !important;
+  height: 0.875rem !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2) !important;
+}
+.modern-tools-scope button[role="switch"][data-state="unchecked"] > span {
+  transform: translateX(0) !important;
+}
+.modern-tools-scope button[role="switch"][data-state="checked"] > span {
+  transform: translateX(14px) !important;
+}
+
+/* Uniform sleek Sliders matching Modern bottom bar HUD */
+.modern-tools-scope span[data-orientation="horizontal"].bg-secondary {
+  height: 4px !important;
+  background-color: #e2e8f0 !important;
+}
+.modern-tools-scope span[data-orientation="horizontal"].bg-secondary > span[data-orientation="horizontal"] {
+  background-color: #4f46e5 !important;
+}
+.modern-tools-scope [role="slider"] {
+  width: 0.875rem !important;
+  height: 0.875rem !important;
+  border-width: 2px !important;
+  border-color: #4f46e5 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16) !important;
+}
+
+/* Uniform Inputs, Textareas & Select Triggers */
+.modern-tools-scope input:not([type="color"]):not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="file"]),
+.modern-tools-scope textarea {
+  border-radius: 0.5rem;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+.modern-tools-scope input:not([type="color"]):not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="file"]):hover:not(:disabled),
+.modern-tools-scope textarea:hover:not(:disabled) {
+  border-color: #cbd5e1;
+}
+.modern-tools-scope input:not([type="color"]):not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="file"]):focus,
+.modern-tools-scope textarea:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+  outline: none !important;
+}
+
+.modern-tools-scope button[role="combobox"] {
+  border-radius: 0.5rem;
+  border-color: #e2e8f0;
+  background-color: #ffffff;
+  color: #1e293b;
+}
+.modern-tools-scope button[role="combobox"]:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+.modern-tools-scope button[role="combobox"]:focus-visible {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+  outline: none !important;
+}
+
+/* Clean subtle thin scrollbars inside Modern sidebar panels */
+.modern-tools-scope ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.modern-tools-scope ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modern-tools-scope ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+.modern-tools-scope ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.65);
+}
+.modern-tools-scope * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+

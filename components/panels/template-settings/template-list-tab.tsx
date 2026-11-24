@@ -8,6 +8,7 @@ import { Pencil, Trash2, LayoutGrid, Globe, User, Plus } from "lucide-react"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
 
 // Zone type → color mapping for skeleton preview
 const ZONE_COLORS: Record<string, { bg: string; border: string }> = {
@@ -23,6 +24,7 @@ interface TemplateListTabProps {
 }
 
 export function TemplateListTab({ mode = 'editor' }: TemplateListTabProps = {}) {
+    const isModern = useIsModernPanel()
     const { setEditorMode, setGenerateMode } = useTemplateStore()
 
     const [confirmFormatOpen, setConfirmFormatOpen] = React.useState(false)
@@ -124,16 +126,30 @@ export function TemplateListTab({ mode = 'editor' }: TemplateListTabProps = {}) 
             )}
 
             {/* 2. Below: Global / My Templates toggle */}
-            <div className="grid grid-cols-2 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-lg border border-slate-200/60 dark:border-slate-700/60 w-full">
+            <div
+                className={
+                    isModern
+                        ? cn("grid grid-cols-2 gap-1 w-full", MODERN_PANEL_UI.segTrack)
+                        : "grid grid-cols-2 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-lg border border-slate-200/60 dark:border-slate-700/60 w-full"
+                }
+            >
                 <button
                     type="button"
                     onClick={() => setFormatView('global')}
-                    className={cn(
-                        "flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-md transition-all cursor-pointer",
-                        formatView === 'global'
-                            ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs font-semibold"
-                            : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium"
-                    )}
+                    className={
+                        isModern
+                            ? cn(
+                                MODERN_PANEL_UI.segItemBase,
+                                "flex items-center justify-center gap-1.5",
+                                formatView === 'global' && MODERN_PANEL_UI.segItemActive
+                            )
+                            : cn(
+                                "flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-md transition-all cursor-pointer",
+                                formatView === 'global'
+                                    ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs font-semibold"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium"
+                            )
+                    }
                 >
                     <Globe className="h-3.5 w-3.5" />
                     <span>Global</span>
@@ -141,12 +157,20 @@ export function TemplateListTab({ mode = 'editor' }: TemplateListTabProps = {}) 
                 <button
                     type="button"
                     onClick={() => setFormatView('mine')}
-                    className={cn(
-                        "flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-md transition-all cursor-pointer",
-                        formatView === 'mine'
-                            ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs font-semibold"
-                            : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium"
-                    )}
+                    className={
+                        isModern
+                            ? cn(
+                                MODERN_PANEL_UI.segItemBase,
+                                "flex items-center justify-center gap-1.5",
+                                formatView === 'mine' && MODERN_PANEL_UI.segItemActive
+                            )
+                            : cn(
+                                "flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-md transition-all cursor-pointer",
+                                formatView === 'mine'
+                                    ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs font-semibold"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium"
+                            )
+                    }
                 >
                     <User className="h-3.5 w-3.5" />
                     <span>My Templates</span>
@@ -194,11 +218,20 @@ export function TemplateListTab({ mode = 'editor' }: TemplateListTabProps = {}) 
                         return (
                             <div
                                 key={format.id}
-                                className={`group p-2 rounded-lg cursor-pointer transition-all duration-200 border ${
-                                    isSelected
-                                        ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-200 shadow-sm'
-                                        : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
-                                }`}
+                                className={
+                                    isModern
+                                        ? cn(
+                                            "group p-2 rounded-xl cursor-pointer transition-colors border",
+                                            isSelected
+                                                ? "border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-200/70 shadow-sm"
+                                                : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-sm"
+                                        )
+                                        : `group p-2 rounded-lg cursor-pointer transition-all duration-200 border ${
+                                            isSelected
+                                                ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-200 shadow-sm'
+                                                : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
+                                        }`
+                                }
                                 onClick={() => handleFormatSelect(format.id)}
                             >
                                 <div className="min-w-0 flex-1 flex flex-col">

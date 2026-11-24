@@ -43,6 +43,12 @@ import type { PresetCategory } from "@/lib/chart-style-types"
 import { getPresetById } from "@/lib/chart-style-defaults"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { useSnapStateStore } from "@/lib/stores/snap-state-store"
+import { useSettingsStore } from "@/lib/stores/settings-store"
+import { useUIStore } from "@/lib/stores/ui-store"
+import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
+import { ModernEditorTopBar } from "@/components/editor/modern-editor-topbar"
+import { ModernLeftSidebar } from "@/components/editor/modern-left-sidebar"
+import { ModernWorkspaceBottomBar } from "@/components/editor/modern-workspace-bottombar"
 
 const ConfirmDialog = dynamic(() => import("@/components/ui/confirm-dialog").then(m => m.ConfirmDialog), { ssr: false })
 const SaveChartDialog = dynamic(() => import("@/components/ui/save-chart-dialog").then(m => m.SaveChartDialog), { ssr: false })
@@ -86,6 +92,8 @@ function EditorPageContent() {
     setPresetMetadata: s.setPresetMetadata,
   })))
   const [showUpdatePresetDialog, setShowUpdatePresetDialog] = useState(false)
+  const canvasBgType = useUIStore(s => s.canvasBgType)
+  const canvasBgColor = useUIStore(s => s.canvasBgColor)
 
   // Helper function to load compatible dummy data for chart type
   const generateDummyDataForType = (type: string): any => {
@@ -426,9 +434,16 @@ function EditorPageContent() {
     startNewConversation: s.startNewConversation,
     setBackendConversationId: s.setBackendConversationId,
   })))
+  const editorInterface = useSettingsStore(s => s.editorInterface)
+  const isModern = editorInterface === "modern"
   const originalCloudDimensions = useChartStore(s => s.originalCloudDimensions)
+  const chartContainerRef = useRef<HTMLDivElement>(null)
+  const zoomPan = useZoomPan()
   const rename = useChartRename()
-  const exports = useChartExport()
+  const exports = useChartExport({
+    onToggleLeftSidebar: () => setLeftSidebarCollapsed((v) => !v),
+    isLeftSidebarCollapsed: leftSidebarCollapsed,
+  })
   const [exportExpanded, setExportExpanded] = useState(false)
   const [headerExportQuality, setHeaderExportQuality] = useState(4)
   const [shareExpanded, setShareExpanded] = useState(false)
@@ -1927,591 +1942,517 @@ function EditorPageContent() {
     )
   }
 
-  // Tablet overlay sidebar logic
-  if (isTablet) {
-    return (
-      <div className="flex h-full w-full bg-white overflow-hidden relative">
-        {/* Left Sidebar - Collapsed by default, shows only icons */}
-        <div className="w-16 flex-shrink-0 flex flex-col h-full items-center py-3 bg-white border-r border-gray-200 overflow-hidden group">
-          <div className="flex flex-col items-center space-y-3 w-full">
-            {/* Company Logo / Toggle Sidebar */}
-            <button
-              onClick={() => setLeftSidebarCollapsed(false)}
-              className="p-2 bg-slate-50 border border-slate-200 rounded-xl shadow-xs hover:bg-slate-100 transition-all flex items-center justify-center w-9 h-9"
-              title="Expand Sidebar"
-            >
-              {/* Logo image, hidden when parent sidebar is hovered */}
-              <img src="/logo.png" alt="Company Logo" className="w-5 h-5 object-contain group-hover:hidden" />
-              
-              {/* PanelLeft icon, visible only when parent sidebar is hovered */}
-              <PanelLeft className="w-5 h-5 hidden group-hover:block text-slate-500 hover:text-slate-800" />
-            </button>
+  // Unified Non-Mobile Layout (>= 768px: Tablet & Desktop) for both Default and Modern interfaces.
+  // Keeping the Center Chart Workspace at a fixed position in the JSX tree ensures switching interfaces
+  // preserves all state, undo/redo history, active chart instance, and triggers zero API calls or remounts.
+  return (
+    <div className="flex-1 flex flex-col min-w-0 h-full w-full overflow-hidden">
+      {/* Modern Unified Top Navigation Bar */}
+      {isModern && (
+        <ModernEditorTopBar
+          chartType={chartType}
+          onChartTypeChange={(type) => setChartType(type as any)}
+          chartContainerRef={chartContainerRef}
+          rename={rename}
+          zoomPan={zoomPan}
+          exports={exports}
+          hasJSON={hasJSON}
+          hasData={hasData}
+          isSaving={isSaving}
+          isSharingLink={isSharingLink}
+          currentSnapshotId={currentSnapshotId}
+          onSaveClick={handleSaveClick}
+          onClearClick={handleCancel}
+          onCopyShareLink={handleCopyShareLink}
+          onOpenShareLink={handleOpenShareLink}
+        />
+      )}
 
-            {/* Quick Navigation Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all hover:shadow-sm"
-                  title="Quick Navigation"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-lg rounded-xl p-1.5">
-                <DropdownMenuItem
-                  onClick={() => router.push('/board')}
-                  className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Board</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => router.push('/landing')}
-                  className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-slate-500" />
-                  <span>AI Chat</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+      {/* Main Workspace Row */}
+      <div className="flex-1 flex min-w-0 min-h-0 w-full bg-white overflow-hidden relative">
+        {/* Left Navigation / Sidebar Slot */}
+        {isModern ? (
+          <ModernLeftSidebar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onNewChart={handleNewChart}
+            onSaveClick={handleSaveClick}
+            isTablet={isTablet}
+          />
+        ) : isTablet ? (
+          /* Default Tablet Left Sidebar - Collapsed rail, shows only icons */
+          <div className="w-16 flex-shrink-0 flex flex-col h-full items-center py-3 bg-white border-r border-gray-200 overflow-hidden group">
+            <div className="flex flex-col items-center space-y-3 w-full">
+              {/* Company Logo / Toggle Sidebar */}
+              <button
+                onClick={() => setLeftSidebarCollapsed(false)}
+                className="p-2 bg-slate-50 border border-slate-200 rounded-xl shadow-xs hover:bg-slate-100 transition-all flex items-center justify-center w-9 h-9"
+                title="Expand Sidebar"
+              >
+                <img src="/logo.png" alt="Company Logo" className="w-5 h-5 object-contain group-hover:hidden" />
+                <PanelLeft className="w-5 h-5 hidden group-hover:block text-slate-500 hover:text-slate-800" />
+              </button>
+
+              {/* Quick Navigation Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all hover:shadow-sm"
+                    title="Quick Navigation"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-lg rounded-xl p-1.5">
+                  <DropdownMenuItem
+                    onClick={() => router.push('/board')}
+                    className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Board</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => router.push('/landing')}
+                    className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-slate-500" />
+                    <span>AI Chat</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="w-10 h-px bg-gray-200 my-4" />
+
+            {/* Config Tabs Icons */}
+            <div className="flex flex-col items-center space-y-1 w-full flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
+              {TABS.map((tab) => {
+                const Icon = tab.icon
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      if (tab.id === 'templates') {
+                        const templateStore = useTemplateStore.getState()
+                        ensureDefaultFormatSelected(useChartStore.getState().chartType || 'bar')
+                        templateStore.setGenerateMode('format')
+                        templateStore.setEditorMode('template')
+                        setActiveTab('tpl_templates')
+                      } else {
+                        setActiveTab(tab.id)
+                      }
+                      setRightSidebarCollapsed(false)
+                    }}
+                    className={`p-2 rounded-lg flex items-center justify-center w-10 h-10 transition-all duration-200 ${
+                      activeTab === tab.id
+                        ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100"
+                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                    }`}
+                    title={tab.label}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </button>
+                )
+              })}
+            </div>
           </div>
+        ) : null}
 
-          <div className="w-10 h-px bg-gray-200 my-4" />
-
-          {/* Config Tabs Icons */}
-          <div className="flex flex-col items-center space-y-1 w-full flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
-            {TABS.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    if (tab.id === 'templates') {
-                      const templateStore = useTemplateStore.getState()
-                      ensureDefaultFormatSelected(useChartStore.getState().chartType || 'bar')
-                      templateStore.setGenerateMode('format')
-                      templateStore.setEditorMode('template')
-                      setActiveTab('tpl_templates')
-                    } else {
-                      setActiveTab(tab.id)
-                    }
-                    setRightSidebarCollapsed(false)
-                  }}
-                  className={`p-2 rounded-lg flex items-center justify-center w-10 h-10 transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100"
-                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
-                  title={tab.label}
+        {/* Center Area - Chart Workspace */}
+        <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'p-0 overflow-hidden' : isTablet ? 'p-2 sm:p-4 overflow-y-auto justify-center items-center' : 'p-4 overflow-y-auto justify-center items-center'}`}>
+          {editPresetId && (!isTablet || isModern) && (
+            <div className="mx-3 mt-2 mb-2 bg-gradient-to-r from-violet-950 via-purple-950 to-indigo-950 border border-violet-700/50 rounded-xl px-3 py-2 flex items-center justify-between text-white shadow-md shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-6 h-6 rounded-md bg-violet-600/40 border border-violet-400/30 flex items-center justify-center shrink-0">
+                  <Palette className="w-3.5 h-3.5 text-violet-300" />
+                </div>
+                <div className="flex items-center gap-2 min-w-0 truncate">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-violet-300 shrink-0">Preset Editing Mode</span>
+                  {isBuiltInPreset && (
+                    <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-semibold shrink-0">Built-in Clone</span>
+                  )}
+                  <span className="text-xs text-gray-200 truncate">
+                    &mdash; Editing <strong className="text-white font-semibold">{presetMetadata?.name || editPresetId}</strong>
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowUpdatePresetDialog(true)}
+                  className="h-7 text-xs bg-violet-600 hover:bg-violet-500 text-white border-violet-400/50 shadow-sm"
                 >
-                  <Icon className="w-4 h-4" />
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Chart Area (between left and right sidebars) */}
-        <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'p-0 overflow-hidden' : 'p-2 sm:p-4 overflow-y-auto justify-center items-center'}`}>
+                  <Upload className="w-3.5 h-3.5 mr-1" />
+                  {isBuiltInPreset ? 'Save to Database' : 'Update Preset'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={exitPresetEditMode}
+                  className="h-7 text-xs text-violet-200 hover:text-white hover:bg-violet-800/40"
+                  title="Exit preset editing mode and return to standard chart editing"
+                >
+                  <X className="w-3.5 h-3.5 mr-1" />
+                  Exit Preset Mode
+                </Button>
+              </div>
+            </div>
+          )}
           {!storeHydrated ? (
             renderCenterAreaLoader()
           ) : hasJSON ? (
-            <ChartPreview
-              onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
-              isLeftSidebarCollapsed={leftSidebarCollapsed}
-              onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
-              isSidebarCollapsed={rightSidebarCollapsed}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              onNewChart={handleNewChart}
-            />
+            <div
+              className="flex-1 min-h-0 w-full flex flex-col overflow-hidden"
+              style={
+                isModern
+                  ? {
+                      backgroundColor: canvasBgType === "transparent" ? "transparent" : canvasBgColor,
+                      backgroundImage:
+                        canvasBgType === "transparent"
+                          ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)`
+                          : undefined,
+                      backgroundSize: canvasBgType === "transparent" ? "20px 20px" : undefined,
+                      backgroundPosition:
+                        canvasBgType === "transparent" ? "0 0, 0 10px, 10px -10px, -10px 0px" : undefined,
+                    }
+                  : undefined
+              }
+            >
+              <div className="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
+                <ChartPreview
+                  onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
+                  isLeftSidebarCollapsed={leftSidebarCollapsed}
+                  onToggleSidebar={!isModern ? () => setRightSidebarCollapsed((v) => !v) : undefined}
+                  isSidebarCollapsed={!isModern ? rightSidebarCollapsed : undefined}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                  onNewChart={handleNewChart}
+                  hideToolbar={isModern}
+                  externalZoomPan={zoomPan}
+                  externalContainerRef={chartContainerRef}
+                />
+              </div>
+              {isModern && (
+                <ModernWorkspaceBottomBar
+                  chartContainerRef={chartContainerRef}
+                  zoomPan={zoomPan}
+                />
+              )}
+            </div>
           ) : (
             <EditorWelcomeScreen
-              onDatasetClick={() => setActiveTab('datasets_slices')}
+              onDatasetClick={() => {
+                setSidebarView('tools')
+                setActiveTab('datasets_slices')
+                setLeftSidebarCollapsed(false)
+              }}
             />
           )}
         </div>
 
-        {/* Right Sidebar - Collapsed by default, shows profile, expand button, and action buttons */}
-        <div className="w-12 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm z-40 relative">
-          {/* Profile Button - Top */}
-          <div className="p-2 border-b border-gray-200 flex justify-center">
-            <SimpleProfileDropdown size="sm" />
-          </div>
-
-          {/* Action Buttons: Toggle, SquarePen, Save, Trash, Share, History */}
-          <div className="flex flex-col items-center gap-2 py-2 px-1">
-            {/* Expand Button */}
-            <button
-              type="button"
-              onClick={() => setRightSidebarCollapsed(false)}
-              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
-              title="Expand Sidebar"
-            >
-              <PanelRight className="w-4 h-4" />
-            </button>
-
-            {/* 1. SquarePen (Add) Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  disabled={!hasJSON}
-                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
-                  title={!hasJSON ? "Create a chart first to add datasets/groups" : "Add Single or Grouped Chart"}
-                >
-                  <SquarePen className="w-4 h-4 text-blue-600 dark:text-blue-500" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
-                <DropdownMenuItem
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
-                >
-                  <BarChart2 className="h-4 w-4 text-blue-600" />
-                  <div className="flex flex-col">
-                    <span className="font-semibold">Single Chart</span>
-                    <span className="text-[10px] text-slate-400">Add dataset to chart</span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('openNewGroupModal'));
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
-                >
-                  <Layers className="h-4 w-4 text-purple-600" />
-                  <div className="flex flex-col">
-                    <span className="font-semibold">Grouped Chart</span>
-                    <span className="text-[10px] text-slate-400">Create a new group</span>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* 2. Save Button */}
-            <button
-              type="button"
-              onClick={handleSaveClick}
-              disabled={!hasJSON || isSaving}
-              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-500 dark:hover:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
-              title="Save chart to online database"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
-            </button>
-
-            {/* 3. Delete / Clear Button */}
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={!hasJSON}
-              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
-              title="Clear chart and start new"
-            >
-              <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
-            </button>
-
-            {/* 4. Share Button */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  disabled={isSharingLink || !currentSnapshotId}
-                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-600 cursor-pointer outline-none"
-                  title={!currentSnapshotId ? "Save to share" : "Share options"}
-                >
-                  {isSharingLink ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                  ) : (
-                    <Share2 className="w-4 h-4" />
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
-                <DropdownMenuItem onClick={handleCopyShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
-                  <Copy className="h-3.5 w-3.5 text-slate-500" />
-                  <span>Copy Link</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleOpenShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
-                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                  <span>Open Link</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* 5. History Dropdown */}
-            <HistoryDropdown
-              variant="inline"
-              className="border-0 bg-transparent shadow-none hover:bg-slate-100 hover:text-slate-900 text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 flex-shrink-0"
-            />
-          </div>
-
-          {/* Spacer — clicking the empty area below buttons expands the sidebar */}
-          <div className="flex-1 cursor-pointer" onClick={() => setRightSidebarCollapsed(false)} title="Expand Sidebar" />
-        </div>
-
-        {/* Left Sidebar Overlay when expanded */}
-        {(!leftSidebarCollapsed) && (
-          <div className="fixed top-0 left-0 h-full w-52 z-40 bg-white shadow-2xl border-r border-gray-200 flex flex-col overflow-hidden">
-            {/* Unified Editor Header */}
-            <div className="flex flex-col border-b border-gray-100 flex-shrink-0 pt-2 pb-2">
-              <div className="flex justify-center mb-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2.5">
-                  <img src="/logo.png" alt="Company Logo" className="w-[22px] h-[22px] object-contain" />
-                  <span className="text-slate-300 font-light text-sm">|</span>
-                  <span>Advanced Editor</span>
-                </span>
-              </div>
-
-              <div className="flex items-center px-2">
-                <div className="flex items-center gap-1.5 flex-1">
-                  <button
-                    onClick={() => router.push('/board')}
-                    className="flex-1 flex items-center justify-center gap-1.5 h-8 px-2 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
-                    title="Board"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Board</span>
-                  </button>
-                  <button
-                    onClick={() => router.push('/landing')}
-                    className="flex-1 flex items-center justify-center gap-1.5 h-8 px-2 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
-                    title="AI Chat"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-slate-500" />
-                    <span>AI Chat</span>
-                  </button>
+        {/* Right Panel & Overlays (Default Interface Only) */}
+        {!isModern && (
+          isTablet ? (
+            <>
+              {/* Default Tablet Right Sidebar - Collapsed by default */}
+              <div className="w-12 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm z-40 relative">
+                <div className="p-2 border-b border-gray-200 flex justify-center">
+                  <SimpleProfileDropdown size="sm" />
                 </div>
-              </div>
-            </div>
 
-            <div className="flex-1 overflow-hidden pt-1">
-              <Sidebar
+                <div className="flex flex-col items-center gap-2 py-2 px-1">
+                  <button
+                    type="button"
+                    onClick={() => setRightSidebarCollapsed(false)}
+                    className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+                    title="Expand Sidebar"
+                  >
+                    <PanelRight className="w-4 h-4" />
+                  </button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={!hasJSON}
+                        className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
+                        title={!hasJSON ? "Create a chart first to add datasets/groups" : "Add Single or Grouped Chart"}
+                      >
+                        <SquarePen className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
+                        }}
+                        className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                      >
+                        <BarChart2 className="h-4 w-4 text-blue-600" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold">Single Chart</span>
+                          <span className="text-[10px] text-slate-400">Add dataset to chart</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('openNewGroupModal'));
+                        }}
+                        className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                      >
+                        <Layers className="h-4 w-4 text-purple-600" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold">Grouped Chart</span>
+                          <span className="text-[10px] text-slate-400">Create a new group</span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveClick}
+                    disabled={!hasJSON || isSaving}
+                    className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-500 dark:hover:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
+                    title="Save chart to online database"
+                  >
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    disabled={!hasJSON}
+                    className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
+                    title="Clear chart and start new"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+                  </button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isSharingLink || !currentSnapshotId}
+                        className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-600 cursor-pointer outline-none"
+                        title={!currentSnapshotId ? "Save to share" : "Share options"}
+                      >
+                        {isSharingLink ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                        ) : (
+                          <Share2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
+                      <DropdownMenuItem onClick={handleCopyShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                        <Copy className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Copy Link</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleOpenShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                        <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Open Link</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <HistoryDropdown
+                    variant="inline"
+                    className="border-0 bg-transparent shadow-none hover:bg-slate-100 hover:text-slate-900 text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 flex-shrink-0"
+                  />
+                </div>
+
+                <div className="flex-1 cursor-pointer" onClick={() => setRightSidebarCollapsed(false)} title="Expand Sidebar" />
+              </div>
+
+              {/* Left Sidebar Overlay when expanded */}
+              {(!leftSidebarCollapsed) && (
+                <div className="fixed top-0 left-0 h-full w-52 z-40 bg-white shadow-2xl border-r border-gray-200 flex flex-col overflow-hidden">
+                  <div className="flex flex-col border-b border-gray-100 flex-shrink-0 pt-2 pb-2">
+                    <div className="flex justify-center mb-2">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2.5">
+                        <img src="/logo.png" alt="Company Logo" className="w-[22px] h-[22px] object-contain" />
+                        <span className="text-slate-300 font-light text-sm">|</span>
+                        <span>Advanced Editor</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center px-2">
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <button
+                          onClick={() => router.push('/board')}
+                          className="flex-1 flex items-center justify-center gap-1.5 h-8 px-2 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
+                          title="Board"
+                        >
+                          <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Board</span>
+                        </button>
+                        <button
+                          onClick={() => router.push('/landing')}
+                          className="flex-1 flex items-center justify-center gap-1.5 h-8 px-2 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
+                          title="AI Chat"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-slate-500" />
+                          <span>AI Chat</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-hidden pt-1">
+                    <Sidebar
+                      activeTab={activeTab}
+                      onTabChange={setActiveTab}
+                      onToggleLeftSidebar={() => setLeftSidebarCollapsed(true)}
+                      isLeftSidebarCollapsed={leftSidebarCollapsed}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Right Sidebar Overlay when expanded */}
+              {(!rightSidebarCollapsed) && (
+                <div className="fixed top-0 right-0 h-full w-80 z-40 bg-white shadow-2xl border-l border-gray-200 flex flex-col">
+                  <ConfigPanel
+                    activeTab={activeTab}
+                    onToggleSidebar={() => setRightSidebarCollapsed(true)}
+                    isSidebarCollapsed={false}
+                    onTabChange={setActiveTab}
+                    onSaveClick={handleSaveClick}
+                  />
+                </div>
+              )}
+
+              {/* Overlay background when any sidebar is open */}
+              {(!leftSidebarCollapsed || !rightSidebarCollapsed) && (
+                <div className="fixed inset-0 z-30 bg-black/20 transition-opacity" onClick={() => { setLeftSidebarCollapsed(true); setRightSidebarCollapsed(true); }} />
+              )}
+            </>
+          ) : rightSidebarCollapsed ? (
+            <div className="w-12 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
+              <div className="p-2 border-b border-gray-200 flex justify-center bg-white">
+                <SimpleProfileDropdown size="sm" />
+              </div>
+
+              <div className="flex flex-col items-center gap-2 py-2 px-1">
+                <button
+                  type="button"
+                  onClick={() => setRightSidebarCollapsed((v) => !v)}
+                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+                  title={rightSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                >
+                  <PanelRight className="w-4 h-4" />
+                </button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={!hasJSON}
+                      className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
+                      title={!hasJSON ? "Create a chart first to add datasets/groups" : "Add Single or Grouped Chart"}
+                    >
+                      <SquarePen className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                    >
+                      <BarChart2 className="h-4 w-4 text-blue-600" />
+                      <div className="flex flex-col">
+                        <span className="font-semibold">Single Chart</span>
+                        <span className="text-[10px] text-slate-400">Add dataset to chart</span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('openNewGroupModal'));
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                    >
+                      <Layers className="h-4 w-4 text-purple-600" />
+                      <div className="flex flex-col">
+                        <span className="font-semibold">Grouped Chart</span>
+                        <span className="text-[10px] text-slate-400">Create a new group</span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <button
+                  type="button"
+                  onClick={handleSaveClick}
+                  disabled={!hasJSON || isSaving}
+                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-500 dark:hover:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
+                  title="Save chart to online database"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={!hasJSON}
+                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
+                  title="Clear chart and start new"
+                >
+                  <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+                </button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={isSharingLink || !currentSnapshotId}
+                      className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-600 cursor-pointer outline-none"
+                      title={!currentSnapshotId ? "Save to share" : "Share options"}
+                    >
+                      {isSharingLink ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                      ) : (
+                        <Share2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
+                    <DropdownMenuItem onClick={handleCopyShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                      <Copy className="h-3.5 w-3.5 text-slate-500" />
+                      <span>Copy Link</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleOpenShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                      <span>Open Link</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <HistoryDropdown
+                  variant="inline"
+                  className="border-0 bg-transparent shadow-none hover:bg-slate-100 hover:text-slate-900 text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 flex-shrink-0"
+                />
+              </div>
+
+              <div className="flex-1 cursor-pointer" onClick={() => setRightSidebarCollapsed(false)} title="Expand Sidebar" />
+            </div>
+          ) : (
+            <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden h-full flex flex-col min-h-0">
+              <ConfigPanel
                 activeTab={activeTab}
+                onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
+                isSidebarCollapsed={rightSidebarCollapsed}
                 onTabChange={setActiveTab}
-                onToggleLeftSidebar={() => setLeftSidebarCollapsed(true)}
-                isLeftSidebarCollapsed={leftSidebarCollapsed}
+                onNewChart={handleNewChart}
+                onSaveClick={handleSaveClick}
               />
             </div>
-          </div>
-        )}
-
-        {/* Right Sidebar Overlay when expanded */}
-        {(!rightSidebarCollapsed) && (
-          <div className="fixed top-0 right-0 h-full w-80 z-40 bg-white shadow-2xl border-l border-gray-200 flex flex-col">
-            <ConfigPanel
-              activeTab={activeTab}
-              onToggleSidebar={() => setRightSidebarCollapsed(true)}
-              isSidebarCollapsed={false}
-              onTabChange={setActiveTab}
-              onSaveClick={handleSaveClick}
-            />
-          </div>
-        )}
-
-        {/* Overlay background when any sidebar is open */}
-        {(!leftSidebarCollapsed || !rightSidebarCollapsed) && (
-          <div className="fixed inset-0 z-30 bg-black/20 transition-opacity" onClick={() => { setLeftSidebarCollapsed(true); setRightSidebarCollapsed(true); }} />
-        )}
-
-        {/* Save Chart Dialog with Name Input */}
-        <SaveChartDialog
-          open={showSaveChartDialog}
-          defaultName={currentChartName}
-          isUpdate={!!resolveActiveCloudConversationId()}
-          isSaving={isSaving}
-          onSave={handleSave}
-          onCancel={() => setShowSaveChartDialog(false)}
-        />
-
-        {/* Dimension Mismatch Dialog */}
-        {dimensionMismatchInfo && (
-          <DimensionMismatchDialog
-            isOpen={showDimensionDialog}
-            onClose={() => {
-              setShowDimensionDialog(false)
-              setDimensionMismatchInfo(null)
-            }}
-            templateDimensions={dimensionMismatchInfo.templateDimensions}
-            currentDimensions={dimensionMismatchInfo.currentDimensions}
-            onGoToTemplateMode={handleGoToTemplateMode}
-            onSaveAsChartOnly={handleSaveAsChartOnly}
-            isSaving={isSaving}
-          />
-        )}
-
-        {/* Confirmation Dialog for Save/Clear */}
-        <ConfirmDialog
-          open={showSaveConfirmDialog}
-          onCancel={() => setShowSaveConfirmDialog(false)}
-          title="Existing Chart Data"
-          description="You have unsaved chart data. Would you like to save it before creating a new chart?"
-          onConfirm={handleSaveAndClear}
-          confirmText="Save"
-          cancelText="Cancel"
-          onAlternate={handleJustClear}
-          alternateText="Discard"
-        />
-
-        {/* Clear Chart Dialog */}
-        <ClearChartDialog
-          open={showClearDialog}
-          onOpenChange={setShowClearDialog}
-          onSuccess={() => {
-            // Additional success logic if needed
-          }}
-        />
-
-        {/* Save Mode Conflict Dialog */}
-        <SaveModeConflictDialog
-          isOpen={showModeConflictDialog}
-          onClose={() => setShowModeConflictDialog(false)}
-          onSaveChartDiscardTemplate={handleSaveChartDiscardTemplate}
-          onSaveAsSeparateChart={handleSaveAsSeparateChart}
-          isSaving={isSaving}
-        />
-
-        {/* Setup Dialog for New Charts */}
-        <ChartSetupDialog
-          open={showSetupDialog}
-          onClose={() => setShowSetupDialog(false)}
-          onConfirm={handleDimensionsConfirmed}
-        />
-
-        {/* Mode Change Confirmation Dialog */}
-        <ModeChangeConfirmDialog
-          open={showModeChangeConfirm}
-          onOpenChange={setModeChangeConfirm}
-          onConfirm={confirmModeChange}
-          onCancel={cancelModeChange}
-        />
-
-        {/* Plus Button Dialog for Single/Grouped Charts */}
-        <ChartSetupDialog
-          open={plusModalType !== null}
-          onClose={() => setPlusModalType(null)}
-          title={plusModalType === 'grouped' ? "Create New Group" : "Set Dimensions & Add Data"}
-          datasetType={plusModalType === 'grouped' ? 'grouped' : 'single'}
-          isCustom={true}
-          startAtStep={1}
-          step2Title={plusModalType === 'grouped' ? "Add Data" : "Add Data"}
-          initialGroupName={plusModalType === 'grouped' ? `Group ${(useChartStore.getState().groups || []).length + 1}` : `Chart ${(useChartStore.getState().singleModeData?.datasets || []).length + 1}`}
-          confirmButtonText={plusModalType === 'grouped' ? "Create Group" : undefined}
-          onConfirm={handlePlusModalConfirm}
-        />
-
-        {/* Update Preset Dialog */}
-        {editPresetId && (
-          <UpdatePresetDialog
-            open={showUpdatePresetDialog}
-            onOpenChange={setShowUpdatePresetDialog}
-            presetId={editPresetId}
-            initialData={presetMetadata}
-            isBuiltIn={isBuiltInPreset}
-            onSuccess={handlePresetUpdateSuccess}
-          />
+          )
         )}
       </div>
-    );
-  }
-
-  // Desktop layout for >1024px
-  // The layout wrapper and left sidebar are handled by layout.tsx (App Shell Architecture)
-  return (
-    <>
-      {/* Center Area - Chart Preview */}
-      <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'p-0 overflow-hidden' : 'p-4 overflow-y-auto justify-center items-center'}`}>
-        {editPresetId && (
-          <div className="mx-3 mt-2 mb-2 bg-gradient-to-r from-violet-950 via-purple-950 to-indigo-950 border border-violet-700/50 rounded-xl px-3 py-2 flex items-center justify-between text-white shadow-md shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-6 h-6 rounded-md bg-violet-600/40 border border-violet-400/30 flex items-center justify-center shrink-0">
-                <Palette className="w-3.5 h-3.5 text-violet-300" />
-              </div>
-              <div className="flex items-center gap-2 min-w-0 truncate">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-violet-300 shrink-0">Preset Editing Mode</span>
-                {isBuiltInPreset && (
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-semibold shrink-0">Built-in Clone</span>
-                )}
-                <span className="text-xs text-gray-200 truncate">
-                  &mdash; Editing <strong className="text-white font-semibold">{presetMetadata?.name || editPresetId}</strong>
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowUpdatePresetDialog(true)}
-                className="h-7 text-xs bg-violet-600 hover:bg-violet-500 text-white border-violet-400/50 shadow-sm"
-              >
-                <Upload className="w-3.5 h-3.5 mr-1" />
-                {isBuiltInPreset ? 'Save to Database' : 'Update Preset'}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={exitPresetEditMode}
-                className="h-7 text-xs text-violet-200 hover:text-white hover:bg-violet-800/40"
-                title="Exit preset editing mode and return to standard chart editing"
-              >
-                <X className="w-3.5 h-3.5 mr-1" />
-                Exit Preset Mode
-              </Button>
-            </div>
-          </div>
-        )}
-        {!storeHydrated ? (
-          renderCenterAreaLoader()
-        ) : hasJSON ? (
-          <ChartPreview
-            onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
-            isLeftSidebarCollapsed={leftSidebarCollapsed}
-            onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
-            isSidebarCollapsed={rightSidebarCollapsed}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            onNewChart={handleNewChart}
-          />
-        ) : (
-          <EditorWelcomeScreen
-            onDatasetClick={() => setActiveTab('datasets_slices')}
-          />
-        )}
-      </div>
-      {/* Right Panel - Configuration */}
-      {rightSidebarCollapsed ? (
-        <div className="w-12 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
-          {/* Profile Button - Top */}
-          <div className="p-2 border-b border-gray-200 flex justify-center bg-white">
-            <SimpleProfileDropdown size="sm" />
-          </div>
-
-          {/* Action Buttons: Toggle, SquarePen, Save, Trash, Share, History */}
-          <div className="flex flex-col items-center gap-2 py-2 px-1">
-            {/* Collapse/Expand Button */}
-            <button
-              type="button"
-              onClick={() => setRightSidebarCollapsed((v) => !v)}
-              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
-              title={rightSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
-              <PanelRight className="w-4 h-4" />
-            </button>
-
-            {/* 1. SquarePen (Add) Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  disabled={!hasJSON}
-                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
-                  title={!hasJSON ? "Create a chart first to add datasets/groups" : "Add Single or Grouped Chart"}
-                >
-                  <SquarePen className="w-4 h-4 text-blue-600 dark:text-blue-500" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
-                <DropdownMenuItem
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
-                >
-                  <BarChart2 className="h-4 w-4 text-blue-600" />
-                  <div className="flex flex-col">
-                    <span className="font-semibold">Single Chart</span>
-                    <span className="text-[10px] text-slate-400">Add dataset to chart</span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('openNewGroupModal'));
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
-                >
-                  <Layers className="h-4 w-4 text-purple-600" />
-                  <div className="flex flex-col">
-                    <span className="font-semibold">Grouped Chart</span>
-                    <span className="text-[10px] text-slate-400">Create a new group</span>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* 2. Save Button */}
-            <button
-              type="button"
-              onClick={handleSaveClick}
-              disabled={!hasJSON || isSaving}
-              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-500 dark:hover:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
-              title="Save chart to online database"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
-            </button>
-
-            {/* 3. Delete / Clear Button */}
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={!hasJSON}
-              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
-              title="Clear chart and start new"
-            >
-              <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
-            </button>
-
-            {/* 4. Share Button */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  disabled={isSharingLink || !currentSnapshotId}
-                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-600 cursor-pointer outline-none"
-                  title={!currentSnapshotId ? "Save to share" : "Share options"}
-                >
-                  {isSharingLink ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                  ) : (
-                    <Share2 className="w-4 h-4" />
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
-                <DropdownMenuItem onClick={handleCopyShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
-                  <Copy className="h-3.5 w-3.5 text-slate-500" />
-                  <span>Copy Link</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleOpenShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
-                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                  <span>Open Link</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* 5. History Dropdown */}
-            <HistoryDropdown
-              variant="inline"
-              className="border-0 bg-transparent shadow-none hover:bg-slate-100 hover:text-slate-900 text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 flex-shrink-0"
-            />
-          </div>
-
-          {/* Spacer — clicking the empty area below buttons expands the sidebar */}
-          <div className="flex-1 cursor-pointer" onClick={() => setRightSidebarCollapsed(false)} title="Expand Sidebar" />
-        </div>
-      ) : (
-        <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden h-full flex flex-col min-h-0">
-          <ConfigPanel
-            activeTab={activeTab}
-            onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
-            isSidebarCollapsed={rightSidebarCollapsed}
-            onTabChange={setActiveTab}
-            onNewChart={handleNewChart}
-            onSaveClick={handleSaveClick}
-          />
-        </div>
-      )}
 
       {/* Confirmation Dialog for Save/Clear */}
       <ConfirmDialog
@@ -2615,8 +2556,7 @@ function EditorPageContent() {
           onSuccess={handlePresetUpdateSuccess}
         />
       )}
-
-    </>
+    </div>
   )
 }
 

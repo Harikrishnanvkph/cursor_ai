@@ -11,6 +11,8 @@ import { TitleTab } from "./design-settings/title-tab"
 import { LegendTab } from "./design-settings/legend-tab"
 import { LabelsPanel } from "./labels-panel"
 import { GroupedSettingsFilter } from "./grouped-settings-filter"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 interface CombinedStylingPanelProps {
     initialTab?: string
@@ -20,6 +22,7 @@ interface CombinedStylingPanelProps {
 let lastActiveTab: string = "bg"
 
 export function CombinedStylingPanel({ initialTab }: CombinedStylingPanelProps) {
+    const isModern = useIsModernPanel()
     const { chartConfig, chartType } = useChartStore()
     const { updateChartConfig } = useChartActions()
     const [activeTab, setActiveTab] = useState(() => initialTab || lastActiveTab || "bg")
@@ -67,31 +70,51 @@ export function CombinedStylingPanel({ initialTab }: CombinedStylingPanelProps) 
     ].filter(tab => chartType !== 'timeline' || tab.id !== 'labels')
 
     return (
-        <div className="space-y-4">
+        <div className={isModern ? "space-y-3.5" : "space-y-4"}>
             {/* Flat 5-tab bar */}
-            <div className="flex items-center justify-between p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl w-full">
+            <div
+                className={
+                    isModern
+                        ? cn("flex items-center justify-between gap-0.5 w-full", MODERN_PANEL_UI.iconTabTrack)
+                        : "flex items-center justify-between p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl w-full"
+                }
+            >
                 {tabs.map((tab) => {
                     const Icon = tab.icon
                     const isActive = activeTab === tab.id
                     return (
                         <button
                             key={tab.id}
+                            type="button"
                             onClick={() => handleSelectTab(tab.id)}
-                            className={`flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-all duration-200 rounded-xl ${
-                                isActive
-                                    ? "bg-blue-600 text-white shadow-sm font-semibold"
-                                    : "bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-700/40 font-medium"
-                            }`}
+                            className={
+                                isModern
+                                    ? cn(
+                                        MODERN_PANEL_UI.iconTabItemBase,
+                                        isActive && MODERN_PANEL_UI.iconTabItemActive
+                                    )
+                                    : `flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-all duration-200 rounded-xl ${
+                                        isActive
+                                            ? "bg-blue-600 text-white shadow-sm font-semibold"
+                                            : "bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-700/40 font-medium"
+                                    }`
+                            }
                         >
-                            <Icon className={`w-[18px] h-[18px] ${isActive ? "text-white" : "text-slate-500 dark:text-slate-400"}`} />
-                            <span className="text-[10px] leading-none">{tab.label}</span>
+                            <Icon
+                                className={
+                                    isModern
+                                        ? cn("w-4 h-4", isActive ? "text-indigo-600" : "text-slate-400")
+                                        : `w-[18px] h-[18px] ${isActive ? "text-white" : "text-slate-500 dark:text-slate-400"}`
+                                }
+                            />
+                            <span className={isModern ? "text-[10.5px] leading-none" : "text-[10px] leading-none"}>{tab.label}</span>
                         </button>
                     )
                 })}
             </div>
 
             {/* Tab Panels */}
-            <div className="mt-4 animate-in fade-in duration-200">
+            <div className={isModern ? "mt-3" : "mt-4 animate-in fade-in duration-200"}>
                 {activeTab === "bg" && (
                     <BackgroundTab
                         chartConfig={chartConfig}

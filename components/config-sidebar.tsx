@@ -18,6 +18,7 @@ import { useFormatGalleryStore, ensureDefaultFormatSelected } from "@/lib/stores
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 
 import { useState, useCallback, useEffect } from "react"
+import { cn } from "@/lib/utils"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -29,7 +30,8 @@ import { useRouter } from "next/navigation"
 
 
 
-export function ConfigSidebar() {
+export function ConfigSidebar({ variant = "default" }: { variant?: "default" | "modern" } = {}) {
+  const isModern = variant === "modern"
   const router = useRouter()
 
   const {
@@ -101,18 +103,23 @@ export function ConfigSidebar() {
 
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+    <div className={cn("h-full flex flex-col", isModern && "antialiased")}>
+      <div className={cn("flex-1 overflow-y-auto", isModern ? "p-3.5 space-y-4" : "p-4 space-y-4")}>
 
 
         <div className="w-full">
           {/* Action buttons (Browse Formats & Chart Styles in same row) */}
           {((contentPackage && generateMode === 'format') || (chartData?.datasets?.length > 0)) && (
-            <div className="mb-3 px-1 flex items-center gap-2">
+            <div className={cn("mb-3 flex items-center gap-2", isModern ? "px-0" : "px-1")}>
               {contentPackage && generateMode === 'format' && (
                 <button
                   onClick={() => openGallery()}
-                  className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all shadow-sm"
+                  className={cn(
+                    "flex-1 min-w-0 flex items-center justify-center gap-1.5 text-xs font-medium rounded-lg transition-all shadow-sm cursor-pointer",
+                    isModern
+                      ? "h-8 px-2.5 text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100/80 border border-indigo-200/80"
+                      : "px-2 py-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200"
+                  )}
                   title="Formats"
                 >
                   <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
@@ -123,7 +130,12 @@ export function ConfigSidebar() {
               {chartData?.datasets?.length > 0 && (
                 <button
                   onClick={() => openStyleGallery(chartType)}
-                  className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-all shadow-sm"
+                  className={cn(
+                    "flex-1 min-w-0 flex items-center justify-center gap-1.5 text-xs font-medium rounded-lg transition-all shadow-sm cursor-pointer",
+                    isModern
+                      ? "h-8 px-2.5 text-violet-700 bg-violet-50/80 hover:bg-violet-100/80 border border-violet-200/80"
+                      : "px-2 py-1.5 text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200"
+                  )}
                   title="Chart Styles"
                 >
                   <Palette className="w-3.5 h-3.5 shrink-0" />
@@ -133,18 +145,52 @@ export function ConfigSidebar() {
             </div>
           )}
 
-          <div className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+          <div
+            className={cn(
+              "grid w-full grid-cols-3 gap-1 h-auto",
+              isModern
+                ? "p-[3px] bg-slate-100/90 rounded-lg border border-slate-200/70"
+                : "p-1 bg-gray-100 rounded-lg"
+            )}
+          >
             <button
               onClick={() => setActiveSidebarTab('general')}
-              className={`text-xs py-2 rounded-md transition-all ${activeSidebarTab === 'general' ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              className={
+                isModern
+                  ? cn(
+                      "text-xs py-1.5 rounded-[6px] transition-colors cursor-pointer",
+                      activeSidebarTab === 'general'
+                        ? "bg-white shadow-sm font-semibold text-slate-900"
+                        : "text-slate-600 hover:text-slate-900 font-medium"
+                    )
+                  : `text-xs py-2 rounded-md transition-all ${activeSidebarTab === 'general' ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-gray-500 hover:text-gray-700'}`
+              }
             >General</button>
             <button
               onClick={() => setActiveSidebarTab('datasets')}
-              className={`text-xs py-2 rounded-md transition-all ${activeSidebarTab === 'datasets' ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              className={
+                isModern
+                  ? cn(
+                      "text-xs py-1.5 rounded-[6px] transition-colors cursor-pointer",
+                      activeSidebarTab === 'datasets'
+                        ? "bg-white shadow-sm font-semibold text-slate-900"
+                        : "text-slate-600 hover:text-slate-900 font-medium"
+                    )
+                  : `text-xs py-2 rounded-md transition-all ${activeSidebarTab === 'datasets' ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-gray-500 hover:text-gray-700'}`
+              }
             >Data</button>
             <button
               onClick={() => setActiveSidebarTab('templates')}
-              className={`text-xs py-2 rounded-md transition-all ${activeSidebarTab === 'templates' ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              className={
+                isModern
+                  ? cn(
+                      "text-xs py-1.5 rounded-[6px] transition-colors cursor-pointer",
+                      activeSidebarTab === 'templates'
+                        ? "bg-white shadow-sm font-semibold text-slate-900"
+                        : "text-slate-600 hover:text-slate-900 font-medium"
+                    )
+                  : `text-xs py-2 rounded-md transition-all ${activeSidebarTab === 'templates' ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-gray-500 hover:text-gray-700'}`
+              }
             >Templates</button>
           </div>
 
@@ -152,10 +198,26 @@ export function ConfigSidebar() {
           <div className={`mt-4 space-y-4 ${activeSidebarTab === 'general' ? 'block' : 'hidden'}`}>
             {/* Mode Toggle + Chart Type (inline) */}
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200 flex-shrink-0">
+              <div
+                className={cn(
+                  "flex items-center gap-0 flex-shrink-0",
+                  isModern
+                    ? "h-8 p-[3px] bg-slate-100/90 rounded-lg border border-slate-200/70"
+                    : "bg-gray-100 rounded-full p-[2px] border border-gray-200"
+                )}
+              >
                 <button
                   onClick={() => setEditorMode('chart')}
-                  className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'chart' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
+                  className={
+                    isModern
+                      ? cn(
+                          "h-full px-2.5 text-xs leading-none rounded-[6px] flex items-center transition-colors cursor-pointer",
+                          editorMode === 'chart'
+                            ? "bg-white text-slate-900 font-semibold shadow-sm"
+                            : "bg-transparent text-slate-600 hover:text-slate-900 font-medium"
+                        )
+                      : `px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'chart' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`
+                  }
                 >Chart</button>
                 <button
                   onClick={() => {
@@ -166,11 +228,20 @@ export function ConfigSidebar() {
                     useTemplateStore.getState().setGenerateMode('format')
                     setEditorMode('template')
                   }}
-                  className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
+                  className={
+                    isModern
+                      ? cn(
+                          "h-full px-2.5 text-xs leading-none rounded-[6px] flex items-center transition-colors cursor-pointer",
+                          editorMode === 'template'
+                            ? "bg-white text-slate-900 font-semibold shadow-sm"
+                            : "bg-transparent text-slate-600 hover:text-slate-900 font-medium"
+                        )
+                      : `px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`
+                  }
                 >Template</button>
               </div>
               <Select value={chartType} onValueChange={(value: any) => setChartType(value)}>
-                <SelectTrigger className="flex-1 h-8 text-xs border-gray-200 bg-white">
+                <SelectTrigger className={cn("flex-1 h-8 text-xs bg-white", isModern ? "border-slate-200/80 rounded-lg shadow-sm font-medium text-slate-700" : "border-gray-200")}>
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent className="z-[1001] max-h-[320px]">
@@ -195,43 +266,49 @@ export function ConfigSidebar() {
 
 
             {/* Compact Toggles (Single Row) */}
-            <div className="flex items-center justify-between gap-1 px-1 mb-2">
-              <div className="flex flex-col items-center gap-1">
+            <div
+              className={
+                isModern
+                  ? "grid grid-cols-4 gap-1 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70"
+                  : "flex items-center justify-between gap-1 px-1 mb-2"
+              }
+            >
+              <div className="flex flex-col items-center gap-1.5">
                 <Switch
                   id="fill-toggle"
                   checked={fillArea}
                   onCheckedChange={handleToggleFillArea}
-                  className="scale-75 data-[state=unchecked]:bg-input/50"
+                  className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"}
                 />
-                <Label htmlFor="fill-toggle" className="text-xs text-gray-600">Fill</Label>
+                <Label htmlFor="fill-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Fill</Label>
               </div>
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-1.5">
                 <Switch
                   id="border-toggle"
                   checked={showBorder}
                   onCheckedChange={(checked) => handleToggleShowBorder(checked)}
                   disabled={!fillArea}
-                  className="scale-75 data-[state=unchecked]:bg-input/50"
+                  className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"}
                 />
-                <Label htmlFor="border-toggle" className="text-xs text-gray-600">Border</Label>
+                <Label htmlFor="border-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Border</Label>
               </div>
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-1.5">
                 <Switch
                   id="show-images-toggle"
                   checked={showImages}
                   onCheckedChange={handleToggleShowImages}
-                  className="scale-75 data-[state=unchecked]:bg-input/50"
+                  className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"}
                 />
-                <Label htmlFor="show-images-toggle" className="text-xs text-gray-600">Image</Label>
+                <Label htmlFor="show-images-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Image</Label>
               </div>
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-1.5">
                 <Switch
                   id="show-labels-toggle"
                   checked={showLabels}
                   onCheckedChange={toggleShowLabels}
-                  className="scale-75 data-[state=unchecked]:bg-input/50"
+                  className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"}
                 />
-                <Label htmlFor="show-labels-toggle" className="text-xs text-gray-600">Label</Label>
+                <Label htmlFor="show-labels-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Label</Label>
               </div>
             </div>
 

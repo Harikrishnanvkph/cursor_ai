@@ -37,7 +37,7 @@ import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-cont
 export interface ChartTypeSelectorProps {
   value: string
   onChange: (type: string) => void
-  variant?: "toolbar" | "sidebar"
+  variant?: "toolbar" | "sidebar" | "modern"
   className?: string
   isMobile?: boolean
   disabled?: boolean
@@ -128,11 +128,14 @@ export const ChartTypeSelector = memo(function ChartTypeSelector({
   const isCompactExpanded = isCompactDesktop && !effectiveLeftSidebarCollapsed;
 
   // Default: "toolbar" variant
-  const triggerClassName = isMobile
-    ? "h-7 w-12 text-[10px] px-1.5 py-0 border-gray-200 bg-white rounded-lg flex-shrink-0"
-    : isCompactExpanded
-      ? "h-6 w-9 text-[10px] px-1 py-0 border-gray-200 bg-white flex-shrink-0"
-      : "h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white"
+  const isModernVariant = variant === "modern";
+  const triggerClassName = isModernVariant
+    ? "h-8 px-2.5 gap-1.5 rounded-lg border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 text-xs shadow-sm max-w-[152px] flex-shrink-0"
+    : isMobile
+      ? "h-7 w-12 text-[10px] px-1.5 py-0 border-gray-200 bg-white rounded-lg flex-shrink-0"
+      : isCompactExpanded
+        ? "h-6 w-9 text-[10px] px-1 py-0 border-gray-200 bg-white flex-shrink-0"
+        : "h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white"
 
   return (
     <DropdownMenu>
@@ -141,23 +144,37 @@ export const ChartTypeSelector = memo(function ChartTypeSelector({
           type="button"
           disabled={disabled}
           className={cn(
-            "flex items-center justify-between rounded-md border border-gray-200 bg-white font-medium shadow-2xs hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800 transition-colors cursor-pointer focus:outline-none",
+            isModernVariant
+              ? "flex items-center rounded-lg border font-medium transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              : "flex items-center justify-between rounded-md border border-gray-200 bg-white font-medium shadow-2xs hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800 transition-colors cursor-pointer focus:outline-none",
             triggerClassName,
             className
           )}
           title={`Chart Type: ${getChartLabel(value)}`}
         >
-          {isCompactExpanded ? (
-            <ChartColumn className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300 shrink-0 stroke-[2.5]" />
-          ) : (
+          {isModernVariant ? (
             <>
-              <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 dark:text-slate-300 shrink-0 stroke-[2.5]" />
-              <span className="hidden lg:block truncate text-slate-700 dark:text-slate-200 text-left text-[11px] leading-tight">
+              <ChartColumn className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <span className="hidden md:inline truncate leading-none">
                 {getChartLabel(value)}
               </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            </>
+          ) : (
+            <>
+              {isCompactExpanded ? (
+                <ChartColumn className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300 shrink-0 stroke-[2.5]" />
+              ) : (
+                <>
+                  <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 dark:text-slate-300 shrink-0 stroke-[2.5]" />
+                  <span className="hidden lg:block truncate text-slate-700 dark:text-slate-200 text-left text-[11px] leading-tight">
+                    {getChartLabel(value)}
+                  </span>
+                </>
+              )}
+              <ChevronDown className="h-3 w-3 text-slate-400 shrink-0 ml-0.5 opacity-60" />
             </>
           )}
-          <ChevronDown className="h-3 w-3 text-slate-400 shrink-0 ml-0.5 opacity-60" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52 p-1 z-[100] text-xs shadow-lg">

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { EditorSidebarProvider } from "@/components/editor/editor-sidebar-context"
 import { EditorLeftSidebar } from "@/components/editor/editor-left-sidebar"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
+import { useSettingsStore } from "@/lib/stores/settings-store"
 import { usePathname } from "next/navigation"
 
 /**
@@ -19,6 +20,13 @@ import { usePathname } from "next/navigation"
  */
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const editorInterface = useSettingsStore(s => s.editorInterface)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const isFullScreenPage = pathname === "/editor/custom-format" || pathname === "/editor/custom-template"
 
   if (isFullScreenPage) {
@@ -33,12 +41,14 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
     <ProtectedRoute>
       <EditorSidebarProvider>
         <div className="fixed inset-0 flex bg-white overflow-hidden">
-          {/* Persistent Interactive Left Sidebar - Hidden on mobile/tablet (<1024px) */}
-          <div className="hidden lg:flex flex-shrink-0 z-50 h-full w-auto">
-            <EditorLeftSidebar />
-          </div>
+          {/* Persistent Interactive Left Sidebar (Default interface only) - Hidden on mobile/tablet (<1024px) */}
+          {mounted && editorInterface === "default" && (
+            <div className="hidden lg:flex flex-shrink-0 z-50 h-full w-auto">
+              <EditorLeftSidebar />
+            </div>
+          )}
 
-          {/* Content Area — this is replaced by loading.tsx during page transitions */}
+          {/* Content Area — remains at stable tree position across interface switches */}
           <div className="flex-1 flex min-w-0 overflow-hidden">
             {children}
           </div>

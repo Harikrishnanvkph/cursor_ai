@@ -9,6 +9,7 @@ import {
     mapChartJsFontValue,
     applyChartJsFontPatch,
 } from "@/components/ui/font-setting-section"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
 
 interface TitleTabProps {
     chartConfig: any
@@ -16,15 +17,16 @@ interface TitleTabProps {
 }
 
 export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
+    const isModern = useIsModernPanel()
     return (
-        <div className="space-y-4 mt-2">
+        <div className={isModern ? "space-y-3" : "space-y-4 mt-2"}>
             {/* ==================== TITLE SECTION ==================== */}
-            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-2xs">
+            <div className={isModern ? MODERN_PANEL_UI.card : "rounded-xl border border-gray-200 bg-white overflow-hidden shadow-2xs"}>
                 {/* Header with toggle */}
-                <div className="flex items-center justify-between p-3 bg-blue-50/70 border-b border-blue-100/70">
+                <div className={isModern ? MODERN_PANEL_UI.sectionHeaderRow : "flex items-center justify-between p-3 bg-blue-50/70 border-b border-blue-100/70"}>
                     <div>
-                        <Label className="text-sm font-semibold text-blue-950">Chart Title</Label>
-                        <p className="text-[11px] text-blue-700/80">Primary heading above your chart</p>
+                        <Label className={isModern ? "text-xs font-semibold text-slate-800" : "text-sm font-semibold text-blue-950"}>Chart Title</Label>
+                        <p className={isModern ? "text-[11px] text-slate-500" : "text-[11px] text-blue-700/80"}>Primary heading above your chart</p>
                     </div>
                     <Switch
                         checked={chartConfig.plugins?.title?.display || false}
@@ -109,12 +111,12 @@ export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
             </div>
 
             {/* ==================== SUBTITLE SECTION ==================== */}
-            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-2xs">
+            <div className={isModern ? MODERN_PANEL_UI.card : "rounded-xl border border-gray-200 bg-white overflow-hidden shadow-2xs"}>
                 {/* Header with toggle */}
-                <div className="flex items-center justify-between p-3 bg-blue-50/70 border-b border-blue-100/70">
+                <div className={isModern ? MODERN_PANEL_UI.sectionHeaderRow : "flex items-center justify-between p-3 bg-blue-50/70 border-b border-blue-100/70"}>
                     <div>
-                        <Label className="text-sm font-semibold text-blue-950">Chart Subtitle</Label>
-                        <p className="text-[11px] text-blue-700/80">Secondary heading below chart title</p>
+                        <Label className={isModern ? "text-xs font-semibold text-slate-800" : "text-sm font-semibold text-blue-950"}>Chart Subtitle</Label>
+                        <p className={isModern ? "text-[11px] text-slate-500" : "text-[11px] text-blue-700/80"}>Secondary heading below chart title</p>
                     </div>
                     <Switch
                         checked={chartConfig.plugins?.subtitle?.display || false}

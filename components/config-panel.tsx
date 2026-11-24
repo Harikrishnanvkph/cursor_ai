@@ -40,6 +40,8 @@ import { clearCurrentChart } from "@/lib/storage-utils"
 
 import { DEFAULT_GROUP } from "@/lib/chart-store"
 import { ClearChartDialog } from "./dialogs/clear-chart-dialog"
+import { useIsModernPanel } from "./editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 interface ConfigPanelProps {
   activeTab: string
@@ -48,9 +50,12 @@ interface ConfigPanelProps {
   onTabChange?: (tab: string) => void
   onNewChart?: () => void
   onSaveClick?: () => void
+  hideHeader?: boolean
+  className?: string
 }
 
-export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, onTabChange, onNewChart, onSaveClick }: ConfigPanelProps) {
+export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, onTabChange, onNewChart, onSaveClick, hideHeader = false, className }: ConfigPanelProps) {
+  const isModern = useIsModernPanel();
   const [isMobile, setIsMobile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { user, signOut } = useAuth();
@@ -191,9 +196,9 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-white border-l border-gray-200 shadow-sm">
-      {/* Header - Hidden on mobile */}
-      {!isMobile && (
+    <div className={cn("h-full flex flex-col overflow-hidden bg-white border-l border-gray-200 shadow-sm", className)}>
+      {/* Header - Hidden on mobile or when unified top bar handles actions */}
+      {!isMobile && !hideHeader && (
         <div className="flex items-center justify-between py-1.5 px-3 border-b border-gray-200 bg-white">
           {/* Expand/Collapse Button */}
           {onToggleSidebar && (
@@ -311,10 +316,14 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       )}
 
       {/* Panel Content */}
-      <div className="flex-1 overflow-y-auto pt-2.5 px-4 pb-4 bg-white">
-        <div className="animate-in fade-in duration-200">
-          {renderPanel()}
-        </div>
+      <div className={cn("flex-1 overflow-y-auto bg-white", isModern ? "pt-3 px-3.5 pb-5" : "pt-2.5 px-4 pb-4")}>
+        {isModern ? (
+          renderPanel()
+        ) : (
+          <div className="animate-in fade-in duration-200">
+            {renderPanel()}
+          </div>
+        )}
       </div>
       {/* Clear Confirmation Dialog */}
       {/* Clear Confirmation Dialog */}

@@ -5,10 +5,12 @@ import ChartGenerator from "@/lib/chart_generator"
 import { parseDimension } from "@/lib/utils/dimension-utils"
 import { DecorationShapeRenderer } from "@/components/decorations/DecorationShapeRenderer"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
+import { cn } from "@/lib/utils"
 
 interface ChartPreviewCanvasProps {
     chartContainerRef: RefObject<HTMLDivElement>;
     chartConfig: any;
+    elevatedArtboard?: boolean;
     zoomPan: {
         zoom: number;
         panMode: boolean;
@@ -28,6 +30,7 @@ interface ChartPreviewCanvasProps {
 export const ChartPreviewCanvas = React.memo(({
     chartContainerRef,
     chartConfig,
+    elevatedArtboard = false,
     zoomPan,
 }: ChartPreviewCanvasProps) => {
     const { zoom, panMode, isDragging, panOffset, handleMouseDown, attachTouchHandlers } = zoomPan;
@@ -191,7 +194,10 @@ export const ChartPreviewCanvas = React.memo(({
 
             {/* Chart Area */}
             <div
-                className="absolute top-0 left-0"
+                className={cn(
+                    "absolute top-0 left-0",
+                    elevatedArtboard && "shadow-[0_4px_20px_-2px_rgba(15,23,42,0.08),0_1px_3px_0_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04]"
+                )}
                 style={{
                     width: `${chartWidth}px`,
                     height: `${chartHeight}px`,

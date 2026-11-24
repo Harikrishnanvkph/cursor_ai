@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useEffect } from "react"
+import { useIsModernPanel } from "@/components/editor/modern-panel-context"
 
 /**
  * GroupedSettingsFilter - Shows Dataset and Slice dropdowns
@@ -20,6 +21,7 @@ import { useEffect } from "react"
  * Slice dropdown: Select "All Slices" or a specific slice/data point
  */
 export function GroupedSettingsFilter() {
+  const isModern = useIsModernPanel()
   const {
     chartMode,
     chartData,
@@ -86,21 +88,21 @@ export function GroupedSettingsFilter() {
   }
 
   return (
-    <div className="flex items-start gap-3 pb-3 mb-1 border-b border-gray-100 dark:border-gray-800">
+    <div className={isModern ? "flex items-start gap-2.5 pb-3 border-b border-slate-100" : "flex items-start gap-3 pb-3 mb-1 border-b border-gray-100 dark:border-gray-800"}>
       {/* Dataset Dropdown */}
       <div className="flex-1 min-w-0">
-        <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+        <label className={isModern ? "text-[11px] font-medium text-slate-500 mb-1 block" : "text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block"}>
           Dataset
         </label>
         <Select
           value={settingsDatasetId !== null ? String(settingsDatasetId) : 'all'}
           onValueChange={handleDatasetChange}
         >
-          <SelectTrigger className="h-8 text-xs bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+          <SelectTrigger className={isModern ? "h-8 text-xs bg-white border-slate-200/90 hover:bg-slate-50 transition-colors" : "h-8 text-xs bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"}>
             <SelectValue placeholder="All Datasets" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-xs font-medium text-blue-600">
+            <SelectItem value="all" className={isModern ? "text-xs font-medium text-indigo-600" : "text-xs font-medium text-blue-600"}>
               All Datasets
             </SelectItem>
             {availableDatasets.length > 0 && <SelectSeparator />}
@@ -116,18 +118,18 @@ export function GroupedSettingsFilter() {
       {/* Slice Dropdown - only for slice-based charts */}
       {isSliceSupported && (
         <div className="flex-1 min-w-0">
-          <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+          <label className={isModern ? "text-[11px] font-medium text-slate-500 mb-1 block" : "text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block"}>
             Slice
           </label>
           <Select
             value={settingsSliceIndex !== null ? String(settingsSliceIndex) : 'all'}
             onValueChange={handleSliceChange}
           >
-            <SelectTrigger className="h-8 text-xs bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <SelectTrigger className={isModern ? "h-8 text-xs bg-white border-slate-200/90 hover:bg-slate-50 transition-colors" : "h-8 text-xs bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"}>
               <SelectValue placeholder="All Slices" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="text-xs font-medium text-blue-600">
+              <SelectItem value="all" className={isModern ? "text-xs font-medium text-indigo-600" : "text-xs font-medium text-blue-600"}>
                 All Slices
               </SelectItem>
               {sliceCount > 0 && <SelectSeparator />}

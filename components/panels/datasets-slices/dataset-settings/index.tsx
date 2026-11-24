@@ -17,6 +17,8 @@ import {
 } from "lucide-react"
 import { darkenColor, rgbaToHex } from "@/lib/utils/color-utils"
 import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 // Tab sub-components
 import { GeneralTab } from "./general-tab"
@@ -30,6 +32,7 @@ interface DatasetSettingsProps {
 type DatasetTab = 'general' | 'colors' | 'images'
 
 export function DatasetSettings({ className }: DatasetSettingsProps) {
+    const isModern = useIsModernPanel()
     const { setActiveTab: setSidebarActiveTab } = useEditorSidebarContext()
     const {
         chartData,
@@ -411,7 +414,13 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     return (
         <div className="space-y-3.5">
             {/* Tab Navigation */}
-            <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/60">
+            <div
+                className={
+                    isModern
+                        ? cn("grid grid-cols-3 gap-1", MODERN_PANEL_UI.subSegTrack)
+                        : "grid grid-cols-3 gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/60"
+                }
+            >
                 {[
                     { id: 'general' as const, label: 'General' },
                     { id: 'colors' as const, label: 'Colors' },
@@ -421,10 +430,17 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-2 py-1.5 text-[11px] font-medium rounded-lg transition-all cursor-pointer ${activeTab === tab.id
-                            ? 'bg-white text-blue-600 shadow-xs ring-1 ring-slate-200/70'
-                            : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-                            }`}
+                        className={
+                            isModern
+                                ? cn(
+                                    MODERN_PANEL_UI.subSegItemBase,
+                                    activeTab === tab.id && MODERN_PANEL_UI.subSegItemActive
+                                )
+                                : `px-2 py-1.5 text-[11px] font-medium rounded-lg transition-all cursor-pointer ${activeTab === tab.id
+                                    ? 'bg-white text-blue-600 shadow-xs ring-1 ring-slate-200/70'
+                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
+                                    }`
+                        }
                     >
                         {tab.label}
                     </button>

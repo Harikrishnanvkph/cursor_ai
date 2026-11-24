@@ -14,6 +14,7 @@ import {
     mapChartJsFontValue,
     applyChartJsFontPatch,
 } from "@/components/ui/font-setting-section"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
 
 interface GeneralTabProps {
     axis: 'x' | 'y' | 'y1'
@@ -24,6 +25,7 @@ interface GeneralTabProps {
 }
 
 export function GeneralTab({ axis, config, chartType, updateConfig, updateNestedConfig }: GeneralTabProps) {
+    const isModern = useIsModernPanel()
     const [titleDropdownOpen, setTitleDropdownOpen] = useState(false)
     const [labelAppearanceDropdownOpen, setLabelAppearanceDropdownOpen] = useState(false)
     const [gridAppearanceDropdownOpen, setGridAppearanceDropdownOpen] = useState(false)
@@ -72,13 +74,19 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
     return (
         <div className="space-y-3">
             {/* Main Toggle */}
-            <div className="flex items-center justify-between p-3.5 rounded-xl border border-blue-200/70 bg-gradient-to-r from-blue-50/70 to-indigo-50/40 shadow-2xs">
+            <div
+                className={
+                    isModern
+                        ? MODERN_PANEL_UI.sectionBanner
+                        : "flex items-center justify-between p-3.5 rounded-xl border border-blue-200/70 bg-gradient-to-r from-blue-50/70 to-indigo-50/40 shadow-2xs"
+                }
+            >
                 <div className="flex flex-col">
-                    <Label className="text-xs font-semibold text-blue-950">
+                    <Label className={isModern ? "text-xs font-semibold text-slate-800" : "text-xs font-semibold text-blue-950"}>
                         Show {axis === 'y1' ? 'Right Y-Axis (Y2)' : `${axis.toUpperCase()}-Axis`}
                     </Label>
                     {axis === 'y1' && (
-                        <span className="text-[11px] text-blue-600/80">
+                        <span className={isModern ? "text-[11px] text-slate-500" : "text-[11px] text-blue-600/80"}>
                             {datasets.length < 2
                                 ? 'Requires at least 2 datasets'
                                 : y1Datasets.length > 0

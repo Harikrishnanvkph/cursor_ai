@@ -47,10 +47,10 @@ interface SidebarProps {
 // ═══════════════════════════════════════════
 const CHART_TABS = [
   { id: "types_toggles", label: "General", icon: AlignEndHorizontal },
-  { id: "datasets_slices", label: "Datasets", icon: Database },
-  { id: "styling", label: "Appearance", icon: Palette },
-  { id: "axes", label: "Scales", icon: Grid },
-  { id: "decorations", label: "Decorations", icon: Component },
+  { id: "datasets_slices", label: "Data", icon: Database },
+  { id: "styling", label: "Style", icon: Palette },
+  { id: "axes", label: "Axes", icon: Grid },
+  { id: "decorations", label: "Graphics", icon: Component },
   { id: "templates", label: "Templates", icon: FileText },
   { id: "advanced", label: "More", icon: SlidersHorizontal },
 ]
@@ -62,7 +62,7 @@ const TEMPLATE_TABS = [
   { id: "tpl_templates", label: "Templates", icon: FileText },
   { id: "tpl_format_zones", label: "Selected Template", icon: LayoutGrid },
   { id: "tpl_chart_zone", label: "Chart Zone", icon: BarChart3 },
-  { id: "tpl_decorations", label: "Decorations", icon: Component },
+  { id: "tpl_decorations", label: "Graphics", icon: Component },
   { id: "tpl_background", label: "Background", icon: Palette },
 ]
 

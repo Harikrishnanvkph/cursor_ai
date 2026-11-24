@@ -17,6 +17,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { unwrapProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 import { compressImage, validateImageFile } from "@/lib/image-utils"
 import { toast } from "sonner"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 async function validateAndCompressZoneFile(file: File): Promise<string | null> {
   if (!validateImageFile(file, 10)) {
@@ -51,6 +53,7 @@ const ZONE_COLORS: Record<string, { bg: string; border: string }> = {
 }
 
 export function FormatZonesPanel() {
+  const isModern = useIsModernPanel()
   const {
     selectedFormatId,
     contentPackage,
@@ -197,42 +200,67 @@ export function FormatZonesPanel() {
   return (
     <div className="space-y-4">
       <Tabs value={subTab} onValueChange={(val) => setSubTab(val as 'template' | 'content')} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1 bg-gray-100 rounded-lg mb-3">
+        <TabsList
+          className={
+            isModern
+              ? cn("grid w-full grid-cols-2 gap-1 h-auto mb-3", MODERN_PANEL_UI.segTrack)
+              : "grid w-full grid-cols-2 gap-1 h-auto p-1 bg-gray-100 rounded-lg mb-3"
+          }
+        >
           <TabsTrigger
             value="template"
-            className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 font-medium"
+            className={
+              isModern
+                ? MODERN_PANEL_UI.segTriggerRadix
+                : "text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 font-medium"
+            }
           >
             My Template
           </TabsTrigger>
           <TabsTrigger
             value="content"
-            className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 font-medium"
+            className={
+              isModern
+                ? MODERN_PANEL_UI.segTriggerRadix
+                : "text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 font-medium"
+            }
           >
             Edit Content
           </TabsTrigger>
         </TabsList>
 
         {/* Tab 1: My Template */}
-        <TabsContent value="template" className="mt-0 space-y-4">
+        <TabsContent value="template" className="mt-0 space-y-3">
           {/* Template Dimensions Only */}
-          <div className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-gray-200 text-xs shadow-2xs">
-            <span className="text-gray-500 font-medium">Template Dimensions</span>
-            <span className="font-semibold text-gray-700 tabular-nums bg-gray-50 px-2 py-0.5 rounded border border-gray-200/60 text-[11px]">
+          <div className={isModern ? "flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-slate-200/80 text-xs" : "flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-gray-200 text-xs shadow-2xs"}>
+            <span className="text-slate-500 font-medium">Template Dimensions</span>
+            <span className="font-semibold text-slate-700 tabular-nums bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/70 text-[11px]">
               {format.dimensions?.width || 1200} × {format.dimensions?.height || 800} px
             </span>
           </div>
 
           {/* Minimized Clean Resize Control */}
-          <div className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${
-            isResizeMode
-              ? 'bg-blue-50/70 border-blue-200'
-              : 'bg-white border-gray-200 shadow-2xs'
-          }`}>
+          <div
+            className={
+              isModern
+                ? cn(
+                    "flex items-center justify-between px-3 py-2 rounded-xl border transition-colors",
+                    isResizeMode
+                      ? "bg-indigo-50/50 border-indigo-200/80"
+                      : "bg-white border-slate-200/80"
+                  )
+                : `flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${
+                    isResizeMode
+                      ? 'bg-blue-50/70 border-blue-200'
+                      : 'bg-white border-gray-200 shadow-2xs'
+                  }`
+            }
+          >
             <div className="flex items-center gap-2 min-w-0">
-              <Maximize className={`h-3.5 w-3.5 flex-shrink-0 ${isResizeMode ? 'text-blue-600' : 'text-gray-400'}`} />
-              <span className="text-xs font-medium text-gray-700">Resize &amp; Move</span>
+              <Maximize className={cn("h-3.5 w-3.5 flex-shrink-0", isResizeMode ? (isModern ? "text-indigo-600" : "text-blue-600") : "text-slate-400")} />
+              <span className="text-xs font-medium text-slate-700">Resize &amp; Move</span>
               {isResizeMode && (
-                <span className="text-[10px] font-semibold text-blue-600 bg-blue-100/80 px-1.5 py-0.2 rounded">
+                <span className={isModern ? "text-[10px] font-semibold text-indigo-700 bg-indigo-100/80 px-1.5 py-0.5 rounded-md leading-none" : "text-[10px] font-semibold text-blue-600 bg-blue-100/80 px-1.5 py-0.2 rounded"}>
                   Active
                 </span>
               )}

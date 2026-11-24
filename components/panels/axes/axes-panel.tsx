@@ -13,8 +13,10 @@ import { TimelineAxisSettings } from "./timeline-axis-settings"
 import { GoalLinesTab } from "./goal-lines-tab"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { cn, setNestedProperty } from "@/lib/utils"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
 
 export function AxesPanel() {
+  const isModern = useIsModernPanel()
   const chartConfig = useChartConfig()
   const chartType = useChartType()
   const chartData = useChartData()
@@ -70,45 +72,67 @@ export function AxesPanel() {
   // Handle Cartesian charts (X-Axis, Y-Axis, and Goal Lines)
   return (
     <Tabs defaultValue="x" className="w-full">
-      <TabsList className={cn("grid w-full gap-1 h-auto p-1 bg-gray-100 rounded-lg", chartType === 'timeline' ? "grid-cols-4" : "grid-cols-3")}>
+      <TabsList
+        className={cn(
+          "grid w-full gap-1 h-auto",
+          isModern ? MODERN_PANEL_UI.segTrack : "p-1 bg-gray-100 rounded-lg",
+          chartType === 'timeline' ? "grid-cols-4" : "grid-cols-3"
+        )}
+      >
         <TabsTrigger
           value="x"
-          className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+          className={
+            isModern
+              ? MODERN_PANEL_UI.segTriggerRadix
+              : "text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+          }
         >
           X-Axis
         </TabsTrigger>
         <TabsTrigger
           value="y"
-          className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1.5"
+          className={
+            isModern
+              ? cn(MODERN_PANEL_UI.segTriggerRadix, "flex items-center justify-center gap-1.5")
+              : "text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1.5"
+          }
         >
           <span>Y-Axis</span>
           {hasY1InUse && (
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-600 inline-block" title="Secondary Y2 axis active" />
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 inline-block" title="Secondary Y2 axis active" />
           )}
         </TabsTrigger>
         {chartType === 'timeline' && (
           <TabsTrigger
             value="timeline"
-            className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1 font-medium"
+            className={
+              isModern
+                ? cn(MODERN_PANEL_UI.segTriggerRadix, "flex items-center justify-center gap-1")
+                : "text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1 font-medium"
+            }
           >
             <span>Timeline</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />
+            <span className={cn("w-1.5 h-1.5 rounded-full inline-block", isModern ? "bg-indigo-600" : "bg-blue-600")} />
           </TabsTrigger>
         )}
         <TabsTrigger
           value="goals"
-          className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1"
+          className={
+            isModern
+              ? cn(MODERN_PANEL_UI.segTriggerRadix, "flex items-center justify-center gap-1")
+              : "text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1"
+          }
         >
           <span>Goal Lines</span>
           {hasGoalLineInUse ? (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" title="Goal line active" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" title="Goal line active" />
           ) : (
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block" />
           )}
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="x" className="mt-4">
+      <TabsContent value="x" className={isModern ? "mt-3" : "mt-4"}>
         <AxisSettings
           axis="x"
           config={chartConfig.scales?.x || {}}
@@ -117,40 +141,62 @@ export function AxesPanel() {
         />
       </TabsContent>
 
-      <TabsContent value="y" className="mt-4">
+      <TabsContent value="y" className={isModern ? "mt-3" : "mt-4"}>
         {/* Sub-selector under Y-Axis: Left Y-Axis vs Right Y-Axis (Grouped mode + eligible types only) */}
         {chartMode === 'grouped' && ['bar', 'line', 'area', 'scatter', 'bubble', 'bar3d'].includes(chartType) ? (
           <>
-            <div className="grid grid-cols-2 gap-1.5 p-1 bg-gray-100/90 rounded-lg border border-gray-200/70 mb-4">
+            <div
+              className={
+                isModern
+                  ? cn("grid grid-cols-2 gap-1 mb-3", MODERN_PANEL_UI.subSegTrack)
+                  : "grid grid-cols-2 gap-1.5 p-1 bg-gray-100/90 rounded-lg border border-gray-200/70 mb-4"
+              }
+            >
               <button
                 type="button"
                 onClick={() => setYSubAxis('y')}
-                className={cn(
-                  "py-1.5 px-3 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                  ySubAxis === 'y'
-                    ? "bg-white text-gray-900 shadow-xs border border-gray-200/50"
-                    : "text-gray-500 hover:text-gray-800"
-                )}
+                className={
+                  isModern
+                    ? cn(
+                        MODERN_PANEL_UI.subSegItemBase,
+                        "flex items-center justify-center gap-1.5",
+                        ySubAxis === 'y' && MODERN_PANEL_UI.subSegItemActive
+                      )
+                    : cn(
+                        "py-1.5 px-3 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                        ySubAxis === 'y'
+                          ? "bg-white text-gray-900 shadow-xs border border-gray-200/50"
+                          : "text-gray-500 hover:text-gray-800"
+                      )
+                }
               >
                 <span>Left Y-Axis</span>
               </button>
               <button
                 type="button"
                 onClick={() => setYSubAxis('y1')}
-                className={cn(
-                  "py-1.5 px-3 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                  ySubAxis === 'y1'
-                    ? "bg-white text-gray-900 shadow-xs border border-gray-200/50"
-                    : "text-gray-500 hover:text-gray-800"
-                )}
+                className={
+                  isModern
+                    ? cn(
+                        MODERN_PANEL_UI.subSegItemBase,
+                        "flex items-center justify-center gap-1.5",
+                        ySubAxis === 'y1' && MODERN_PANEL_UI.subSegItemActive
+                      )
+                    : cn(
+                        "py-1.5 px-3 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                        ySubAxis === 'y1'
+                          ? "bg-white text-gray-900 shadow-xs border border-gray-200/50"
+                          : "text-gray-500 hover:text-gray-800"
+                      )
+                }
               >
                 <span>Right Y-Axis</span>
                 {hasY1InUse ? (
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-purple-100 text-purple-700 leading-tight">
+                  <span className={cn("px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none", isModern ? "bg-indigo-100 text-indigo-700" : "bg-purple-100 text-purple-700")}>
                     {y1Datasets.length}
                   </span>
                 ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" title="No datasets mapped" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block" title="No datasets mapped" />
                 )}
               </button>
             </div>

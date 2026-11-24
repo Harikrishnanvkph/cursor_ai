@@ -57,7 +57,7 @@ import { ChartStyleGallery } from "@/components/chart-style-gallery"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useUIStore } from "@/lib/stores/ui-store"
 
-export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false, activeTab, onTabChange, onNewChart, variant = 'default' }: {
+export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false, activeTab, onTabChange, onNewChart, variant = 'default', hideToolbar = false, externalZoomPan, externalContainerRef }: {
   onToggleSidebar?: () => void,
   isSidebarCollapsed?: boolean,
   onToggleLeftSidebar?: () => void,
@@ -67,6 +67,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   onTabChange?: (tab: string) => void,
   onNewChart?: () => void,
   variant?: 'landing' | 'default',
+  hideToolbar?: boolean,
+  externalZoomPan?: ReturnType<typeof useZoomPan>,
+  externalContainerRef?: React.RefObject<HTMLDivElement | null>,
 }) {
   // --- Hydration gate ---
   const storesHydrated = useStoreHydration([useChartStore, useTemplateStore]);
@@ -100,7 +103,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   })));
 
   // --- Refs ---
-  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const internalChartContainerRef = useRef<HTMLDivElement>(null);
+  const chartContainerRef = externalContainerRef || internalChartContainerRef;
   const prevEditorModeRef = useRef<string>(editorMode);
 
   // --- Extracted hooks ---
@@ -110,7 +114,10 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     onToggleLeftSidebar,
     isLeftSidebarCollapsed,
   });
-  const zoomPan = useZoomPan();
+  const internalZoomPan = useZoomPan();
+  const zoomPan = externalZoomPan || internalZoomPan;
+
+  const isTemplateView = shouldShowTemplate() || (editorMode === 'template' && !!selectedFormatId);
 
   // --- Local state ---
   const [isMobile, setIsMobile] = useState(false);
@@ -149,7 +156,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
   // --- Center view when zoom resets ---
   useEffect(() => {
-    if (chartContainerRef.current && zoomPan.zoom === 1 && zoomPan.panOffset.x === 0 && zoomPan.panOffset.y === 0) {
+    if (!isTemplateView && chartContainerRef.current && zoomPan.zoom === 1 && zoomPan.panOffset.x === 0 && zoomPan.panOffset.y === 0) {
       setTimeout(() => {
         if (chartContainerRef.current) {
           const container = chartContainerRef.current;
@@ -158,11 +165,12 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         }
       }, 100);
     }
-  }, [zoomPan.zoom, zoomPan.panOffset.x, zoomPan.panOffset.y]);
+  }, [isTemplateView, zoomPan.zoom, zoomPan.panOffset.x, zoomPan.panOffset.y]);
 
   // --- Ctrl + mouse wheel/trackpad zoom handler ---
   const { setZoom, attachTouchHandlers } = zoomPan;
   useEffect(() => {
+    if (isTemplateView) return;
     const handleWheel = (e: WheelEvent) => {
       const container = chartContainerRef.current;
       if (!container) return;
@@ -185,12 +193,13 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     return () => {
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [setZoom]);
+  }, [setZoom, isTemplateView, chartContainerRef]);
 
   // --- Pinch-to-zoom touch handler for mobile ---
   useEffect(() => {
+    if (isTemplateView) return;
     return attachTouchHandlers(chartContainerRef.current);
-  }, [attachTouchHandlers]);
+  }, [attachTouchHandlers, isTemplateView, chartContainerRef]);
 
   // Auto-fit logic has been refactored to use synchronous CSS-based scaling and flex-centering in ChartPreviewCanvas.
 
@@ -323,7 +332,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   }
 
   // --- Template mode: delegate ---
-  if (shouldShowTemplate() || (editorMode === 'template' && selectedFormatId)) {
+  if (isTemplateView) {
     return (
       <>
         <TemplateChartPreview
@@ -336,6 +345,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           onTabChange={onTabChange}
           onNewChart={onNewChart}
           zoomPan={zoomPan}
+          hideToolbar={hideToolbar}
+          externalContainerRef={chartContainerRef}
         />
         <ChartTransitionDialog
           open={transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType !== null && transitions.scatterBubbleSetup.direction !== null}
@@ -673,7 +684,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       )}
 
       {/* Toolbar */}
-      {!isMobile && (
+      {!isMobile && !hideToolbar && (
         variant === 'landing' ? (
           <div className="h-[52px] min-h-[52px] px-3.5 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-950 flex items-center justify-between flex-shrink-0 z-10">
             <ChartPreviewToolbar
@@ -749,6 +760,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   <ChartPreviewCanvas
                     chartContainerRef={chartContainerRef as any}
                     chartConfig={chartConfig}
+                    elevatedArtboard={hideToolbar}
                     zoomPan={zoomPan}
                   />
                 )}

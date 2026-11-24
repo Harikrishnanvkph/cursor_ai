@@ -15,8 +15,10 @@ import {
 } from "@/components/ui/font-setting-section"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
-import { Copy, Download } from "lucide-react"
+import { Copy, Download, ChevronDown, MessageSquare, Sparkles, MousePointerClick, Stamp, Code2 } from "lucide-react"
 import { useState } from "react"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 const allowedEasings = [
   "linear",
@@ -32,6 +34,7 @@ const allowedEasings = [
 ];
 
 export function AdvancedPanel() {
+  const isModern = useIsModernPanel()
   const {
     chartConfig,
     chartData,
@@ -108,17 +111,25 @@ export function AdvancedPanel() {
 
 
   return (
-    <div className="space-y-2">
+    <div className={isModern ? "space-y-2.5" : "space-y-2"}>
 
 
       {/* Tooltip Settings Section */}
-      <div className="space-y-0">
+      <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          className={
+            isModern
+              ? cn(MODERN_PANEL_UI.cardHeader, tooltipOpen && MODERN_PANEL_UI.cardHeaderOpen)
+              : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          }
           onClick={() => setTooltipOpen(!tooltipOpen)}
         >
-          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900 flex-1">Tooltip Settings</h3>
+          {isModern ? (
+            <MessageSquare className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          ) : (
+            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+          )}
+          <h3 className={cn(isModern ? MODERN_PANEL_UI.cardTitle : "text-sm font-semibold text-gray-900", "flex-1")}>Tooltip Settings</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={(chartConfig as any).plugins?.tooltip?.enabled !== false}
@@ -126,13 +137,13 @@ export function AdvancedPanel() {
               className="data-[state=checked]:bg-blue-600"
             />
           </div>
-          <div className="ml-2 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${tooltipOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9" /> </svg>
+          <div className="ml-1 flex items-center">
+            <ChevronDown className={cn("w-4 h-4 transition-transform duration-150", isModern ? "text-slate-400" : "text-current", tooltipOpen && "rotate-180")} />
           </div>
         </div>
-        <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
+        <div className={isModern ? undefined : "bg-blue-50 rounded-b-lg border-x border-b border-blue-100"}>
           {tooltipOpen && (
-            <div className={`px-3 py-3 space-y-2.5 ${(chartConfig as any).plugins?.tooltip?.enabled === false ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={cn(isModern ? MODERN_PANEL_UI.cardBodyMuted : "px-3 py-3 space-y-2.5", (chartConfig as any).plugins?.tooltip?.enabled === false && "opacity-50 pointer-events-none")}>
               <div>
                 <Label className="text-xs font-medium">Tooltip Display Mode</Label>
                 <Select
@@ -221,13 +232,21 @@ export function AdvancedPanel() {
       </div>
 
       {/* General Animations Section */}
-      <div className="space-y-0">
+      <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          className={
+            isModern
+              ? cn(MODERN_PANEL_UI.cardHeader, generalAnimOpen && chartConfig.animation !== false && MODERN_PANEL_UI.cardHeaderOpen)
+              : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          }
           onClick={() => setGeneralAnimOpen(!generalAnimOpen)}
         >
-          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900 flex-1">General Animations</h3>
+          {isModern ? (
+            <Sparkles className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          ) : (
+            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+          )}
+          <h3 className={cn(isModern ? MODERN_PANEL_UI.cardTitle : "text-sm font-semibold text-gray-900", "flex-1")}>General Animations</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={chartConfig.animation !== false}
@@ -235,14 +254,12 @@ export function AdvancedPanel() {
               className="data-[state=checked]:bg-blue-600"
             />
           </div>
-          <div className="ml-2 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${generalAnimOpen ? 'rotate-180' : ''}`}>
-              <path d="M6 9L12 15L18 9" />
-            </svg>
+          <div className="ml-1 flex items-center">
+            <ChevronDown className={cn("w-4 h-4 transition-transform duration-150", isModern ? "text-slate-400" : "text-current", generalAnimOpen && "rotate-180")} />
           </div>
         </div>
         {generalAnimOpen && chartConfig.animation !== false && (
-          <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100">
+          <div className={isModern ? MODERN_PANEL_UI.cardBodyMuted : "bg-blue-50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100"}>
             <div className="space-y-3">
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -301,13 +318,21 @@ export function AdvancedPanel() {
       </div>
 
       {/* Hover Animation Section */}
-      <div className="space-y-0">
+      <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          className={
+            isModern
+              ? cn(MODERN_PANEL_UI.cardHeader, MODERN_PANEL_UI.cardHeaderOpen)
+              : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          }
           onClick={() => setHoverAnimOpen(!hoverAnimOpen)}
         >
-          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900 flex-1">Hover Animation</h3>
+          {isModern ? (
+            <MousePointerClick className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          ) : (
+            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+          )}
+          <h3 className={cn(isModern ? MODERN_PANEL_UI.cardTitle : "text-sm font-semibold text-gray-900", "flex-1")}>Hover Animation</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={hoverEnabled}
@@ -315,15 +340,13 @@ export function AdvancedPanel() {
               className="data-[state=checked]:bg-blue-600"
             />
           </div>
-          <div className="ml-2 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${hoverAnimOpen ? 'rotate-180' : ''}`}>
-              <path d="M6 9L12 15L18 9" />
-            </svg>
+          <div className="ml-1 flex items-center">
+            <ChevronDown className={cn("w-4 h-4 transition-transform duration-150", isModern ? "text-slate-400" : "text-current", hoverAnimOpen && "rotate-180")} />
           </div>
         </div>
-        <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
+        <div className={isModern ? "bg-slate-50/40" : "bg-blue-50 rounded-b-lg border-x border-b border-blue-100"}>
           <div className="flex items-center justify-between px-3 py-2">
-            <span className="text-xs font-medium text-black">Hover Mode</span>
+            <span className={isModern ? "text-xs font-medium text-slate-700" : "text-xs font-medium text-black"}>Hover Mode</span>
             <Select
               value={chartConfig.interaction?.mode === 'nearest' ? 'nearest' : 'point'}
               onValueChange={value => handleConfigUpdate('interaction.mode', value)}
@@ -359,20 +382,28 @@ export function AdvancedPanel() {
       </div>
 
       {/* Watermark Section */}
-      <div className="space-y-0">
+      <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          className={
+            isModern
+              ? cn(MODERN_PANEL_UI.cardHeader, watermarkOpen && MODERN_PANEL_UI.cardHeaderOpen)
+              : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          }
           onClick={() => setWatermarkOpen(!watermarkOpen)}
         >
-          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900 flex-1">Watermark</h3>
-          <div className="ml-auto flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${watermarkOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9" /> </svg>
+          {isModern ? (
+            <Stamp className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          ) : (
+            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+          )}
+          <h3 className={cn(isModern ? MODERN_PANEL_UI.cardTitle : "text-sm font-semibold text-gray-900", "flex-1")}>Watermark</h3>
+          <div className="ml-auto flex items-center">
+            <ChevronDown className={cn("w-4 h-4 transition-transform duration-150", isModern ? "text-slate-400" : "text-current", watermarkOpen && "rotate-180")} />
           </div>
         </div>
         {
           watermarkOpen && (
-            <div className="bg-blue-50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
+            <div className={isModern ? MODERN_PANEL_UI.cardBodyMuted : "bg-blue-50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100"}>
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Show Watermark</Label>
                 <Switch
@@ -520,33 +551,28 @@ export function AdvancedPanel() {
       </div >
 
       {/* Configuration Section */}
-      <div className="space-y-0">
+      <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          className={
+            isModern
+              ? cn(MODERN_PANEL_UI.cardHeader, rawOpen && MODERN_PANEL_UI.cardHeaderOpen)
+              : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
+          }
           onClick={() => setRawOpen(!rawOpen)}
         >
-          <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900 flex-1">Configuration</h3>
-          <div className="ml-auto flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`transform transition-transform ${rawOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9L12 15L18 9" />
-            </svg>
+          {isModern ? (
+            <Code2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          ) : (
+            <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+          )}
+          <h3 className={cn(isModern ? MODERN_PANEL_UI.cardTitle : "text-sm font-semibold text-gray-900", "flex-1")}>Configuration</h3>
+          <div className="ml-auto flex items-center">
+            <ChevronDown className={cn("w-4 h-4 transition-transform duration-150", isModern ? "text-slate-400" : "text-current", rawOpen && "rotate-180")} />
           </div>
         </div>
         {
           rawOpen && (
-            <div className="bg-gray-50 rounded-b-lg p-3 space-y-3 border-x border-b border-gray-100">
+            <div className={isModern ? MODERN_PANEL_UI.cardBodyMuted : "bg-gray-50 rounded-b-lg p-3 space-y-3 border-x border-b border-gray-100"}>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" onClick={handleExportConfig} className="h-8 text-xs bg-white hover:bg-gray-100">
                   <Download className="h-3 w-3 mr-1" />

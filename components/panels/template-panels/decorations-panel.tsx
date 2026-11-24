@@ -26,6 +26,8 @@ import { IconifySearchTab } from "./IconifySearchTab"
 import { PexelsImageTab } from "./PexelsImageTab"
 import { AddImageButton, type AddImageResult } from "@/components/shared/add-image-modal"
 import { compressImage } from "@/lib/image-utils"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 // ═══════════════════════════════════════════════════════
 // Shape definitions for the picker
@@ -615,6 +617,7 @@ export function DecorationsPanel() {
     redoShapeAction
   } = useDecorationStore()
 
+  const isModern = useIsModernPanel()
   const [isPickerOpen, setIsPickerOpen] = useState(true)
   const [isSettingsOpen, setIsSettingsOpen] = useState(true)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
@@ -922,40 +925,62 @@ export function DecorationsPanel() {
         </div>
       </div>
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'graphics' | 'shapes' | 'section' | 'images')} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 gap-1.5 h-auto p-1 bg-slate-100/70 rounded-xl border border-slate-200/50">
+        <TabsList
+          className={
+            isModern
+              ? cn("grid w-full grid-cols-4 gap-1 h-auto", MODERN_PANEL_UI.iconTabTrack)
+              : "grid w-full grid-cols-4 gap-1.5 h-auto p-1 bg-slate-100/70 rounded-xl border border-slate-200/50"
+          }
+        >
           <TabsTrigger
             value="graphics"
-            className="group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
+            className={
+              isModern
+                ? "group flex flex-col items-center justify-center py-1.5 px-1 rounded-[6px] text-slate-500 hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm transition-colors cursor-pointer"
+                : "group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
+            }
           >
-            <Sparkles className="h-4 w-4 mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-indigo-600 transition-colors" />
-            <span className="text-[11px] font-medium leading-none tracking-tight group-data-[state=active]:font-semibold">
+            <Sparkles className={cn("h-4 w-4 mb-0.5 transition-colors", isModern ? "text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-indigo-600" : "mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-indigo-600")} />
+            <span className={cn("font-medium leading-none group-data-[state=active]:font-semibold", isModern ? "text-[10.5px]" : "text-[11px] tracking-tight")}>
               Graphics
             </span>
           </TabsTrigger>
           <TabsTrigger
             value="shapes"
-            className="group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
+            className={
+              isModern
+                ? "group flex flex-col items-center justify-center py-1.5 px-1 rounded-[6px] text-slate-500 hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm transition-colors cursor-pointer"
+                : "group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
+            }
           >
-            <Hexagon className="h-4 w-4 mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-violet-600 transition-colors" />
-            <span className="text-[11px] font-medium leading-none tracking-tight group-data-[state=active]:font-semibold">
+            <Hexagon className={cn("h-4 w-4 mb-0.5 transition-colors", isModern ? "text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-indigo-600" : "mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-violet-600")} />
+            <span className={cn("font-medium leading-none group-data-[state=active]:font-semibold", isModern ? "text-[10.5px]" : "text-[11px] tracking-tight")}>
               Shapes
             </span>
           </TabsTrigger>
           <TabsTrigger
             value="section"
-            className="group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
+            className={
+              isModern
+                ? "group flex flex-col items-center justify-center py-1.5 px-1 rounded-[6px] text-slate-500 hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm transition-colors cursor-pointer"
+                : "group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
+            }
           >
-            <Type className="h-4 w-4 mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-blue-600 transition-colors" />
-            <span className="text-[11px] font-medium leading-none tracking-tight group-data-[state=active]:font-semibold">
+            <Type className={cn("h-4 w-4 mb-0.5 transition-colors", isModern ? "text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-indigo-600" : "mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-blue-600")} />
+            <span className={cn("font-medium leading-none group-data-[state=active]:font-semibold", isModern ? "text-[10.5px]" : "text-[11px] tracking-tight")}>
               Text
             </span>
           </TabsTrigger>
           <TabsTrigger
             value="images"
-            className="group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
+            className={
+              isModern
+                ? "group flex flex-col items-center justify-center py-1.5 px-1 rounded-[6px] text-slate-500 hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm transition-colors cursor-pointer"
+                : "group flex flex-col items-center justify-center py-2 px-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/60 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-slate-200/60 transition-all cursor-pointer"
+            }
           >
-            <ImageIcon className="h-4 w-4 mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-emerald-600 transition-colors" />
-            <span className="text-[11px] font-medium leading-none tracking-tight group-data-[state=active]:font-semibold">
+            <ImageIcon className={cn("h-4 w-4 mb-0.5 transition-colors", isModern ? "text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-indigo-600" : "mb-1 text-slate-400 group-hover:text-slate-600 group-data-[state=active]:text-emerald-600")} />
+            <span className={cn("font-medium leading-none group-data-[state=active]:font-semibold", isModern ? "text-[10.5px]" : "text-[11px] tracking-tight")}>
               Image
             </span>
           </TabsTrigger>
@@ -972,31 +997,47 @@ export function DecorationsPanel() {
 
 
         {/* ═══════════ SHAPES TAB ═══════════ */}
-        <TabsContent value="shapes" className="space-y-4 mt-3">
+        <TabsContent value="shapes" className="space-y-3.5 mt-3">
           {/* Sub-tabs: Drawing vs All Icons & Shapes */}
-          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100/90 rounded-xl">
+          <div className={isModern ? cn("grid grid-cols-2 gap-1", MODERN_PANEL_UI.subSegTrack) : "grid grid-cols-2 gap-1 p-1 bg-slate-100/90 rounded-xl"}>
             <button
               type="button"
               onClick={() => setShapesSubTab('basic')}
-              className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
-                shapesSubTab === 'basic'
-                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 font-medium'
-              }`}
+              className={
+                isModern
+                  ? cn(
+                      MODERN_PANEL_UI.subSegItemBase,
+                      "flex items-center justify-center gap-1.5",
+                      shapesSubTab === 'basic' && MODERN_PANEL_UI.subSegItemActive
+                    )
+                  : `flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      shapesSubTab === 'basic'
+                        ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                        : 'text-slate-500 hover:text-slate-800 font-medium'
+                    }`
+              }
             >
-              <Pencil className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <Pencil className={cn("w-3.5 h-3.5 shrink-0", isModern ? (shapesSubTab === 'basic' ? "text-indigo-600" : "text-slate-400") : "text-blue-500")} />
               <span>Drawing</span>
             </button>
             <button
               type="button"
               onClick={() => setShapesSubTab('advanced')}
-              className={`flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
-                shapesSubTab === 'advanced'
-                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 font-medium'
-              }`}
+              className={
+                isModern
+                  ? cn(
+                      MODERN_PANEL_UI.subSegItemBase,
+                      "flex items-center justify-center gap-1.5",
+                      shapesSubTab === 'advanced' && MODERN_PANEL_UI.subSegItemActive
+                    )
+                  : `flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      shapesSubTab === 'advanced'
+                        ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                        : 'text-slate-500 hover:text-slate-800 font-medium'
+                    }`
+              }
             >
-              <Globe className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <Globe className={cn("w-3.5 h-3.5 shrink-0", isModern ? (shapesSubTab === 'advanced' ? "text-indigo-600" : "text-slate-400") : "text-indigo-500")} />
               <span>All Icons & Shapes</span>
             </button>
           </div>
@@ -1025,24 +1066,45 @@ export function DecorationsPanel() {
             const isLineDrawing = ['freehand', 'line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve'].includes(drawingMode)
 
             return (
-              <div className={`relative overflow-hidden transition-all duration-300 border rounded-lg ${isSettingsOpen ? 'bg-blue-50/40 border-blue-200 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+              <div
+                className={
+                  isModern
+                    ? MODERN_PANEL_UI.card
+                    : `relative overflow-hidden transition-all duration-300 border rounded-lg ${isSettingsOpen ? 'bg-blue-50/40 border-blue-200 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`
+                }
+              >
                 <button
+                  type="button"
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                  className="w-full h-9 px-3 flex items-center justify-between group transition-colors"
+                  className={
+                    isModern
+                      ? cn(MODERN_PANEL_UI.cardHeader, isSettingsOpen && MODERN_PANEL_UI.cardHeaderOpen)
+                      : "w-full h-9 px-3 flex items-center justify-between group transition-colors"
+                  }
                 >
-                  <div className="flex items-center gap-2">
-                    <div className={`p-1 rounded-md transition-all duration-300 ${isSettingsOpen ? 'bg-blue-500 text-white shadow-blue-200 shadow-sm scale-105' : 'bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-500'}`}>
-                      <Pencil className="h-3 w-3" />
-                    </div>
-                    <Label className={`text-[11px] font-bold tracking-wide uppercase cursor-pointer transition-colors ${isSettingsOpen ? 'text-blue-900' : 'text-slate-600 group-hover:text-blue-600'}`}>
-                      Global Tool Settings
-                    </Label>
-                  </div>
-                  <ChevronDown className={`h-3.5 w-3.5 transition-all duration-500 ${isSettingsOpen ? 'rotate-180 text-blue-500' : 'text-slate-400 group-hover:text-blue-400'}`} />
+                  {isModern ? (
+                    <>
+                      <Pencil className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span className={cn(MODERN_PANEL_UI.cardTitle, "flex-1")}>Global Tool Settings</span>
+                      <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform duration-150", isSettingsOpen && "rotate-180")} />
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1 rounded-md transition-all duration-300 ${isSettingsOpen ? 'bg-blue-500 text-white shadow-blue-200 shadow-sm scale-105' : 'bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-500'}`}>
+                          <Pencil className="h-3 w-3" />
+                        </div>
+                        <Label className={`text-[11px] font-bold tracking-wide uppercase cursor-pointer transition-colors ${isSettingsOpen ? 'text-blue-900' : 'text-slate-600 group-hover:text-blue-600'}`}>
+                          Global Tool Settings
+                        </Label>
+                      </div>
+                      <ChevronDown className={`h-3.5 w-3.5 transition-all duration-500 ${isSettingsOpen ? 'rotate-180 text-blue-500' : 'text-slate-400 group-hover:text-blue-400'}`} />
+                    </>
+                  )}
                 </button>
 
                 {isSettingsOpen && (
-                  <div className="px-3 pb-3 pt-1 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 ease-out border-t border-blue-100/50">
+                  <div className={isModern ? MODERN_PANEL_UI.cardBodyMuted : "px-3 pb-3 pt-1 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 ease-out border-t border-blue-100/50"}>
                     <div className="grid grid-cols-2 gap-3">
                       {/* Fill settings (only for closed shapes) */}
                       {!isLineDrawing && (

@@ -7,6 +7,8 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Target, Sparkles, Check } from "lucide-react"
+import { useIsModernPanel, MODERN_PANEL_UI } from "@/components/editor/modern-panel-context"
+import { cn } from "@/lib/utils"
 
 interface GoalLinesTabProps {
   chartConfig: any
@@ -26,6 +28,7 @@ const PRESET_COLORS = [
 const QUICK_LABELS = ["Target", "KPI Goal", "Budget Limit", "Benchmark", "Breakeven"]
 
 export function GoalLinesTab({ chartConfig, onUpdate, hasY1InUse = false }: GoalLinesTabProps) {
+  const isModern = useIsModernPanel()
   const yThreshold = chartConfig?.scales?.y?.threshold || {}
   const yEnabled = yThreshold.enabled === true
 
@@ -43,26 +46,32 @@ export function GoalLinesTab({ chartConfig, onUpdate, hasY1InUse = false }: Goal
   }
 
   return (
-    <div className="space-y-4 pb-4">
+    <div className={isModern ? "space-y-3 pb-4" : "space-y-4 pb-4"}>
       {/* Overview Banner */}
-      <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50/60 rounded-xl border border-blue-100 flex items-start gap-2.5">
-        <Target className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-        <div className="text-xs text-blue-950 space-y-0.5">
-          <div className="font-semibold text-blue-900">Scale-Locked Benchmark Lines</div>
-          <p className="text-[11px] text-blue-700 leading-relaxed">
+      <div
+        className={
+          isModern
+            ? "p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-start gap-2.5"
+            : "p-3 bg-gradient-to-r from-blue-50 to-indigo-50/60 rounded-xl border border-blue-100 flex items-start gap-2.5"
+        }
+      >
+        <Target className={cn("w-4 h-4 mt-0.5 shrink-0", isModern ? "text-indigo-600" : "text-blue-600")} />
+        <div className={cn("text-xs space-y-0.5", isModern ? "text-slate-700" : "text-blue-950")}>
+          <div className={cn("font-semibold", isModern ? "text-slate-800" : "text-blue-900")}>Scale-Locked Benchmark Lines</div>
+          <p className={cn("text-[11px] leading-relaxed", isModern ? "text-slate-500" : "text-blue-700")}>
             Goal lines automatically adjust with your data values, scale limits, and high-res exports.
           </p>
         </div>
       </div>
 
       {/* Primary Goal Line (Left Y-Axis) */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
-        <div className="p-3 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
+      <div className={isModern ? MODERN_PANEL_UI.card : "bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden"}>
+        <div className={isModern ? MODERN_PANEL_UI.sectionHeaderRow : "p-3 border-b border-gray-100 flex items-center justify-between bg-slate-50/50"}>
           <div className="flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-full transition-colors ${yEnabled ? "bg-emerald-500 shadow-xs ring-2 ring-emerald-200" : "bg-gray-300"}`} />
+            <div className={`w-2 h-2 rounded-full transition-colors ${yEnabled ? "bg-emerald-500" : "bg-slate-300"}`} />
             <div>
-              <div className="text-xs font-semibold text-gray-900">Primary Goal Line (Left Y)</div>
-              <div className="text-[10px] text-gray-500">Benchmark line plotted on Left Y scale</div>
+              <div className="text-xs font-semibold text-slate-800">Primary Goal Line (Left Y)</div>
+              <div className="text-[11px] text-slate-500">Benchmark line plotted on Left Y scale</div>
             </div>
           </div>
           <Switch
@@ -83,7 +92,7 @@ export function GoalLinesTab({ chartConfig, onUpdate, hasY1InUse = false }: Goal
         </div>
 
         {yEnabled ? (
-          <div className="p-3 space-y-3 bg-blue-50/30">
+          <div className={isModern ? MODERN_PANEL_UI.cardBodyMuted : "p-3 space-y-3 bg-blue-50/30"}>
             {/* Target Value and Label */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
