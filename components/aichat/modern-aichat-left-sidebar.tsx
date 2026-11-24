@@ -13,19 +13,19 @@ import { cn } from "@/lib/utils"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { ConfigSidebar } from "@/components/config-sidebar"
 import { ModernPanelProvider } from "@/components/editor/modern-panel-context"
-import { ChatWindow } from "@/components/landing/chat-window"
-import { ModernChatHeaderBar } from "@/components/landing/modern-chat-header-bar"
+import { ChatWindow } from "@/components/aichat/chat-window"
+import { ModernChatHeaderBar } from "@/components/aichat/modern-chat-header-bar"
 import { useChatStore } from "@/lib/chat-store"
 
-export type ModernLandingRailTab = "recents" | "chat" | "tools"
+export type ModernAiChatRailTab = "recents" | "chat" | "tools"
 
 const DEFAULT_PANEL_WIDTH = 340
 const MIN_PANEL_WIDTH = 280
 const MAX_PANEL_WIDTH = 460
 
-export interface ModernLandingLeftSidebarProps {
-  activeTab: ModernLandingRailTab
-  onTabChange: (tab: ModernLandingRailTab) => void
+export interface ModernAiChatLeftSidebarProps {
+  activeTab: ModernAiChatRailTab
+  onTabChange: (tab: ModernAiChatRailTab) => void
   collapsed: boolean
   onCollapsedChange: (collapsed: boolean) => void
   isTablet?: boolean
@@ -58,7 +58,7 @@ export interface ModernLandingLeftSidebarProps {
 }
 
 const RAIL_SECTIONS: Array<{
-  id: Exclude<ModernLandingRailTab, "recents">
+  id: Exclude<ModernAiChatRailTab, "recents">
   label: string
   title: string
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
@@ -67,7 +67,7 @@ const RAIL_SECTIONS: Array<{
   { id: "tools", label: "Tools", title: "Chart & Template Settings", icon: PencilSparkles },
 ]
 
-export function ModernLandingLeftSidebar({
+export function ModernAiChatLeftSidebar({
   activeTab,
   onTabChange,
   collapsed,
@@ -97,14 +97,14 @@ export function ModernLandingLeftSidebar({
   textareaRef,
   messagesEndRef,
   currentChartState,
-}: ModernLandingLeftSidebarProps) {
+}: ModernAiChatLeftSidebarProps) {
   const [panelWidth, setPanelWidth] = useState<number>(DEFAULT_PANEL_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartXRef = useRef<number>(0)
   const resizeStartWidthRef = useRef<number>(DEFAULT_PANEL_WIDTH)
 
   const handleRailClick = useCallback(
-    (tabId: ModernLandingRailTab) => {
+    (tabId: ModernAiChatRailTab) => {
       if (!collapsed && activeTab === tabId) {
         onCollapsedChange(true)
         return

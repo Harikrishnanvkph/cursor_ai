@@ -965,7 +965,7 @@ function PricingSection() {
 
           <div className="mt-8 pt-4">
             <Link
-              href={user ? "/landing" : "/signin"}
+              href={user ? "/aichat" : "/signin"}
               prefetch={false}
               className="block text-center w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200"
             >
@@ -1113,7 +1113,7 @@ function SiteFooter() {
       id: "pages",
       title: "Pages",
       links: [
-        { label: "AI Chart Generator", href: "/landing", isBold: true },
+        { label: "AI Chart Generator", href: "/aichat", isBold: true },
         { label: "Advanced Chart Editor", href: "/editor", isBold: true },
         { label: "Dashboard", href: "/board", isBold: true },
         { label: "Pricing & Plans", href: "/pricing" },
@@ -2476,7 +2476,7 @@ export default function HomeNewPage() {
             <div className="md:col-span-1 lg:col-span-4 space-y-4 sm:space-y-5 text-left">
               {/* OpenAI-style announcement pill */}
               <Link
-                href="/landing"
+                href="/aichat"
                 prefetch={false}
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all group w-fit"
               >
@@ -2498,7 +2498,7 @@ export default function HomeNewPage() {
               {/* Action buttons */}
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <Link
-                  href="/landing"
+                  href="/aichat"
                   prefetch={false}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white px-6 py-3 text-xs sm:text-sm font-semibold shadow-sm hover:shadow transition-colors duration-200 group"
                 >
@@ -2520,7 +2520,7 @@ export default function HomeNewPage() {
               <div className="absolute top-0 left-0 z-20 w-[92%] xs:w-[88%] sm:w-[82%] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl px-2.5 sm:px-3.5 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-2.5">
                 <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
                 <span className="flex-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono font-semibold truncate">Show top 10 highest-grossing Hollywood films...</span>
-                <Link href="/landing" prefetch={false} className="shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center transition-colors duration-200 shadow-md shadow-indigo-500/30">
+                <Link href="/aichat" prefetch={false} className="shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center transition-colors duration-200 shadow-md shadow-indigo-500/30">
                   <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                 </Link>
               </div>

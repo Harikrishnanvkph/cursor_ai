@@ -51,7 +51,7 @@ export default function NotFound() {
                 Or try one of these popular pages:
               </p>
               <div className="grid grid-cols-2 gap-2">
-                <Link href="/landing">
+                <Link href="/aichat">
                   <Button variant="ghost" size="sm" className="w-full text-xs">
                     <BarChart3 className="mr-1 h-3 w-3" />
                     AI Chat

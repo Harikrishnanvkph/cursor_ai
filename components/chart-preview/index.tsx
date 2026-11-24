@@ -66,7 +66,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   activeTab?: string,
   onTabChange?: (tab: string) => void,
   onNewChart?: () => void,
-  variant?: 'landing' | 'default',
+  variant?: 'aichat' | 'default',
   hideToolbar?: boolean,
   externalZoomPan?: ReturnType<typeof useZoomPan>,
   externalContainerRef?: React.RefObject<HTMLDivElement | null>,
@@ -685,7 +685,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
       {/* Toolbar */}
       {!isMobile && !hideToolbar && (
-        variant === 'landing' ? (
+        variant === 'aichat' ? (
           <div className="h-[52px] min-h-[52px] px-3.5 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-950 flex items-center justify-between flex-shrink-0 z-10">
             <ChartPreviewToolbar
               isMobile={isMobile}
@@ -771,7 +771,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           </Card>
         );
 
-        return variant === 'landing' ? (
+        return variant === 'aichat' ? (
           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
             {cardElement}
           </div>

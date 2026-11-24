@@ -970,7 +970,7 @@ const guideData = [
             <div className="flex gap-4 items-start p-3.5 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
               <div className="h-7 w-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 text-xs font-mono font-bold">1</div>
               <div>
-                <strong className="block text-slate-900">Conversational Workspace (`/landing`)</strong>
+                <strong className="block text-slate-900">Conversational Workspace (`/aichat`)</strong>
                 <p className="text-slate-600 text-sm mt-0.5">The creative launchpad. Enter text prompts, select model parameters, load pre-built coordinate formats, and review immediate live chart draft previews.</p>
               </div>
             </div>
@@ -2156,7 +2156,7 @@ export default function DocumentationPage() {
                 <span>Board</span>
               </Link>
               <Link
-                href="/landing"
+                href="/aichat"
                 className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 rounded-md transition-all duration-150 font-medium"
               >
                 <Sparkles className="h-4 w-4 text-slate-400" />

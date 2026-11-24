@@ -1,11 +1,11 @@
-// Export all landing page reusable components
+// Export all AI Chat page reusable components
 export { PromptTemplate, chartTemplate } from './prompt_template'
 export { ChatWindow } from './chat-window'
-export { LandingSidebar } from './landing-sidebar'
+export { AiChatSidebar } from './aichat-sidebar'
 export { SidebarProvider, useSidebarContext, useSidebarInputContext, useSidebarInputDispatch } from './sidebar-context'
-export { TabletLandingView } from './tablet-landing-view'
-export { MobileLandingView } from './mobile-landing-view'
-export { LandingFontProvider } from './landing-font-provider'
+export { TabletAiChatView } from './tablet-aichat-view'
+export { MobileAiChatView } from './mobile-aichat-view'
+export { AiChatFontProvider } from './aichat-font-provider'
 export {
   parseDim,
   getAspectRatio,
@@ -13,4 +13,4 @@ export {
   ChartAreaSkeleton,
   GenerationProgressView,
   AnimatedBackground
-} from './landing-helpers'
+} from './aichat-helpers'

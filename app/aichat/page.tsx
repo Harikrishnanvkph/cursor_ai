@@ -29,14 +29,14 @@ import { dataService } from "@/lib/data-service"
 import { DatasetService } from "@/lib/services/dataset-service"
 import { GroupService } from "@/lib/services/group-service"
 import { parseDimension } from "@/lib/utils/dimension-utils"
-import { useSidebarContext, useSidebarInputDispatch } from "@/components/landing/sidebar-context"
+import { useSidebarContext, useSidebarInputDispatch } from "@/components/aichat/sidebar-context"
 import { useIsMobile, useIsTablet } from "@/lib/hooks/use-screen-dimensions"
-import { PromptTemplate, chartTemplate } from "@/components/landing/prompt_template"
-import { ChartAreaSkeleton, GenerationProgressView } from "@/components/landing/landing-helpers"
+import { PromptTemplate, chartTemplate } from "@/components/aichat/prompt_template"
+import { ChartAreaSkeleton, GenerationProgressView } from "@/components/aichat/aichat-helpers"
 import { ChartPreview } from "@/components/chart-preview"
 import { ModernEditorTopBar } from "@/components/editor/modern-editor-topbar"
 import { ModernWorkspaceBottomBar } from "@/components/editor/modern-workspace-bottombar"
-import { ModernLandingLeftSidebar, type ModernLandingRailTab } from "@/components/landing/modern-landing-left-sidebar"
+import { ModernAiChatLeftSidebar, type ModernAiChatRailTab } from "@/components/aichat/modern-aichat-left-sidebar"
 
 const SaveChartDialog = dynamic(() => import("@/components/ui/save-chart-dialog").then(m => m.SaveChartDialog), { ssr: false })
 const ModeChangeConfirmDialog = dynamic(() => import("@/components/dialogs/mode-change-confirm-dialog").then(m => m.ModeChangeConfirmDialog), { ssr: false })
@@ -45,20 +45,20 @@ const SaveModeConflictDialog = dynamic(() => import("@/components/dialogs/save-m
 const ClearChartDialog = dynamic(() => import("@/components/dialogs/clear-chart-dialog").then(m => m.ClearChartDialog), { ssr: false })
 const FormatGallery = dynamic(() => import("@/components/gallery/FormatGallery").then(m => m.FormatGallery), { ssr: false })
 const ChartStyleGalleryPage = dynamic(() => import("@/components/chart-style-gallery/ChartStyleGalleryPage").then(m => m.ChartStyleGalleryPage), { ssr: false })
-const TabletLandingView = dynamic(
-  () => import("@/components/landing/tablet-landing-view").then(m => m.TabletLandingView),
+const TabletAiChatView = dynamic(
+  () => import("@/components/aichat/tablet-aichat-view").then(m => m.TabletAiChatView),
   { ssr: false, loading: () => <ChartAreaSkeleton /> }
 )
-const MobileLandingView = dynamic(
-  () => import("@/components/landing/mobile-landing-view").then(m => m.MobileLandingView),
+const MobileAiChatView = dynamic(
+  () => import("@/components/aichat/mobile-aichat-view").then(m => m.MobileAiChatView),
   { ssr: false, loading: () => <ChartAreaSkeleton /> }
 )
 
-export default function LandingPage() {
-  return <LandingPageContent />
+export default function AiChatPage() {
+  return <AiChatPageContent />
 }
 
-function LandingPageContent() {
+function AiChatPageContent() {
   const { user, sessionReady } = useAuth()
   const router = useRouter()
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
@@ -527,11 +527,11 @@ function LandingPageContent() {
     return () => cancelAnimationFrame(raf)
   }, [storeHydrated, contentReady])
 
-  // ── Modern Interface State & Handlers (/landing Desktop & Tablet) ──
+  // ── Modern Interface State & Handlers (/aichat Desktop & Tablet) ──
   const editorInterface = useSettingsStore(s => s.editorInterface)
   const isModern = storeHydrated && !isMobile && editorInterface === "modern"
 
-  const [modernRailTab, setModernRailTab] = useState<ModernLandingRailTab>("chat")
+  const [modernRailTab, setModernRailTab] = useState<ModernAiChatRailTab>("chat")
   const [modernPanelCollapsed, setModernPanelCollapsed] = useState(false)
   const chartContainerRef = useRef<HTMLDivElement | null>(null)
   const zoomPan = useZoomPan()
@@ -864,12 +864,12 @@ function LandingPageContent() {
     setModernPanelCollapsed(false)
   }, [handleNewConversation, setSidebarChatInput])
 
-  // Modern Landing Layout (Desktop & Tablet >= 768px when editorInterface === "modern")
+  // Modern AI Chat Layout (Desktop & Tablet >= 768px when editorInterface === "modern")
   if (isModern) {
     return (
       <div className="flex-1 flex flex-col min-w-0 h-screen w-full overflow-hidden bg-white">
         <ModernEditorTopBar
-          activeApp="landing"
+          activeApp="aichat"
           chartType={chartType}
           onChartTypeChange={(type) => applyChartTypeChange(type as any)}
           chartContainerRef={chartContainerRef}
@@ -890,7 +890,7 @@ function LandingPageContent() {
 
         {/* Main Workspace Row */}
         <div className="flex-1 flex min-w-0 min-h-0 w-full bg-white overflow-hidden relative">
-          <ModernLandingLeftSidebar
+          <ModernAiChatLeftSidebar
             activeTab={modernRailTab}
             onTabChange={setModernRailTab}
             collapsed={modernPanelCollapsed}
@@ -970,7 +970,7 @@ function LandingPageContent() {
 
                 <div className="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
                   <ChartPreview
-                    variant="landing"
+                    variant="aichat"
                     hideToolbar={true}
                     externalZoomPan={zoomPan}
                     externalContainerRef={chartContainerRef}
@@ -1007,7 +1007,7 @@ function LandingPageContent() {
           </div>
         </div>
 
-        {/* Modern Landing Dialogs */}
+        {/* Modern AI Chat Dialogs */}
         {dimensionMismatchInfo && (
           <DimensionMismatchDialog
             isOpen={showDimensionDialog}
@@ -1084,7 +1084,7 @@ function LandingPageContent() {
   // Tablet Layout (768px - 1023px)
   if (isTablet) {
     return (
-      <TabletLandingView
+      <TabletAiChatView
         user={user}
         handleNewConversation={handleNewConversation}
         handleResetChart={handleResetChart}
@@ -1137,7 +1137,7 @@ function LandingPageContent() {
   // Mobile Layout (< 768px)
   if (isMobile) {
     return (
-      <MobileLandingView
+      <MobileAiChatView
         user={user}
         storeHydrated={storeHydrated}
         contentReady={contentReady}

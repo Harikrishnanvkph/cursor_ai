@@ -11,8 +11,8 @@ import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { ConfigSidebar } from "@/components/config-sidebar"
 import { ChartPreview } from "@/components/chart-preview"
-import { PromptTemplate, ChatWindow } from "@/components/landing"
-import { ChatSettingsPopover } from "@/components/landing/chat-settings-popover"
+import { PromptTemplate, ChatWindow } from "@/components/aichat"
+import { ChatSettingsPopover } from "@/components/aichat/chat-settings-popover"
 import { UpgradeProDialog } from "@/components/dialogs/upgrade-pro-dialog"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { ModeChangeConfirmDialog } from "@/components/dialogs/mode-change-confirm-dialog"
@@ -20,9 +20,9 @@ import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
-import { AnimatedBackground, ChartAreaSkeleton, GenerationProgressView } from "./landing-helpers"
+import { AnimatedBackground, ChartAreaSkeleton, GenerationProgressView } from "./aichat-helpers"
 
-export interface TabletLandingViewProps {
+export interface TabletAiChatViewProps {
   user?: any
   handleNewConversation: () => void
   handleResetChart: () => void
@@ -70,7 +70,7 @@ export interface TabletLandingViewProps {
   cancelModeChange?: () => void
 }
 
-export function TabletLandingView({
+export function TabletAiChatView({
   user,
   handleNewConversation,
   handleResetChart,
@@ -116,7 +116,7 @@ export function TabletLandingView({
   setModeChangeConfirm,
   confirmModeChange,
   cancelModeChange,
-}: TabletLandingViewProps) {
+}: TabletAiChatViewProps) {
   const router = useRouter()
   const [tabletRightSidebarOpen, setTabletRightSidebarOpen] = useState(false)
   const [tabletRightSidebarContent, setTabletRightSidebarContent] = useState<'messages' | 'tools' | 'history' | null>(null)

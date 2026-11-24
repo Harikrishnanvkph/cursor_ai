@@ -32,7 +32,7 @@ export function ProfileDropdown({
 
   const defaultNavigationItems = [
     {
-      href: "/landing",
+      href: "/aichat",
       label: "AI Chart",
       icon: BarChart2,
       iconColor: "text-blue-600"

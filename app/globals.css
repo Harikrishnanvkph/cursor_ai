@@ -625,7 +625,7 @@ kbd {
 
 /* ==========================================================================
    Modern Tools Sidebar Scoped Design System (.modern-tools-scope)
-   Strictly isolated to the Modern editor & landing tools drawers.
+   Strictly isolated to the Modern editor & AI Chat tools drawers.
    Lightweight pure CSS — zero backdrop-filter, zero heavy shadows/animations.
    ========================================================================== */
 .modern-tools-scope {

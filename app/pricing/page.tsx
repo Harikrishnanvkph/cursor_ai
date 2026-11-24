@@ -255,7 +255,7 @@ export default function PricingPage() {
 
               <div className="mt-8 pt-4">
                 <Link
-                  href={user ? "/landing" : "/signin"}
+                  href={user ? "/aichat" : "/signin"}
                   className="block text-center w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200"
                 >
                   {user ? "Included Free" : "Get Started Free"}

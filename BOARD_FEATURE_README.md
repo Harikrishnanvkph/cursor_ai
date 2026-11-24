@@ -72,7 +72,7 @@ A comprehensive dashboard for managing and viewing all created charts with moder
 All navigation has been updated to point to `/board`:
 
 ### Updated Files:
-1. **Landing Page** (`/app/landing/page.tsx`)
+1. **AI Chat Page** (`/app/aichat/page.tsx`)
    - Desktop navigation
    - Tablet navigation
    - Mobile navigation
@@ -89,7 +89,7 @@ All navigation has been updated to point to `/board`:
 
 - `/board` - Main dashboard (protected route)
 - `/chart/[id]` - Public chart viewer (anyone with link can view)
-- `/landing` - AI Chat for creating charts
+- `/aichat` - AI Chat for creating charts
 - `/editor` - Advanced manual editor
 
 ## Key Technologies Used
@@ -122,7 +122,7 @@ All navigation has been updated to point to `/board`:
 4. **Editing Charts**:
    - Restores conversation from history store
    - Loads chart data into chart store
-   - Navigates to either `/landing` (AI Chat) or `/editor` (Advanced)
+   - Navigates to either `/aichat` (AI Chat) or `/editor` (Advanced)
 
 ## Backend Integration
 
@@ -229,7 +229,7 @@ Potential additions:
 **Total: ~1,649 lines of new code**
 
 ### Modified Files:
-1. `/app/landing/page.tsx` - Updated navigation (4 instances)
+1. `/app/aichat/page.tsx` - Updated navigation (4 instances)
 2. `/app/editor/page.tsx` - Updated navigation (2 instances)
 3. `/app/page.tsx` - Added dashboard link
 

@@ -20,7 +20,7 @@ const ZONE_COLORS: Record<string, { bg: string; border: string }> = {
 }
 
 interface TemplateListTabProps {
-    mode?: 'editor' | 'landing'
+    mode?: 'editor' | 'aichat'
 }
 
 export function TemplateListTab({ mode = 'editor' }: TemplateListTabProps = {}) {

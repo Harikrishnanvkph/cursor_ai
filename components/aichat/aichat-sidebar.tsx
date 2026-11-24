@@ -30,12 +30,12 @@ import { ChatWindow } from "./chat-window"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "sonner"
 
-interface LandingSidebarProps {
+interface AiChatSidebarProps {
   leftSidebarOpen: boolean
   setLeftSidebarOpen: (open: boolean) => void
 }
 
-export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingSidebarProps) {
+export function AiChatSidebar({ leftSidebarOpen, setLeftSidebarOpen }: AiChatSidebarProps) {
   const router = useRouter()
   const { user, isPro, aiCreditsLimit, aiCreditsRemaining, freeAiCreditsRemaining, purchasedAiCredits } = useSubscriptionQuota()
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)

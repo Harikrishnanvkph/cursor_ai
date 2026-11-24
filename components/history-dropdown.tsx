@@ -119,10 +119,10 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
       onConversationRestored()
     }
 
-    // Only route to landing if we're not already on a valid chart page
+    // Only route to AI Chat if we're not already on a valid chart page
     // If we're on editor, docs, or other chart-related pages, stay there
-    if (pathname === '/landing' || pathname === '/') {
-      router.push('/landing')
+    if (pathname === '/aichat' || pathname === '/') {
+      router.push('/aichat')
     }
     // For other pages like /editor, /docs, etc., don't navigate - just restore the conversation
   }

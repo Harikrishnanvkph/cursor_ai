@@ -22,7 +22,7 @@ import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { ConfigSidebar } from "@/components/config-sidebar"
 import { ChartPreview } from "@/components/chart-preview"
-import { PromptTemplate, ChatWindow } from "@/components/landing"
+import { PromptTemplate, ChatWindow } from "@/components/aichat"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { ChartTypeSelector } from "@/components/chart-preview/chart-type-selector"
 import { UpgradeProDialog } from "@/components/dialogs/upgrade-pro-dialog"
@@ -32,15 +32,15 @@ import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useChartRename } from "@/lib/hooks/use-chart-rename"
 import { useChartExport } from "@/lib/hooks/use-chart-export"
-import { useSidebarInputDispatch } from "@/components/landing/sidebar-context"
+import { useSidebarInputDispatch } from "@/components/aichat/sidebar-context"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
 import {
   parseDim, getAspectRatio, getChartTypeName,
   ChartAreaSkeleton, GenerationProgressView
-} from "./landing-helpers"
+} from "./aichat-helpers"
 
-export interface MobileLandingViewProps {
+export interface MobileAiChatViewProps {
   user: any
   storeHydrated: boolean
   contentReady: boolean
@@ -89,7 +89,7 @@ export interface MobileLandingViewProps {
   handleSaveToCloudClick: () => void
 }
 
-export function MobileLandingView({
+export function MobileAiChatView({
   user,
   storeHydrated,
   contentReady,
@@ -136,7 +136,7 @@ export function MobileLandingView({
   isSaving,
   handleSaveChart,
   handleSaveToCloudClick,
-}: MobileLandingViewProps) {
+}: MobileAiChatViewProps) {
   const router = useRouter()
   const setChatInput = useSidebarInputDispatch()
   const rename = useChartRename()

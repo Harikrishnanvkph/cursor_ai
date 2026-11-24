@@ -109,7 +109,7 @@ export function EditorLeftSidebar() {
 
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/landing"
+                    href="/aichat"
                     prefetch={false}
                     className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors w-full"
                   >
@@ -243,7 +243,7 @@ export function EditorLeftSidebar() {
 
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/landing"
+                    href="/aichat"
                     prefetch={false}
                     className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors w-full"
                   >

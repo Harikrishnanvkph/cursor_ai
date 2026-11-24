@@ -56,7 +56,7 @@ import type { useChartRename } from "@/lib/hooks/use-chart-rename"
 import type { useChartExport } from "@/lib/hooks/use-chart-export"
 
 interface ModernEditorTopBarProps {
-  activeApp?: "editor" | "landing"
+  activeApp?: "editor" | "aichat"
   chartType: string
   onChartTypeChange: (type: string) => void
   chartContainerRef: React.RefObject<HTMLDivElement | null>
@@ -206,7 +206,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
                 className="w-5 h-5 object-contain shrink-0"
               />
               <span className="hidden lg:inline text-sm font-semibold tracking-tight text-slate-800 whitespace-nowrap">
-                {activeApp === "landing" ? "AI Chart" : "Advanced Editor"}
+                {activeApp === "aichat" ? "AI Chart" : "Advanced Editor"}
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
             </button>
@@ -215,7 +215,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
             align="start"
             className="w-64 p-1.5 rounded-xl bg-white border border-slate-200/90 shadow-lg z-50"
           >
-            {activeApp === "landing" ? (
+            {activeApp === "aichat" ? (
               <>
                 <DropdownMenuItem className="flex items-start justify-between px-3 py-2.5 rounded-lg cursor-default bg-indigo-50/70 text-indigo-700">
                   <div className="flex flex-col gap-0.5 min-w-0 pr-2">
@@ -275,7 +275,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
 
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/landing"
+                    href="/aichat"
                     prefetch={false}
                     className="flex items-start justify-between px-3 py-2.5 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors w-full"
                   >
@@ -471,8 +471,8 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
           </>
         )}
 
-        {/* Add Dataset / Group (Editor when active) or New Chat (Landing always visible) */}
-        {activeApp === "landing" ? (
+        {/* Add Dataset / Group (Editor when active) or New Chat (AI Chat always visible) */}
+        {activeApp === "aichat" ? (
           <button
             type="button"
             onClick={onNewChatClick}
@@ -764,7 +764,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              disabled={!hasJSON && activeApp !== "landing"}
+              disabled={!hasJSON && activeApp !== "aichat"}
               className="h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               title="Document Actions"
               aria-label="Document Actions"
@@ -778,7 +778,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
           >
             {/* Compact-screen Add / New Chat actions (hidden on lg+ where main button is visible) */}
             <div className="lg:hidden">
-              {activeApp === "landing" ? (
+              {activeApp === "aichat" ? (
                 <>
                   <DropdownMenuItem
                     onClick={onNewChatClick}
@@ -872,7 +872,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
           </>
         )}
 
-        {(hasActiveChart || activeApp === "landing") && (
+        {(hasActiveChart || activeApp === "aichat") && (
           <div className="h-4 w-px bg-slate-200/80 mx-0.5 flex-shrink-0" />
         )}
 

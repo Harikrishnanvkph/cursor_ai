@@ -434,7 +434,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         }}
       >
         <ChartPreview
-          variant="landing"
+          variant="aichat"
           onToggleSidebar={toggleSidebar}
           isSidebarCollapsed={isCollapsed}
           onToggleLeftSidebar={() => setLeftSidebarOpen(!leftSidebarOpen)}
@@ -454,7 +454,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       {/* Right Sidebar (Config Panel) - Collapsible (Overlays when expanded below 1152px) */}
       <div
         className={cn(
-          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l border-slate-200/80 dark:border-slate-800 flex flex-col",
+          "absolute aichat-right-sidebar right-0 top-0 bottom-0 border-l border-slate-200/80 dark:border-slate-800 flex flex-col",
           isCollapsed
             ? "w-14 z-10 bg-white dark:bg-slate-950"
             : isBelow1152
@@ -616,7 +616,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
         onSuccess={() => {
-          router.push('/landing')
+          router.push('/aichat')
         }}
       />
     </div>

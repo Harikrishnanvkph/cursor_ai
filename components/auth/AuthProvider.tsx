@@ -237,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (document.cookie.includes('is_authenticated=true') || Boolean(localStorage.getItem('cached_auth_user')))
 
     // Skip guaranteed-401 GET /auth/me for anonymous visitors on public/share pages so viral shares
-    // and landing-page traffic never hammer /auth/me or delay the navbar Sign-In CTA.
+    // and marketing home-page traffic never hammer /auth/me or delay the navbar Sign-In CTA.
     // Navigating later to /signin, /signup, /auth/*, or any protected route triggers refresh() below.
     if (!hasAuthHint && isPublicSkipAuthPath(pathname)) {
       releaseInitialBarrier()
@@ -304,7 +304,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const currentPath = window.location.pathname
         const isAdminSignin = currentPath.startsWith('/admin/signin')
-        const protectedPaths = ['/board', '/landing', '/editor', '/admin']
+        const protectedPaths = ['/board', '/aichat', '/editor', '/admin']
         const isProtected = !isAdminSignin && protectedPaths.some(p => currentPath.startsWith(p))
         if (isProtected) {
           window.location.replace(currentPath.startsWith('/admin') ? '/admin/signin' : '/signin')
@@ -319,7 +319,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
-      const protectedPaths = ['/board', '/landing', '/editor', '/admin']
+      const protectedPaths = ['/board', '/aichat', '/editor', '/admin']
       const isProtected = protectedPaths.some(p => window.location.pathname.startsWith(p))
       
       if (isProtected) {
@@ -373,7 +373,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Handle redirect after successful sign-in
       // Use full browser navigation (window.location.replace) rather than router.replace so Next.js's
       // client Router Cache doesn't retain stale pre-login middleware 307 redirects for prefetched
-      // protected routes (/landing, /editor, /board, /admin).
+      // protected routes (/aichat, /editor, /board, /admin).
       if (typeof window !== 'undefined') {
         if (options?.adminOnly) {
           sessionStorage.removeItem('redirectAfterSignIn')
@@ -537,7 +537,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             : '/board'
         sessionStorage.removeItem('redirectAfterSignIn')
         // Full navigation clears any stale pre-login Next.js Client Router Cache redirects
-        // (e.g., /landing or /editor prefetched while logged out -> 307 /signin?redirect=...)
+        // (e.g., /aichat or /editor prefetched while logged out -> 307 /signin?redirect=...)
         window.location.replace(redirectPath)
       }
       return { ok: true }

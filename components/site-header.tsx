@@ -78,7 +78,7 @@ export function SiteHeader() {
                   asChild 
                   className="px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 group text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800"
                 >
-                  <Link href="/landing">
+                  <Link href="/aichat">
                     <Sparkles className="h-4 w-4 mr-2 opacity-70 group-hover:opacity-100 transition-opacity text-indigo-500" />
                     AI Chart
                   </Link>
@@ -172,7 +172,7 @@ export function SiteHeader() {
                     {user?.is_admin ? "Admin" : "Dashboard"}
                   </Link>
                   <Link
-                    href="/landing"
+                    href="/aichat"
                     className="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >

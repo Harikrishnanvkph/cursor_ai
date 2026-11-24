@@ -84,7 +84,7 @@ function AdminPageContent() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="focus:bg-white/10 focus:text-white text-gray-300 cursor-pointer rounded-lg px-2.5 py-2">
-                    <Link href="/landing" className="flex items-center gap-2 w-full text-xs">
+                    <Link href="/aichat" className="flex items-center gap-2 w-full text-xs">
                       <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                       <span>AI Chart</span>
                     </Link>

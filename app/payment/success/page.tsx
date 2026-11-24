@@ -119,7 +119,7 @@ export default function PaymentSuccessPage() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <Link href="/landing" className="flex-1">
+          <Link href="/aichat" className="flex-1">
             <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-6 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all">
               <span>Create with AI Chat</span>
               <ArrowRight className="w-4 h-4" />

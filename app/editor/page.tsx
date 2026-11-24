@@ -1918,7 +1918,7 @@ function EditorPageContent() {
               {/* AI Button */}
               <button
                 onClick={() => {
-                  router.push('/landing');
+                  router.push('/aichat');
                   setSandwichOpen(false);
                 }}
                 className="flex-1 h-9 flex items-center justify-center gap-2 px-3 hover:bg-slate-50 border border-slate-200/60 rounded-lg transition-all active:scale-95 shadow-sm text-slate-700 font-semibold text-sm"
@@ -2012,7 +2012,7 @@ function EditorPageContent() {
                     <span>Board</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => router.push('/landing')}
+                    onClick={() => router.push('/aichat')}
                     className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-slate-500" />
@@ -2289,7 +2289,7 @@ function EditorPageContent() {
                           <span>Board</span>
                         </button>
                         <button
-                          onClick={() => router.push('/landing')}
+                          onClick={() => router.push('/aichat')}
                           className="flex-1 flex items-center justify-center gap-1.5 h-8 px-2 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
                           title="AI Chat"
                         >

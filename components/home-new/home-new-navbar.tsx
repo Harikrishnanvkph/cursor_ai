@@ -46,7 +46,7 @@ const PRODUCTS: ProductItem[] = [
   {
     title: "AI Chart Generator",
     description: "Prompt in, interactive visual out with live web data connection.",
-    href: "/landing",
+    href: "/aichat",
     icon: Sparkles,
     badge: "Popular",
   },

@@ -254,7 +254,7 @@ function BoardPageContent() {
   const handleEdit = useCallback((conv: Conversation) => {
     // Restore conversation and navigate to AI Chat or Editor
     useHistoryStore.getState().restoreConversation(conv.id)
-    router.push("/landing")
+    router.push("/aichat")
   }, [router])
 
   const handleEditInAdvanced = useCallback((conv: Conversation) => {
@@ -420,7 +420,7 @@ function BoardPageContent() {
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
-                    onClick={() => router.push('/landing')}
+                    onClick={() => router.push('/aichat')}
                     className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <div className="flex flex-col gap-0.5 min-w-0">
@@ -749,7 +749,7 @@ function BoardPageContent() {
                 <button
                   type="button"
                   onClick={() => {
-                    router.push("/landing")
+                    router.push("/aichat")
                     setIsMobileMenuOpen(false)
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300 cursor-pointer group"
@@ -1080,7 +1080,7 @@ function BoardPageContent() {
                       </div>
 
                       <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                        <Link href={activeTab === "templates" ? "/landing" : "/landing"}>
+                        <Link href="/aichat">
                           <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold text-xs shadow-sm shadow-violet-500/20 hover:shadow-md hover:shadow-violet-500/25 transition-all rounded-lg">
                             {activeTab === "templates" ? (
                               <>

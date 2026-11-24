@@ -73,7 +73,7 @@ interface TemplateChartPreviewProps {
   onNewChart?: () => void
   readOnly?: boolean
   zoomPan?: any
-  variant?: 'landing' | 'default'
+  variant?: 'aichat' | 'default'
   hideToolbar?: boolean
   externalContainerRef?: React.RefObject<HTMLDivElement | null>
 }
@@ -641,7 +641,7 @@ export function TemplateChartPreview({
     }
   }
 
-  // Global event listener to trigger template exports from parent/landing pages
+  // Global event listener to trigger template exports from parent/aichat pages
   useEffect(() => {
     const handleGlobalExport = (e: Event) => {
       const customEvent = e as CustomEvent<{ format: 'png' | 'jpeg' | 'html' | 'csv'; scale?: number; engine?: any }>;
@@ -1426,13 +1426,13 @@ export function TemplateChartPreview({
       {/* Template Controls */}
       {!readOnly && !isMobile && !hideToolbar && (
         <div className={cn(
-          variant === 'landing'
+          variant === 'aichat'
             ? 'h-[52px] min-h-[52px] px-3.5 border-b border-slate-200/80 bg-white/40 backdrop-blur-xl flex items-center justify-between flex-shrink-0 z-10 w-full'
             : 'px-3 h-[45px] min-h-[45px] border-b border-gray-200 bg-white flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0'
         )}>
           <div className={cn(
             "flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0",
-            variant === 'landing' && "h-full"
+            variant === 'aichat' && "h-full"
           )}>
           {chartTitle && (
             <div className="flex-1 min-w-0 pr-1">
@@ -1920,7 +1920,7 @@ export function TemplateChartPreview({
           </Card>
         );
 
-        return variant === 'landing' ? (
+        return variant === 'aichat' ? (
           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
             {cardElement}
           </div>

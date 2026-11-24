@@ -327,7 +327,7 @@ export function ConfigSidebar({ variant = "default" }: { variant?: "default" | "
 
           {visitedTabs.has('templates') && (
           <div className={`mt-3 ${activeSidebarTab === 'templates' ? 'block' : 'hidden'}`}>
-            <TemplateListTab mode="landing" />
+            <TemplateListTab mode="aichat" />
           </div>
           )}
         </div>

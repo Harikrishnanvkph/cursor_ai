@@ -1,7 +1,7 @@
 /**
  * Shared Save Utility
  * 
- * Consolidates chart saving logic used across landing page, editor page, 
+ * Consolidates chart saving logic used across AI Chat page, editor page, 
  * and config panel to ensure consistent behavior.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Landing Loading — App Shell Architecture
+ * AI Chat Loading — App Shell Architecture
  * 
  * This loading.tsx ONLY renders the content area loader.
  * The sidebar is rendered by layout.tsx and stays interactive
@@ -8,7 +8,7 @@
  * On desktop: layout.tsx provides the sidebar shell, this fills the content slot.
  * On tablet/mobile: this renders a full-screen loader (no sidebar).
  */
-export default function LandingLoading() {
+export default function AiChatLoading() {
   return (
     <div className="flex flex-1 items-center justify-center h-full w-full relative bg-white dark:bg-slate-950">
       <div className="flex flex-col items-center gap-3.5">

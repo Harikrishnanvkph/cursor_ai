@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Routes that require authentication
-const protectedRoutes = ['/board', '/landing', '/editor', '/admin']
+const protectedRoutes = ['/board', '/aichat', '/editor', '/admin']
 
 // Trusted geo headers injected by Vercel Edge, Cloudflare, CloudFront, etc.
 const COUNTRY_HEADER_KEYS = [

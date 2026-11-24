@@ -10,7 +10,7 @@ interface SidebarContextType {
 }
 
 interface SidebarInputContextType {
-  /** Shared chat input draft — written by PromptTemplate, read by LandingSidebar */
+  /** Shared chat input draft — written by PromptTemplate, read by AiChatSidebar */
   chatInput: string
   setChatInput: (value: string) => void
 }
