@@ -313,10 +313,10 @@ export function ModernAiChatLeftSidebar({
                   onSubmit={onSend}
                   className="p-3.5 bg-transparent flex flex-col gap-2 flex-shrink-0"
                 >
-                  <div className="relative flex items-end w-full bg-white border border-indigo-200/80 hover:border-indigo-400 focus-within:border-indigo-600 focus-within:ring-4 focus-within:ring-indigo-500/15 shadow-sm transition-all rounded-2xl p-2 min-h-[52px]">
+                  <div className="relative flex items-stretch w-full bg-white border border-indigo-200/80 hover:border-indigo-400 focus-within:border-indigo-600 focus-within:ring-4 focus-within:ring-indigo-500/15 shadow-sm transition-[border-color,box-shadow] rounded-2xl p-2 min-h-[52px]">
                     <textarea
                       ref={textareaRef}
-                      className="flex-1 px-2 py-1 text-sm bg-transparent border-0 outline-none resize-none min-h-[34px] max-h-[64px] leading-relaxed transition-all font-sans text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none disabled:opacity-50"
+                      className="flex-1 px-2 py-1 text-sm bg-transparent border-0 outline-none resize-none min-h-[34px] max-h-[64px] leading-relaxed font-sans text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none disabled:opacity-50"
                       placeholder={hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart..."}
                       value={input}
                       onChange={handleInternalInputChange}
@@ -332,26 +332,26 @@ export function ModernAiChatLeftSidebar({
                         }
                       }}
                     />
-                    <div className="flex items-center pl-1 pb-0.5 flex-shrink-0">
+                    <div className="flex items-stretch pl-1.5 flex-shrink-0">
                       {isProcessing ? (
                         <button
                           type="button"
                           onClick={() => useChatStore.getState().stopGeneration()}
-                          className="bg-red-500 hover:bg-red-600 active:scale-95 text-white w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors shadow-sm cursor-pointer"
+                          className="bg-red-500 hover:bg-red-600 active:scale-95 text-white w-9 min-h-[34px] flex items-center justify-center rounded-xl flex-shrink-0 transition-[background-color,transform] duration-150 shadow-sm cursor-pointer"
                           title="Stop generation"
                           aria-label="Stop generation"
                         >
-                          <Square className="w-3 h-3 fill-current" />
+                          <Square className="w-3.5 h-3.5 fill-current" />
                         </button>
                       ) : (
                         <button
                           type="submit"
-                          className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors shadow-sm disabled:opacity-30 disabled:hover:bg-indigo-600 disabled:active:scale-100 cursor-pointer"
+                          className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-9 min-h-[34px] flex items-center justify-center rounded-xl flex-shrink-0 transition-[background-color,transform,opacity] duration-150 shadow-sm disabled:opacity-30 disabled:hover:bg-indigo-600 disabled:active:scale-100 cursor-pointer"
                           disabled={!input.trim() || isChatDisabled}
                           title="Send message"
                           aria-label="Send message"
                         >
-                          <ArrowUp className="w-3.5 h-3.5" strokeWidth={2.5} />
+                          <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
                         </button>
                       )}
                     </div>

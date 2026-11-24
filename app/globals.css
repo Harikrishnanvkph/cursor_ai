@@ -733,7 +733,8 @@ kbd {
 .modern-tools-scope ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.65);
 }
-.modern-tools-scope * {
+.modern-tools-scope,
+.modern-tools-scope [class*="overflow"] {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
 }

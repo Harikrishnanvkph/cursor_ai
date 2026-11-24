@@ -344,7 +344,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={() => setDatasetType('single')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                     datasetType === 'single'
                       ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
                       : 'text-slate-500 hover:text-slate-800'
@@ -356,7 +356,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={() => setDatasetType('grouped')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                     datasetType === 'grouped'
                       ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
                       : 'text-slate-500 hover:text-slate-800'
@@ -378,7 +378,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={handleQuickLoadSample}
-                  className="w-full text-left p-3 rounded-xl border border-slate-200/80 bg-white hover:border-purple-300 hover:shadow-sm active:bg-purple-50/40 transition-all duration-150 flex items-center justify-between group"
+                  className="w-full text-left p-3 rounded-xl border border-slate-200/80 bg-white hover:border-purple-300 active:bg-purple-50/40 transition-[border-color,background-color] duration-150 flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 bg-purple-50 text-purple-600 ring-1 ring-purple-100 rounded-lg group-hover:bg-purple-100 transition-colors flex-shrink-0">
@@ -392,13 +392,13 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                       <p className="text-[11px] text-slate-500 truncate mt-0.5">Sample data at {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT} px</p>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-[color,transform] duration-150 flex-shrink-0" />
                 </button>
 
                 <button
                   type="button"
                   onClick={handleCustomDimensionSample}
-                  className="w-full text-left p-3 rounded-xl border border-slate-200/80 bg-white hover:border-indigo-300 hover:shadow-sm active:bg-indigo-50/40 transition-all duration-150 flex items-center justify-between group"
+                  className="w-full text-left p-3 rounded-xl border border-slate-200/80 bg-white hover:border-indigo-300 active:bg-indigo-50/40 transition-[border-color,background-color] duration-150 flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 rounded-lg group-hover:bg-indigo-100 transition-colors flex-shrink-0">
@@ -412,7 +412,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                       <p className="text-[11px] text-slate-500 truncate mt-0.5">Pick dimensions + sample data</p>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-[color,transform] duration-150 flex-shrink-0" />
                 </button>
               </div>
             </div>
@@ -426,7 +426,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
               <button
                 type="button"
                 onClick={handleCustomDimensionDataset}
-                className="w-full text-left p-3 rounded-xl border border-slate-200/80 bg-white hover:border-blue-300 hover:shadow-sm active:bg-blue-50/40 transition-all duration-150 flex items-center justify-between group"
+                className="w-full text-left p-3 rounded-xl border border-slate-200/80 bg-white hover:border-blue-300 active:bg-blue-50/40 transition-[border-color,background-color] duration-150 flex items-center justify-between group"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="p-2 bg-blue-50 text-blue-600 ring-1 ring-blue-100 rounded-lg group-hover:bg-blue-100 transition-colors flex-shrink-0">
@@ -440,7 +440,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                     <p className="text-[11px] text-slate-500 truncate mt-0.5">Choose chart size first, then enter data</p>
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-[color,transform] duration-150 flex-shrink-0" />
               </button>
             </div>
           </div>
@@ -519,7 +519,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={() => setDatasetType('single')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                     datasetType === 'single'
                       ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -531,7 +531,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 <button
                   type="button"
                   onClick={() => setDatasetType('grouped')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                     datasetType === 'grouped'
                       ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -553,7 +553,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                 {/* Quick Start */}
                 <button
                   type="button"
-                  className="text-left border border-slate-200/80 rounded-2xl p-3.5 hover:border-purple-300 hover:shadow-[0_6px_20px_-6px_rgba(147,51,234,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                  className="text-left border border-slate-200/80 rounded-2xl p-3.5 hover:border-purple-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-[border-color,box-shadow,transform] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                   onClick={handleQuickLoadSample}
                 >
                   <div>
@@ -577,14 +577,14 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                       <TrendingUp className="h-3 w-3 text-purple-500 flex-shrink-0" />
                       <span className="truncate">6 points • {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT}</span>
                     </span>
-                    <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                    <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-[color,transform] duration-150 flex-shrink-0" />
                   </div>
                 </button>
 
                 {/* Choose Size */}
                 <button
                   type="button"
-                  className="text-left border border-slate-200/80 rounded-2xl p-3.5 hover:border-indigo-300 hover:shadow-[0_6px_20px_-6px_rgba(79,70,229,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                  className="text-left border border-slate-200/80 rounded-2xl p-3.5 hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-[border-color,box-shadow,transform] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                   onClick={handleCustomDimensionSample}
                 >
                   <div>
@@ -608,7 +608,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                       <Sparkles className="h-3 w-3 text-indigo-500 flex-shrink-0" />
                       <span className="truncate">px / mm / cm</span>
                     </span>
-                    <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                    <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-[color,transform] duration-150 flex-shrink-0" />
                   </div>
                 </button>
               </div>
@@ -622,7 +622,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
               </h3>
               <button
                 type="button"
-                className="w-full text-left border border-slate-200/80 rounded-2xl p-3.5 hover:border-blue-300 hover:shadow-[0_6px_20px_-6px_rgba(37,99,235,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex items-center justify-between gap-3"
+                className="w-full text-left border border-slate-200/80 rounded-2xl p-3.5 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-[border-color,box-shadow,transform] duration-150 cursor-pointer group bg-white flex items-center justify-between gap-3"
                 onClick={handleCustomDimensionDataset}
               >
                 <div className="flex items-start gap-3 min-w-0">
@@ -641,7 +641,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                     </p>
                   </div>
                 </div>
-                <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-[color,transform] duration-150 flex-shrink-0" />
               </button>
             </div>
           </div>
@@ -719,7 +719,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
               <button
                 type="button"
                 onClick={() => setDatasetType('single')}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                   datasetType === 'single'
                     ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -731,7 +731,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
               <button
                 type="button"
                 onClick={() => setDatasetType('grouped')}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                   datasetType === 'grouped'
                     ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/70'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -753,7 +753,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
               {/* Quick Load (default dimensions) */}
               <button
                 type="button"
-                className="text-left border border-slate-200/80 rounded-2xl p-4 hover:border-purple-300 hover:shadow-[0_8px_24px_-8px_rgba(147,51,234,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                className="text-left border border-slate-200/80 rounded-2xl p-4 hover:border-purple-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-[border-color,box-shadow,transform] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                 onClick={handleQuickLoadSample}
               >
                 <div>
@@ -777,14 +777,14 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                     <TrendingUp className="h-3.5 w-3.5 text-purple-500 flex-shrink-0" />
                     <span className="truncate">6 data points • {DEFAULT_CHART_WIDTH}×{DEFAULT_CHART_HEIGHT}</span>
                   </span>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-[color,transform] duration-150 flex-shrink-0" />
                 </div>
               </button>
 
               {/* Custom Dimensions + Sample Data */}
               <button
                 type="button"
-                className="text-left border border-slate-200/80 rounded-2xl p-4 hover:border-indigo-300 hover:shadow-[0_8px_24px_-8px_rgba(79,70,229,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex flex-col justify-between"
+                className="text-left border border-slate-200/80 rounded-2xl p-4 hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-[border-color,box-shadow,transform] duration-150 cursor-pointer group bg-white flex flex-col justify-between"
                 onClick={handleCustomDimensionSample}
               >
                 <div>
@@ -808,7 +808,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                     <Sparkles className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
                     <span className="truncate">Custom size • px / mm / cm</span>
                   </span>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-[color,transform] duration-150 flex-shrink-0" />
                 </div>
               </button>
             </div>
@@ -822,7 +822,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
             </h3>
             <button
               type="button"
-              className="w-full text-left border border-slate-200/80 rounded-2xl p-4 hover:border-blue-300 hover:shadow-[0_8px_24px_-8px_rgba(37,99,235,0.16)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group bg-white flex items-center justify-between gap-4"
+              className="w-full text-left border border-slate-200/80 rounded-2xl p-4 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-[border-color,box-shadow,transform] duration-150 cursor-pointer group bg-white flex items-center justify-between gap-4"
               onClick={handleCustomDimensionDataset}
             >
               <div className="flex items-start gap-3.5 min-w-0">
@@ -845,7 +845,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                   </div>
                 </div>
               </div>
-              <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+              <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-[color,transform] duration-150 flex-shrink-0" />
             </button>
           </div>
         </div>

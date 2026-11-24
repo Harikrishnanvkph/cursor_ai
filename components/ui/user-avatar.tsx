@@ -35,8 +35,8 @@ export function UserAvatar({
     <div className={cn(
       "relative rounded-full overflow-hidden flex items-center justify-center",
       sizeClasses[size],
-      showBorder && "border-2 border-gray-200",
-      showHover && "hover:border-blue-300 hover:shadow-lg transition-all duration-200",
+      showBorder && "ring-1 ring-slate-200/90 dark:ring-slate-700/80",
+      showHover && "hover:ring-2 hover:ring-indigo-400/60 dark:hover:ring-indigo-500/60 transition-all duration-150",
       className
     )}>
       {user?.avatar_url ? (
@@ -50,7 +50,7 @@ export function UserAvatar({
           priority
         />
       ) : (
-        <div className="h-full w-full rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shadow-sm">
+        <div className="h-full w-full rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-sm">
           <span className={cn(
             "text-white font-semibold",
             textSizeClasses[size]

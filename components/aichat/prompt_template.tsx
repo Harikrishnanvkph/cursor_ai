@@ -1,14 +1,11 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { BarChart2, Bot, Forward, FileText, Layout, X, Settings, Info, LayoutGrid } from "lucide-react"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import Link from "next/link"
+import { BarChart2, LayoutGrid, Sparkles, Check, X, ArrowRight, Ruler } from "lucide-react"
 import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useChartStore } from "@/lib/chart-store"
-import { dataService } from "@/lib/data-service"
 
 const chartTemplate = "Create a bar chart comparing the top 5 countries by smartphone usage. Include country names on the x-axis and number of users on the y-axis."
 
@@ -20,32 +17,30 @@ interface PromptTemplateProps {
   setIsTemplateModalOpen?: (open: boolean) => void
 }
 
-// Enlarged preview measurements to make drawings look bold and clear with slightly taller aspect shapes
 const FAMOUS_ASPECT_RATIOS = [
-  { value: "16:9", label: "16:9 Landscape", sub: "Presentations & Desktop Screens", width: 1920, height: 1080, widthVal: "60px", heightVal: "33.75px" },
-  { value: "9:16", label: "9:16 Portrait", sub: "Mobile Stories, Reels & Shorts", width: 1080, height: 1920, widthVal: "33.75px", heightVal: "60px" },
-  { value: "1:1", label: "1:1 Square", sub: "Social Posts & Grid Layouts", width: 1080, height: 1080, widthVal: "48px", heightVal: "48px" },
-  { value: "4:5", label: "4:5 Classic", sub: "Instagram Portrait & Pins", width: 1080, height: 1350, widthVal: "44px", heightVal: "55px" },
-  { value: "4:3", label: "4:3 Traditional", sub: "Retro Monitors & PDF Reports", width: 1440, height: 1080, widthVal: "56px", heightVal: "42px" },
-  { value: "3:2", label: "3:2 Photographic", sub: "Standard Print & Photo Portfolios", width: 1620, height: 1080, widthVal: "56px", heightVal: "37.3px" }
+  { value: "16:9", title: "16:9", tag: "Landscape", sub: "Presentations & Desktop", width: 1920, height: 1080, wPx: 30, hPx: 17 },
+  { value: "9:16", title: "9:16", tag: "Portrait", sub: "Reels, Stories & Shorts", width: 1080, height: 1920, wPx: 17, hPx: 30 },
+  { value: "1:1", title: "1:1", tag: "Square", sub: "Social Posts & Grids", width: 1080, height: 1080, wPx: 24, hPx: 24 },
+  { value: "4:5", title: "4:5", tag: "Classic", sub: "Portrait Feed & Pins", width: 1080, height: 1350, wPx: 21, hPx: 26 },
+  { value: "4:3", title: "4:3", tag: "Traditional", sub: "Reports & PDF Slides", width: 1440, height: 1080, wPx: 28, hPx: 21 },
+  { value: "3:2", title: "3:2", tag: "Print", sub: "Standard Print & Deck", width: 1620, height: 1080, wPx: 28, hPx: 19 },
 ]
 
 const parseDimension = (val: any): number => {
   if (typeof val === 'number') return val
   if (typeof val === 'string') {
-    return parseInt(val.replace('px', '')) || 0
+    return parseInt(val.replace('px', ''), 10) || 0
   }
   return 0
 }
 
 export function PromptTemplate({
-  onSampleClick,
+  onSampleClick: _onSampleClick,
   className = "",
   size = 'default',
 }: PromptTemplateProps) {
   const [selectedRatio, setSelectedRatio] = useState<string | null>(null)
-  const [isTemplateInfoOpen, setIsTemplateInfoOpen] = useState(false)
-  
+
   const {
     generateMode,
     setGenerateMode,
@@ -63,7 +58,6 @@ export function PromptTemplate({
     formats,
     selectedFormatId,
     isLoadingFormats,
-    setSelectedFormat,
     clearSelection: clearFormatSelection,
     openGallery,
     filters,
@@ -116,12 +110,6 @@ export function PromptTemplate({
     }
   }, [generateMode, loadFormats])
 
-  const handleSampleClick = () => {
-    if (onSampleClick) {
-      onSampleClick(chartTemplate)
-    }
-  }
-
   const handleChooseFormat = () => {
     openGallery()
   }
@@ -130,324 +118,307 @@ export function PromptTemplate({
     clearFormatSelection()
   }
 
-  // Get the selected format name
   const selectedFormat = selectedFormatId ? formats.find(f => f.id === selectedFormatId) : null
+  const selectedPreset = selectedRatio ? FAMOUS_ASPECT_RATIOS.find(r => r.value === selectedRatio) : null
+  const isCompact = size === 'compact'
 
-  // Size variants - highly optimized to reduce padding and margins vertically
-  const sizeClasses = {
-    compact: {
-      container: "max-w-lg",
-      title: "text-lg md:text-xl",
-      description: "text-xs",
-      padding: "px-2 py-1"
-    },
-    default: {
-      container: "max-w-4xl",
-      title: "text-xl md:text-2xl",
-      description: "text-xs md:text-sm",
-      padding: "px-4 py-2"
-    },
-    large: {
-      container: "max-w-5xl",
-      title: "text-xl md:text-2xl",
-      description: "text-xs md:text-sm",
-      padding: "px-4 md:px-6 py-2"
-    }
-  }
-
-  const styles = sizeClasses[size]
-
-  // Clean parent padding to prevent massive external margins (e.g. p-12) from pushing layout down
+  // Clean parent padding to avoid double margins from wrappers
   const cleanedClassName = className
     .split(' ')
     .filter(c => !c.startsWith('p-') && !c.includes(':p-'))
     .join(' ')
 
   return (
-    <div className={`overflow-y-auto h-full w-full flex justify-center py-2 sm:py-3 ${styles.padding} ${cleanedClassName} scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300 scrollbar-track-transparent antialiased`}>
-      {/* Background card removed: container is fully transparent border-free, lets items float natively */}
-      <div className={`relative flex flex-col w-full ${styles.container} bg-transparent border-none h-fit my-auto p-1 sm:p-2`}>
-
-        {/* Header Block - Compacted padding and margins, eye-friendly weights */}
-        <div className="relative flex flex-col items-center justify-center mb-2.5 w-full pt-0 text-center">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-slate-100/60 border border-slate-200/50 rounded-full mb-1.5 shadow-inner-sm">
-            <span className="p-0.5 bg-white rounded-md shadow-sm border border-slate-200">
-              <Bot className="w-3.5 h-3.5 text-slate-600" />
-            </span>
-            <span className="text-[9px] font-bold text-slate-500 tracking-wider uppercase px-0.5">AI Copilot</span>
+    <div
+      className={`overflow-y-auto h-full w-full flex justify-center ${
+        isCompact ? "px-3 py-4" : "px-4 sm:px-6 py-6"
+      } ${cleanedClassName} scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300 scrollbar-track-transparent antialiased`}
+    >
+      <div
+        className={`w-full ${
+          isCompact ? "max-w-md space-y-4" : "max-w-2xl space-y-5"
+        } my-auto mx-auto`}
+      >
+        {/* Header */}
+        <div className="flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/60 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 mb-2">
+            <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+            <span>AI Chart Studio</span>
           </div>
 
-          <h2 className={`${styles.title} font-semibold text-slate-800 tracking-tight mb-1 max-w-2xl`}>
-            Create Your Chart with <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-bold">AI Prompt</span>
+          <h2
+            className={`${
+              isCompact ? "text-lg" : "text-xl sm:text-2xl"
+            } font-bold tracking-tight text-slate-900 dark:text-white`}
+          >
+            Create Your Chart with{" "}
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
+              AI Prompts
+            </span>
           </h2>
-          
-          <p className="text-slate-500 max-w-4xl mx-auto leading-relaxed text-xs md:text-sm font-normal whitespace-nowrap">
-            Describe the chart you want to create in natural language. I'll generate it and you can refine it further in chat!
+
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed mt-1.5">
+            Describe what you want to visualize in the chat panel—choose an output mode and canvas ratio below.
           </p>
         </div>
 
-        <div className="relative space-y-2.5 sm:space-y-3 w-full pb-1">
-          {/* Segmented Control - Sleek Apple segmented pill bounded to max-w-xs */}
-          <div className="flex flex-col gap-1 max-w-[220px] w-full mx-auto">
-            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-center">
-              Generate As
-            </label>
-            <span className="text-[10px] text-slate-400 text-center leading-tight">
-              1 credit / chart, 2 credits / template
+        {/* Section 1: Output Mode (Chart vs Template) */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-0.5">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Output Mode
             </span>
-            <ToggleGroup
-              type="single"
-              value={generateMode}
-              onValueChange={(value) => {
-                if (value) {
-                  const mode = value as 'chart' | 'format'
-                  setGenerateMode(mode)
-                }
-              }}
-              className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-inner gap-1 p-0.5 rounded-lg h-8"
-            >
-              <ToggleGroupItem
-                value="chart"
-                aria-label="Chart"
-                className="flex-1 rounded-md h-7 py-0.5 data-[state=on]:bg-white dark:data-[state=on]:bg-slate-700 data-[state=on]:text-slate-800 dark:data-[state=on]:text-slate-100 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-[10px] sm:text-[11px] tracking-wide uppercase"
-              >
-                <BarChart2 className="w-3.5 h-3.5 mr-1.5" />
-                Chart
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="format"
-                aria-label="Template"
-                className="flex-1 rounded-md h-7 py-0.5 data-[state=on]:bg-white dark:data-[state=on]:bg-slate-700 data-[state=on]:text-slate-800 dark:data-[state=on]:text-slate-100 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-[10px] sm:text-[11px] tracking-wide uppercase"
-              >
-                <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
-                Template
-              </ToggleGroupItem>
-            </ToggleGroup>
+            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+              {generateMode === 'chart' ? '1 credit / generation' : '2 credits / template'}
+            </span>
           </div>
 
-          {/* Aspect Ratio Selector Section - Separated cleanly from Segmented Control */}
-          <div className="flex flex-col gap-1.5 sm:gap-2 w-full mt-1.5 sm:mt-2">
-            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider pl-1">
-              Select Aspect Ratio
-            </label>
-            
-            {/* Show All Aspect Ratio Option (Radio UI, high-contrast border and custom radio circle) */}
-            <div className="flex justify-center w-full mb-1">
-              <button
-                onClick={() => handleRatioSelect(null)}
-                className="flex items-center gap-2.5 px-3 py-1 text-slate-700 hover:text-indigo-600 transition-all group cursor-pointer"
+          <div
+            role="radiogroup"
+            aria-label="Output Mode"
+            className="grid grid-cols-2 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl border border-slate-200/70 dark:border-slate-700/60 gap-1"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={generateMode === 'chart'}
+              onClick={() => setGenerateMode('chart')}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                generateMode === 'chart'
+                  ? "bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-slate-200/70 dark:ring-slate-700"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50"
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Standard Chart</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
+                  generateMode === 'chart'
+                    ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300"
+                    : "bg-slate-200/70 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400"
+                }`}
               >
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                  selectedRatio === null
-                    ? "border-indigo-600 bg-white"
-                    : "border-slate-400 bg-white group-hover:border-indigo-500"
-                }`}>
-                  {selectedRatio === null ? (
-                    <div className="w-2 h-2 rounded-full bg-indigo-600 animate-scale-up" />
-                  ) : null}
+                1 cr
+              </span>
+            </button>
+
+            <button
+              type="button"
+              role="radio"
+              aria-checked={generateMode === 'format'}
+              onClick={() => setGenerateMode('format')}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                generateMode === 'format'
+                  ? "bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-slate-200/70 dark:ring-slate-700"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50"
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Infographic Template</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
+                  generateMode === 'format'
+                    ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300"
+                    : "bg-slate-200/70 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                2 cr
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Conditional Template Blueprint Bar */}
+        {generateMode === 'format' && (
+          selectedFormat ? (
+            <div className="rounded-xl border border-indigo-200 dark:border-indigo-800/70 bg-indigo-50/40 dark:bg-indigo-950/30 p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800/70 flex items-center justify-center shrink-0 shadow-sm">
+                  <LayoutGrid className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <span className="text-xs sm:text-sm font-semibold text-slate-700 select-none tracking-tight group-hover:text-indigo-600 transition-colors">
-                  Generate for All Aspect Ratios
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                    {selectedFormat.name}
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    {selectedFormat.dimensions?.width} × {selectedFormat.dimensions?.height} px · {selectedFormat.category}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleChooseFormat}
+                  className="h-8 px-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-indigo-600 transition-colors cursor-pointer"
+                >
+                  Change
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelFormat}
+                  className="h-8 w-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:border-rose-200 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                  aria-label="Remove template"
+                  title="Remove template"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                    Template Blueprint
+                  </span>
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60">
+                    Optional
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Let AI pick a layout automatically, or browse pre-designed templates.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleChooseFormat}
+                disabled={isLoadingFormats}
+                className="h-8 px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors cursor-pointer shadow-sm"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>
+                  {isLoadingFormats
+                    ? "Loading..."
+                    : selectedRatio
+                    ? `Browse ${selectedRatio} Templates`
+                    : "Browse Templates"}
                 </span>
               </button>
             </div>
+          )
+        )}
 
-            {/* Grid/Carousel of famous aspect ratio boxes - Swipable on mobile, Grid on desktop */}
-            <div 
-              className="flex sm:grid flex-nowrap sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3.5 overflow-x-auto sm:overflow-x-visible pb-2 sm:pb-0 w-full items-stretch snap-x snap-mandatory scroll-smooth"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        {/* Section 2: Canvas Aspect Ratio */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-2 px-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Aspect Ratio
+              </span>
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                {selectedPreset ? `${selectedPreset.width}×${selectedPreset.height}` : "Auto-fit"}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleRatioSelect(null)}
+              className={
+                selectedRatio === null
+                  ? "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shadow-sm cursor-pointer"
+                  : "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 hover:text-indigo-600 transition-colors cursor-pointer"
+              }
             >
-              {FAMOUS_ASPECT_RATIOS.map((opt) => {
-                const isSelected = selectedRatio === opt.value
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => handleRatioSelect(opt)}
-                    className={`flex items-center gap-3 sm:gap-4 p-2 sm:p-2.5 rounded-2xl border text-left transition-all duration-200 h-[72px] sm:h-[80px] group relative flex-shrink-0 w-[160px] sm:w-auto snap-center ${
-                      isSelected
-                        ? "border-2 border-indigo-500 ring-4 ring-indigo-500/5 bg-indigo-50/30 dark:bg-indigo-950/30 text-slate-800 dark:text-slate-100 shadow-[0_4px_16px_rgba(99,102,241,0.06)]"
-                        : "border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.05)] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:-translate-y-0.5"
-                    }`}
-                  >
-                    {/* Visual aspect proportion container (Plain style, scale-adjusted on mobile) */}
-                    <div 
-                      className="w-11 h-12 sm:w-[60px] sm:h-[64px] flex-shrink-0 flex items-center justify-center bg-transparent border-none overflow-hidden relative scale-75 sm:scale-100 origin-center"
-                    >
-                      <div 
-                        className={`rounded-[3px] border-2 transition-all duration-300 shadow-xs ${
-                          isSelected
-                            ? "border-indigo-500 bg-indigo-500/15 scale-105 shadow-sm"
-                            : "border-slate-300/80 bg-slate-100/90 group-hover:border-indigo-300 group-hover:bg-indigo-50/80"
-                        }`}
-                        style={{ width: opt.widthVal, height: opt.heightVal }}
-                      ></div>
-                    </div>
- 
-                    <div className="flex-1 min-w-0 pr-1 select-none">
-                      <div className="font-semibold text-xs sm:text-sm text-slate-800 group-hover:text-slate-900 transition-colors flex items-center gap-1.5 truncate">
-                        {opt.label}
-                        {isSelected && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
-                        )}
-                      </div>
-                      <div className="text-[10px] sm:text-xs text-slate-400 font-normal leading-relaxed line-clamp-2 mt-0.5 group-hover:text-slate-500 transition-colors">
-                        {opt.sub}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Conditional Content Based on Generate Mode */}
-          {generateMode === 'chart' ? (
-            selectedRatio ? (
-              <div className="space-y-4 pt-0.5">
-                <div className="text-xs font-semibold text-slate-700 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse flex-shrink-0"></div>
-                  <div>
-                    Chart will generate in <span className="font-semibold text-slate-900">{selectedRatio}</span> dimensions ({FAMOUS_ASPECT_RATIOS.find(r => r.value === selectedRatio)?.width} × {FAMOUS_ASPECT_RATIOS.find(r => r.value === selectedRatio)?.height} px).
-                  </div>
-                </div>
-              </div>
-            ) : null
-          ) : (
-            /* Template Mode */
-            <div className="space-y-4 pt-0.5">
-              {selectedFormat ? (
-                <div className="space-y-3.5">
-                  {/* Status Indicator */}
-                  <div className="text-xs text-slate-400 font-bold pl-1 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-ping"></span>
-                    Status: <span className="font-semibold text-slate-700">Attached Template</span>
-                  </div>
-
-                  {/* Template Name with Settings and Cancel Buttons */}
-                  <div className="flex items-center gap-3 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
-                    <div className="flex-1 bg-slate-50/30 border border-slate-100 rounded-xl px-5 py-3 flex items-center">
-                      <LayoutGrid className="w-4 h-4 text-slate-500 mr-3 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <span className="font-semibold text-slate-800 text-xs truncate block">
-                          {selectedFormat.name}
-                        </span>
-                        <span className="text-[10px] font-normal text-slate-400 block mt-0.5">
-                          {selectedFormat.dimensions?.width} × {selectedFormat.dimensions?.height} px · {selectedFormat.category}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Change Template Button */}
-                    <button
-                      onClick={handleChooseFormat}
-                      className="w-11 h-11 rounded-xl bg-white hover:bg-slate-50 text-slate-700 flex items-center justify-center hover:scale-105 flex-shrink-0 border border-slate-200 transition-all shadow-sm cursor-pointer"
-                      aria-label="Change template"
-                    >
-                      <Settings className="w-4 h-4" />
-                    </button>
-
-                    {/* Cancel Button */}
-                    <button
-                      onClick={handleCancelFormat}
-                      className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center hover:scale-105 flex-shrink-0 transition-all shadow-sm cursor-pointer"
-                      aria-label="Remove template"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Instruction text */}
-                  <div className="text-center">
-                    <div className="text-xs text-slate-400 font-semibold tracking-wide">
-                      Now describe your chart in the chat panel input text box
-                    </div>
-                  </div>
-                </div>
+              {selectedRatio === null ? (
+                <Check className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
               ) : (
-                /* Template Pick Area - Wide layout to prevent squeezing and vertical bloat */
-                <div className="flex flex-col gap-3 max-w-2xl w-full mx-auto px-4 md:px-0">
-                  {/* OR Divider */}
-                  <div className="flex items-center justify-center gap-3 my-1">
-                    <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-                    <span className="text-xs font-bold text-slate-400 tracking-widest uppercase bg-slate-100/80 px-3 py-0.5 rounded-full border border-slate-200/60 shadow-2xs">
-                      ( OR )
-                    </span>
-                    <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-                  </div>
-
-                  {/* Action Row: Choose a Template Button + Info Popover/Tooltip */}
-                  <div className="flex items-center gap-2.5 w-full">
-                    <Button
-                      onClick={handleChooseFormat}
-                      disabled={isLoadingFormats}
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 rounded-full transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-md hover:shadow-lg flex items-center justify-center border-none text-xs md:text-sm uppercase tracking-widest cursor-pointer"
-                    >
-                      <LayoutGrid className="w-4 h-4 mr-2.5" />
-                      {isLoadingFormats ? 'Loading templates...' : (selectedRatio ? `Browse ${selectedRatio} Templates` : 'Choose a Template')}
-                    </Button>
-
-                    {/* Info Button: Shows 'Optional Template Selection' details on hover or click */}
-                    <Popover open={isTemplateInfoOpen} onOpenChange={setIsTemplateInfoOpen}>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          onMouseEnter={() => setIsTemplateInfoOpen(true)}
-                          onMouseLeave={() => setIsTemplateInfoOpen(false)}
-                          onClick={() => setIsTemplateInfoOpen((prev) => !prev)}
-                          className={`h-12 w-12 rounded-full border transition-all duration-200 flex items-center justify-center flex-shrink-0 cursor-pointer shadow-sm hover:shadow-md ${
-                            isTemplateInfoOpen
-                              ? 'bg-indigo-50 border-indigo-300 text-indigo-600 ring-2 ring-indigo-500/20 dark:bg-indigo-950/60 dark:border-indigo-700 dark:text-indigo-400'
-                              : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-                          }`}
-                          title="Optional Template Selection Info"
-                          aria-label="Template selection information"
-                        >
-                          <Info className="w-4 h-4 stroke-[2.2]" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        side="top"
-                        align="end"
-                        sideOffset={10}
-                        onMouseEnter={() => setIsTemplateInfoOpen(true)}
-                        onMouseLeave={() => setIsTemplateInfoOpen(false)}
-                        className="w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl p-3.5 z-50 text-left animate-in fade-in zoom-in-95 duration-150"
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <Info className="w-3.5 h-3.5 stroke-[2.2]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-xs text-slate-800 dark:text-slate-100 mb-1 tracking-tight">
-                              <span className="text-indigo-600 dark:text-indigo-400 font-bold mr-1">Optional</span> Template Selection
-                            </div>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
-                              Choose a pre-designed template to customize the AI-generated response and gain full control over the design.
-                            </p>
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
+                <span className="w-2 h-2 rounded-full border border-slate-400" />
               )}
-            </div>
-          )}
-
-          {/* Advanced Editor Callout Card - Standardized with the section theme font sizes */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 border border-dashed border-slate-200/90 dark:border-slate-800 flex items-start gap-3 mt-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-            <div className="p-1.5 bg-slate-50 rounded-xl border border-slate-200/50 flex-shrink-0 text-slate-700 shadow-sm">
-              <Info className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-xs sm:text-sm text-slate-800 leading-normal">
-                Need custom dimensions or exact layouts?
-              </div>
-              <div className="text-[11px] sm:text-xs text-slate-500 mt-0.5 leading-relaxed font-normal">
-                Use the <span className="font-semibold text-indigo-600 hover:underline cursor-pointer">Advanced Editor</span> in the workspace toolbar after your chart generates to input custom width/height values and configure exact layout spacing.
-              </div>
-            </div>
+              <span>All Ratios (Auto)</span>
+            </button>
           </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {FAMOUS_ASPECT_RATIOS.map((opt) => {
+              const isSelected = selectedRatio === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleRatioSelect(isSelected ? null : opt)}
+                  className={`flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all duration-150 group cursor-pointer ${
+                    isSelected
+                      ? "border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/30 ring-2 ring-indigo-500/15 shadow-sm"
+                      : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm"
+                  }`}
+                >
+                  {/* Proportional mini chart canvas preview */}
+                  <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-center shrink-0">
+                    <div
+                      className={`rounded-[3px] border-[1.5px] flex items-end justify-center gap-[2px] p-[2px] transition-colors ${
+                        isSelected
+                          ? "border-indigo-500 bg-indigo-500/10"
+                          : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 group-hover:border-indigo-400"
+                      }`}
+                      style={{ width: `${opt.wPx}px`, height: `${opt.hPx}px` }}
+                    >
+                      <span
+                        className={`w-[2.5px] rounded-[1px] h-[45%] transition-colors ${
+                          isSelected
+                            ? "bg-indigo-500/80"
+                            : "bg-slate-300 dark:bg-slate-600 group-hover:bg-indigo-400/80"
+                        }`}
+                      />
+                      <span
+                        className={`w-[2.5px] rounded-[1px] h-[75%] transition-colors ${
+                          isSelected
+                            ? "bg-indigo-600"
+                            : "bg-slate-400 dark:bg-slate-500 group-hover:bg-indigo-500"
+                        }`}
+                      />
+                      <span
+                        className={`w-[2.5px] rounded-[1px] h-[55%] transition-colors ${
+                          isSelected
+                            ? "bg-indigo-500/80"
+                            : "bg-slate-300 dark:bg-slate-600 group-hover:bg-indigo-400/80"
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-xs font-bold tracking-tight ${
+                          isSelected
+                            ? "text-indigo-700 dark:text-indigo-300"
+                            : "text-slate-800 dark:text-slate-100"
+                        }`}
+                      >
+                        {opt.title}
+                      </span>
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                        {opt.tag}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
+                      {opt.sub}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Footer Callout Bar */}
+        <div className="rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Ruler className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              Need custom pixel dimensions or manual data tables?
+            </span>
+          </div>
+
+          <Link
+            href="/editor"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 whitespace-nowrap transition-colors shrink-0"
+          >
+            <span>Open Advanced Editor</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
         </div>
       </div>
     </div>
