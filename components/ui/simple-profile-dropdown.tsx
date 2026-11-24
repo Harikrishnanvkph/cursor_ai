@@ -106,7 +106,7 @@ export function SimpleProfileDropdown({
             type="button"
             aria-label="Account menu"
             className={cn(
-              "relative p-0 rounded-full transition-transform duration-150 hover:scale-[1.04] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 cursor-pointer",
+              "relative inline-flex items-center justify-center align-middle leading-none p-0 rounded-full transition-transform duration-150 hover:scale-[1.04] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 cursor-pointer",
               variant === 'button' ? "overflow-hidden" : "",
               className
             )}

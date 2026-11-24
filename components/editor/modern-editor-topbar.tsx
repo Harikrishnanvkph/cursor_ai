@@ -877,7 +877,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
         )}
 
         {/* Profile Avatar & Settings */}
-        <div className="flex-shrink-0">
+        <div className="flex items-center justify-center flex-shrink-0">
           <SimpleProfileDropdown size="sm" />
         </div>
       </div>
