@@ -51,7 +51,13 @@ export function trackUnsplashDownload(params: {
       photoId: photoId || undefined,
     }),
     keepalive: true,
-  }).catch((err) => {
-    console.warn('Unsplash download track warning:', err);
-  });
+  })
+    .then((res) => {
+      if (!res.ok) {
+        console.warn('Unsplash download track failed with status:', res.status);
+      }
+    })
+    .catch((err) => {
+      console.warn('Unsplash download track warning:', err);
+    });
 }

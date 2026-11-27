@@ -38,6 +38,15 @@ const fallbackOfficialFormats: FormatBlueprintRow[] = defaultFormats.map((f, idx
   updated_at: new Date().toISOString(),
 }))
 
+export interface ContextualUnsplashMeta {
+  url: string
+  photoId?: string | null
+  downloadLocation?: string | null
+  authorName?: string | null
+  authorLink?: string | null
+  tracked?: boolean
+}
+
 interface FormatGalleryStore {
   // Gallery Mode
   isGalleryOpen: boolean
@@ -59,10 +68,15 @@ interface FormatGalleryStore {
   // LLM content package (from AI response — used by variant engine)
   contentPackage: any | null
   setContentPackage: (content: any) => void
-  
+
   // Shared contextual image from Unsplash
   contextualImageUrl: string | null
-  setContextualImageUrl: (url: string | null) => void
+  contextualImageMeta: ContextualUnsplashMeta | null
+  setContextualImageUrl: (
+    url: string | null,
+    meta?: Omit<ContextualUnsplashMeta, 'url'> | null
+  ) => void
+  markContextualImageTracked: () => void
 
   // Selected variant
   selectedFormatId: string | null
@@ -211,7 +225,30 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
 
     // Contextual Image
     contextualImageUrl: null,
-    setContextualImageUrl: (url) => set({ contextualImageUrl: url }),
+    contextualImageMeta: null,
+    setContextualImageUrl: (url, meta) =>
+      set((state) => {
+        if (!url) {
+          return { contextualImageUrl: null, contextualImageMeta: null }
+        }
+        if (meta) {
+          return {
+            contextualImageUrl: url,
+            contextualImageMeta: { url, ...meta, tracked: Boolean(meta.tracked) },
+          }
+        }
+        return {
+          contextualImageUrl: url,
+          contextualImageMeta:
+            state.contextualImageMeta?.url === url ? state.contextualImageMeta : null,
+        }
+      }),
+    markContextualImageTracked: () =>
+      set((state) => ({
+        contextualImageMeta: state.contextualImageMeta
+          ? { ...state.contextualImageMeta, tracked: true }
+          : null,
+      })),
 
     // Selection
     selectedFormatId: null,
@@ -562,6 +599,7 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
         isLoadingFormats: false,
         isLoadingUserFormats: false,
         contextualImageUrl: null,
+        contextualImageMeta: null,
         hoveredZoneId: null,
         selectedZoneId: null,
         editingZoneId: null,
@@ -582,6 +620,7 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       selectedChartType: state.selectedChartType,
       contentPackage: state.contentPackage,
       contextualImageUrl: state.contextualImageUrl,
+      contextualImageMeta: state.contextualImageMeta,
       selectedFormatSnapshot: state.selectedFormatSnapshot,
       formatZoneNotes: state.formatZoneNotes,
       zoneContentOverrides: state.zoneContentOverrides,

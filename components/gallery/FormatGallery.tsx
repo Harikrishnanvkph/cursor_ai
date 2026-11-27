@@ -161,22 +161,30 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     loadFormats()
   }, [])
 
-  const contextualPhotoMetaRef = useRef<{
-    url: string
-    photoId?: string | null
-    downloadLocation?: string | null
-    tracked: boolean
-  } | null>(null)
-
-  const trackContextualPhotoIfUsed = () => {
-    const meta = contextualPhotoMetaRef.current
-    if (meta && !meta.tracked && contextualImageUrl && meta.url === contextualImageUrl) {
-      meta.tracked = true
-      trackUnsplashDownload({
-        downloadLocation: meta.downloadLocation,
-        photoId: meta.photoId,
-      })
+  const trackContextualPhotoIfUsed = (rendered?: RenderedFormat | null) => {
+    const {
+      contextualImageUrl: currentUrl,
+      contextualImageMeta,
+      markContextualImageTracked,
+    } = useFormatGalleryStore.getState()
+    if (
+      !currentUrl ||
+      !contextualImageMeta ||
+      contextualImageMeta.tracked ||
+      contextualImageMeta.url !== currentUrl
+    ) {
+      return
     }
+    const usesContextualImage = rendered
+      ? rendered.renderedZones.some((z) => z.resolvedImageUrl === currentUrl)
+      : true
+    if (!usesContextualImage) return
+
+    markContextualImageTracked()
+    trackUnsplashDownload({
+      downloadLocation: contextualImageMeta.downloadLocation,
+      photoId: contextualImageMeta.photoId,
+    })
   }
 
   // Fetch contextual image when content package is ready
@@ -187,7 +195,6 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
       : activePkg?.keywords
 
     if (!keywords?.length) {
-      contextualPhotoMetaRef.current = null
       setContextualImageUrl(null)
       return
     }
@@ -199,13 +206,13 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
         if (res.ok) {
           const data = await res.json()
           if (data.url) {
-            contextualPhotoMetaRef.current = {
-              url: data.url,
+            setContextualImageUrl(data.url, {
               photoId: data.photoId,
               downloadLocation: data.downloadLocation,
+              authorName: data.authorName,
+              authorLink: data.authorLink,
               tracked: false,
-            }
-            setContextualImageUrl(data.url)
+            })
           }
         }
       } catch (err) {
@@ -282,7 +289,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
           templateStore.setEditorMode('template')
           templateStore.setGenerateMode('format')
           const rendered = renderFormat(format, contentToApply, chartType || undefined, contextualImageUrl || undefined)
-          trackContextualPhotoIfUsed()
+          trackContextualPhotoIfUsed(rendered)
           setSelectedFormat(format.id, rendered.chartType)
           // Snap State: Capture initial state of newly applied format
           try {
@@ -319,7 +326,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     if (contentToApply) {
       try {
         const rendered = renderFormat(previewFormat, contentToApply, chartType || undefined, contextualImageUrl || undefined)
-        trackContextualPhotoIfUsed()
+        trackContextualPhotoIfUsed(rendered)
         setSelectedFormat(previewFormat.id, rendered.chartType)
       } catch (err) {
         console.error('Failed to render format:', err)

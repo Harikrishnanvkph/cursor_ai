@@ -18,6 +18,7 @@ export function TypesTogglesPanel() {
     chartType,
     chartData,
     chartConfig,
+    hasJSON,
     getActiveChartConfig,
   } = useChartStore()
 
@@ -85,112 +86,135 @@ export function TypesTogglesPanel() {
 
 
   return (
-    <div className="space-y-3">
-      {/* Mode Toggle - Chart/Template */}
-      <div className="flex items-center justify-between gap-3">
-        <span className={isModern ? "text-xs font-semibold text-slate-700" : "text-xs font-medium text-gray-700"}>
-          Mode
-        </span>
-        <div
-          className={
-            isModern
-              ? cn("flex items-center gap-0.5 h-8", MODERN_PANEL_UI.segTrack)
-              : "flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
-          }
-        >
-          <button
-            type="button"
-            onClick={() => setEditorMode('chart')}
-            className={
-              isModern
-                ? cn(
-                    "h-full px-3 text-xs leading-none rounded-[6px] flex items-center justify-center transition-colors cursor-pointer min-w-[64px]",
-                    editorMode === 'chart'
-                      ? MODERN_PANEL_UI.segItemActive
-                      : "text-slate-600 hover:text-slate-900 font-medium"
-                  )
-                : `px-3 py-1 text-xs font-medium rounded-full transition-all min-w-[60px] ${editorMode === 'chart'
-                  ? 'bg-blue-500 text-white shadow-sm'
-                  : 'bg-transparent text-gray-500 hover:text-gray-700'
-                  }`
-            }
-          >
-            Chart
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditorMode('template')}
-            className={
-              isModern
-                ? cn(
-                    "h-full px-3 text-xs leading-none rounded-[6px] flex items-center justify-center transition-colors cursor-pointer min-w-[64px]",
-                    editorMode === 'template'
-                      ? MODERN_PANEL_UI.segItemActive
-                      : "text-slate-600 hover:text-slate-900 font-medium"
-                  )
-                : `px-3 py-1 text-xs font-medium rounded-full transition-all min-w-[60px] ${editorMode === 'template'
-                  ? 'bg-blue-500 text-white shadow-sm'
-                  : 'bg-transparent text-gray-500 hover:text-gray-700'
-                  }`
-            }
-          >
-            Template
-          </button>
-        </div>
-      </div>
+    <div className={isModern ? "space-y-0" : "space-y-3"}>
+      {/* Mode Toggle & Chart Type — shown in legacy mode or when no chart is loaded yet (Modern mode puts them in top bar once active) */}
+      {!(isModern && hasJSON) && (
+        <div className={isModern ? "space-y-3 pb-3 mb-2.5 border-b border-slate-200/80" : "space-y-3"}>
+          {/* Mode Toggle - Chart/Template */}
+          <div className="flex items-center justify-between gap-3">
+            <span className={isModern ? "text-xs font-semibold text-slate-700" : "text-xs font-medium text-gray-700"}>
+              Mode
+            </span>
+            <div
+              className={
+                isModern
+                  ? cn("flex items-center gap-0.5 h-8", MODERN_PANEL_UI.segTrack)
+                  : "flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
+              }
+            >
+              <button
+                type="button"
+                onClick={() => setEditorMode('chart')}
+                className={
+                  isModern
+                    ? cn(
+                        "h-full px-3 text-xs leading-none rounded-[6px] flex items-center justify-center transition-colors cursor-pointer min-w-[64px]",
+                        editorMode === 'chart'
+                          ? MODERN_PANEL_UI.segItemActive
+                          : "text-slate-600 hover:text-slate-900 font-medium"
+                      )
+                    : `px-3 py-1 text-xs font-medium rounded-full transition-all min-w-[60px] ${editorMode === 'chart'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`
+                }
+              >
+                Chart
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorMode('template')}
+                className={
+                  isModern
+                    ? cn(
+                        "h-full px-3 text-xs leading-none rounded-[6px] flex items-center justify-center transition-colors cursor-pointer min-w-[64px]",
+                        editorMode === 'template'
+                          ? MODERN_PANEL_UI.segItemActive
+                          : "text-slate-600 hover:text-slate-900 font-medium"
+                      )
+                    : `px-3 py-1 text-xs font-medium rounded-full transition-all min-w-[60px] ${editorMode === 'template'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`
+                }
+              >
+                Template
+              </button>
+            </div>
+          </div>
 
-      <div className="space-y-1.5">
-        <Label className={isModern ? "text-xs font-semibold text-slate-700" : undefined}>Chart Type</Label>
-        <ChartTypeSelector
-          value={chartType}
-          onChange={handleChartTypeChange}
-          variant="sidebar"
-        />
-      </div>
+          <div className="space-y-1.5">
+            <Label className={isModern ? "text-xs font-semibold text-slate-700" : undefined}>Chart Type</Label>
+            <ChartTypeSelector
+              value={chartType}
+              onChange={handleChartTypeChange}
+              variant="sidebar"
+            />
+          </div>
+        </div>
+      )}
 
       <div
         className={
           isModern
-            ? "grid grid-cols-5 gap-1 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70"
+            ? "pb-3 border-b border-slate-200/80 space-y-2"
             : "flex items-center justify-between gap-1 px-1 mb-2"
         }
       >
-        <div className="flex flex-col items-center gap-1.5">
-          <Switch 
-            id="fill-toggle" 
-            checked={fillArea} 
-            onCheckedChange={toggleFillArea} 
-            className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"} 
-          />
-          <Label htmlFor="fill-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Fill</Label>
-        </div>
-        <div className="flex flex-col items-center gap-1.5">
-          <Switch id="border-toggle" checked={showBorder} onCheckedChange={toggleShowBorder} disabled={!fillArea} className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"} />
-          <Label htmlFor="border-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Border</Label>
-        </div>
-        <div className="flex flex-col items-center gap-1.5">
-          <Switch 
-            id="show-images-toggle" 
-            checked={chartType === 'timeline' ? false : showImages} 
-            onCheckedChange={toggleShowImages} 
-            disabled={chartType === 'timeline'}
-            className={isModern ? "disabled:opacity-50" : "scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50"} 
-          />
-          <Label htmlFor="show-images-toggle" className={isModern ? `text-[11px] font-medium cursor-pointer ${chartType === 'timeline' ? 'text-slate-400' : 'text-slate-600'}` : `text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Image</Label>
-        </div>
-        <div className="flex flex-col items-center gap-1.5">
-          <Switch 
-            id="show-labels-toggle" 
-            checked={chartType === 'timeline' ? false : labelChecked} 
-            onCheckedChange={toggleShowLabels} 
-            disabled={chartType === 'timeline'}
-            className={isModern ? "disabled:opacity-50" : "scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50"} 
-          />
-          <Label htmlFor="show-labels-toggle" className={isModern ? `text-[11px] font-medium cursor-pointer ${chartType === 'timeline' ? 'text-slate-400' : 'text-slate-600'}` : `text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Label</Label>
-        </div>
-        <div className="flex flex-col items-center gap-1.5">
-          <Switch id="show-legend-toggle" checked={legendChecked} onCheckedChange={toggleShowLegend} className={isModern ? undefined : "scale-75 data-[state=unchecked]:bg-input/50"} />
-          <Label htmlFor="show-legend-toggle" className={isModern ? "text-[11px] font-medium text-slate-600 cursor-pointer" : "text-xs text-gray-600"}>Legend</Label>
+        {isModern && (
+          <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            Display
+          </span>
+        )}
+        <div className={isModern ? "grid grid-cols-5 gap-1" : "contents"}>
+          <div className="flex flex-col items-center gap-1.5">
+            <Switch
+              id="fill-toggle"
+              checked={fillArea}
+              onCheckedChange={toggleFillArea}
+              className={isModern ? "scale-[0.85]" : "scale-75 data-[state=unchecked]:bg-input/50"}
+            />
+            <Label htmlFor="fill-toggle" className={isModern ? "text-[11px] font-medium text-slate-700 cursor-pointer" : "text-xs text-gray-600"}>Fill</Label>
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <Switch
+              id="border-toggle"
+              checked={showBorder}
+              onCheckedChange={toggleShowBorder}
+              disabled={!fillArea}
+              className={isModern ? "scale-[0.85] disabled:opacity-50" : "scale-75 data-[state=unchecked]:bg-input/50"}
+            />
+            <Label htmlFor="border-toggle" className={isModern ? `text-[11px] font-medium cursor-pointer ${!fillArea ? 'text-slate-400' : 'text-slate-700'}` : "text-xs text-gray-600"}>Border</Label>
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <Switch
+              id="show-images-toggle"
+              checked={chartType === 'timeline' ? false : showImages}
+              onCheckedChange={toggleShowImages}
+              disabled={chartType === 'timeline'}
+              className={isModern ? "scale-[0.85] disabled:opacity-50" : "scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50"}
+            />
+            <Label htmlFor="show-images-toggle" className={isModern ? `text-[11px] font-medium cursor-pointer ${chartType === 'timeline' ? 'text-slate-400' : 'text-slate-700'}` : `text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Image</Label>
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <Switch
+              id="show-labels-toggle"
+              checked={chartType === 'timeline' ? false : labelChecked}
+              onCheckedChange={toggleShowLabels}
+              disabled={chartType === 'timeline'}
+              className={isModern ? "scale-[0.85] disabled:opacity-50" : "scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50"}
+            />
+            <Label htmlFor="show-labels-toggle" className={isModern ? `text-[11px] font-medium cursor-pointer ${chartType === 'timeline' ? 'text-slate-400' : 'text-slate-700'}` : `text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Label</Label>
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <Switch
+              id="show-legend-toggle"
+              checked={legendChecked}
+              onCheckedChange={toggleShowLegend}
+              className={isModern ? "scale-[0.85]" : "scale-75 data-[state=unchecked]:bg-input/50"}
+            />
+            <Label htmlFor="show-legend-toggle" className={isModern ? "text-[11px] font-medium text-slate-700 cursor-pointer" : "text-xs text-gray-600"}>Legend</Label>
+          </div>
         </div>
       </div>
 
@@ -199,7 +223,7 @@ export function TypesTogglesPanel() {
         <div
           className={
             isModern
-              ? "p-2.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2"
+              ? "py-2.5 border-b border-slate-200/80 space-y-2"
               : "p-2.5 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 rounded-xl border border-blue-100 space-y-2"
           }
         >

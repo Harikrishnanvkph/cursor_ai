@@ -4,8 +4,6 @@ import { withUnsplashUtm } from '@/lib/utils/unsplash-utils';
 import { forwardUnsplashDownloadTracking } from '@/lib/utils/unsplash-server-utils';
 import { guardApiRoute, clampInt, fetchWithTimeout } from '@/lib/utils/api-route-guard';
 
-const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || '';
-
 export async function GET(request: Request) {
   const denied = guardApiRoute(request, { limit: 60 });
   if (denied) return denied;
@@ -36,13 +34,14 @@ export async function GET(request: Request) {
       }
     }
 
-    if (!UNSPLASH_ACCESS_KEY) {
+    const accessKey = process.env.UNSPLASH_ACCESS_KEY || '';
+    if (!accessKey) {
       console.error('UNSPLASH_ACCESS_KEY is not configured');
       return NextResponse.json({ error: 'Unsplash API key not configured' }, { status: 500 });
     }
 
     const headers = {
-      Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}`,
+      Authorization: `Client-ID ${accessKey}`,
       'Accept-Version': 'v1',
     };
 
@@ -170,8 +169,9 @@ export async function POST(request: Request) {
   if (denied) return denied;
 
   try {
+    const accessKey = process.env.UNSPLASH_ACCESS_KEY || '';
     const body = await request.json().catch(() => ({}));
-    return await forwardUnsplashDownloadTracking(UNSPLASH_ACCESS_KEY, body);
+    return await forwardUnsplashDownloadTracking(accessKey, body);
   } catch (error: any) {
     console.error('Error tracking Unsplash download:', error);
     return NextResponse.json(

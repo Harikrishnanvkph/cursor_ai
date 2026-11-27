@@ -89,16 +89,7 @@ export function getProxiedImageUrl(
             (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
             isUnsplashHotlinkHost(parsed.hostname)
         ) {
-            if (!options) {
-                return originalUrl;
-            }
-            if (quantizedWidth) parsed.searchParams.set('w', String(quantizedWidth));
-            if (options.quality) parsed.searchParams.set('q', String(options.quality));
-            if (options.format) {
-                parsed.searchParams.set('fm', options.format);
-                parsed.searchParams.set('auto', 'format');
-            }
-            return parsed.toString();
+            return originalUrl;
         }
 
         // For our own Supabase format-assets, serve directly for WebP >= 1200 or full-size renders

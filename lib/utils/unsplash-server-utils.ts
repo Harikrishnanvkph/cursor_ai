@@ -38,6 +38,10 @@ export async function forwardUnsplashDownloadTracking(
     return NextResponse.json({ error: 'Untrusted Unsplash download endpoint' }, { status: 400 });
   }
 
+  if (!parsedTarget.searchParams.get('ixid')) {
+    console.warn('Unsplash download_location is missing ixid parameter:', parsedTarget.pathname);
+  }
+
   const res = await fetch(parsedTarget.toString(), {
     cache: 'no-store',
     signal: AbortSignal.timeout(8000),
@@ -48,8 +52,13 @@ export async function forwardUnsplashDownloadTracking(
   });
 
   if (!res.ok) {
-    console.warn('Unsplash download track warning:', res.status);
-    return NextResponse.json({ success: false, status: res.status }, { status: 200 });
+    const errText = await res.text().catch(() => '');
+    console.warn('Unsplash download track error:', res.status, errText);
+    const status = res.status >= 400 && res.status < 600 ? res.status : 502;
+    return NextResponse.json(
+      { success: false, status: res.status, error: 'Unsplash download tracking failed' },
+      { status }
+    );
   }
 
   const data = await res.json().catch(() => ({}));

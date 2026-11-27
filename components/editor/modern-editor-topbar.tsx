@@ -322,7 +322,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
               <div
                 role="tablist"
                 aria-label="Editor mode"
-                className="h-8 p-[3px] flex items-center bg-slate-100/90 rounded-lg border border-slate-200/70"
+                className="h-8 p-[3px] flex items-center bg-slate-100 rounded-lg border border-slate-200/80"
               >
                 <button
                   type="button"
@@ -331,9 +331,9 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
                   disabled={controlsDisabled}
                   onClick={() => setEditorMode("chart")}
                   className={cn(
-                    "h-full px-2.5 lg:px-3 text-xs leading-none rounded-[6px] flex items-center transition-colors cursor-pointer",
+                    "h-full px-2.5 lg:px-3 text-xs leading-none rounded-[6px] flex items-center transition-colors duration-150 cursor-pointer",
                     editorMode === "chart"
-                      ? "bg-white text-slate-900 font-semibold shadow-sm"
+                      ? "bg-white text-slate-900 font-semibold ring-1 ring-slate-200/90"
                       : "bg-transparent text-slate-600 hover:text-slate-900 font-medium"
                   )}
                 >
@@ -355,9 +355,9 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
                     setEditorMode("template")
                   }}
                   className={cn(
-                    "h-full px-2.5 lg:px-3 text-xs leading-none rounded-[6px] flex items-center transition-colors cursor-pointer",
+                    "h-full px-2.5 lg:px-3 text-xs leading-none rounded-[6px] flex items-center transition-colors duration-150 cursor-pointer",
                     editorMode === "template"
-                      ? "bg-white text-slate-900 font-semibold shadow-sm"
+                      ? "bg-white text-slate-900 font-semibold ring-1 ring-slate-200/90"
                       : "bg-transparent text-slate-600 hover:text-slate-900 font-medium"
                   )}
                 >
@@ -459,7 +459,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
                 title="Redo (Ctrl+Y)"
                 aria-label="Redo"
                 className={cn(
-                  "h-8 w-8 flex items-center justify-center rounded-lg text-slate-600 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                  "h-8 w-8 flex items-center justify-center rounded-lg text-slate-600 transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
                   !hasData || !canRedo
                     ? "opacity-30 cursor-not-allowed"
                     : "hover:bg-slate-100 hover:text-slate-900"
@@ -468,6 +468,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
                 <Redo2 className="w-4 h-4" />
               </button>
             </div>
+            <div className="h-4 w-px bg-slate-200/80 mx-0.5 flex-shrink-0" />
           </>
         )}
 
@@ -478,11 +479,11 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
             onClick={onNewChatClick}
             className={cn(
               hasActiveChart ? "hidden lg:inline-flex" : "inline-flex",
-              "h-8 px-2.5 flex-shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-medium text-xs shadow-sm transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              "h-8 px-2.5 flex-shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-medium text-xs transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             )}
             title="Start a new AI chart conversation"
           >
-            <SquarePen className="w-3.5 h-3.5 text-slate-500 shrink-0" strokeWidth={1.8} />
+            <SquarePen className="w-3.5 h-3.5 text-slate-600 shrink-0" strokeWidth={1.8} />
             <span>New Chat</span>
           </button>
         ) : hasActiveChart ? (
@@ -491,10 +492,10 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
               <button
                 type="button"
                 disabled={!hasJSON}
-                className="hidden lg:inline-flex h-8 px-2.5 flex-shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-medium text-xs shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className="hidden lg:inline-flex h-8 px-2.5 flex-shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-medium text-xs transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 title={!hasJSON ? "Create a chart first to add datasets or groups" : "Add Single or Grouped Chart"}
               >
-                <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <Plus className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                 <span>Add</span>
               </button>
             </DropdownMenuTrigger>
@@ -530,13 +531,13 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
           type="button"
           onClick={onSaveClick}
           disabled={!hasJSON || isSaving}
-          className="h-8 px-2.5 lg:px-3 flex-shrink-0 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-medium text-xs shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="h-8 px-2.5 lg:px-3 flex-shrink-0 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-medium text-xs transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           title="Save chart to online database"
         >
           {isSaving ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 shrink-0" />
           ) : (
-            <Save className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <Save className="w-3.5 h-3.5 text-slate-600 shrink-0" />
           )}
           <span className="hidden md:inline">Save</span>
         </button>
@@ -547,7 +548,7 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
             <button
               type="button"
               disabled={isSharingLink || !currentSnapshotId}
-              className="hidden xl:flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="hidden xl:flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors duration-150 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               title={!currentSnapshotId ? "Save chart first to share" : "Share chart link"}
               aria-label="Share"
             >
@@ -576,13 +577,15 @@ export const ModernEditorTopBar = memo(function ModernEditorTopBar({
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <div className="h-4 w-px bg-slate-200/80 mx-0.5 flex-shrink-0" />
+
         {/* Export Primary CTA — single bold brand accent */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               disabled={controlsDisabled}
-              className="h-8 px-3 lg:px-3.5 flex-shrink-0 flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
+              className="h-8 px-3 lg:px-3.5 flex-shrink-0 flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
               title="Export Image / Data"
             >
               <Download className="w-3.5 h-3.5 shrink-0" />

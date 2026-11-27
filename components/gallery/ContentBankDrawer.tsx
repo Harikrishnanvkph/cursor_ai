@@ -366,8 +366,26 @@ function getBlockFormattedContent(block: ContentBankTextBlock, asHtml = true): s
 }
 
   // Drag start handler
-  const handleDragStart = (e: React.DragEvent, type: string, content: string, label: string, plainText?: string) => {
-    const payload = JSON.stringify({ type, content, label })
+  const handleDragStart = (
+    e: React.DragEvent,
+    type: string,
+    content: string,
+    label: string,
+    plainText?: string,
+    unsplashMeta?: { downloadLocation?: string | null; photoId?: string | number | null }
+  ) => {
+    const payload = JSON.stringify({
+      type,
+      content,
+      label,
+      ...(unsplashMeta
+        ? {
+            source: 'unsplash',
+            downloadLocation: unsplashMeta.downloadLocation || undefined,
+            photoId: unsplashMeta.photoId || undefined,
+          }
+        : {}),
+    })
     e.dataTransfer.setData("application/json", payload)
     e.dataTransfer.setData("text/plain", plainText || content)
     e.dataTransfer.effectAllowed = "copyMove"
@@ -699,11 +717,10 @@ function getBlockFormattedContent(block: ContentBankTextBlock, asHtml = true): s
                       key={idx}
                       draggable={true}
                       onDragStart={(e) => {
-                        trackUnsplashDownload({
+                        handleDragStart(e, "image", img.url, `Image (${img.query})`, undefined, {
                           downloadLocation: img.downloadLocation,
                           photoId: img.photoId,
                         })
-                        handleDragStart(e, "image", img.url, `Image (${img.query})`)
                       }}
                       className="group relative rounded-xl border border-gray-200 overflow-hidden bg-gray-100 hover:border-purple-400 hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
                     >

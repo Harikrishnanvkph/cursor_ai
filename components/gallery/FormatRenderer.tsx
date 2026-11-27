@@ -37,6 +37,7 @@ import { FormatZoneToolbar } from "@/components/format/FormatZoneToolbar"
 import { ChartGenerator } from "@/lib/chart_generator"
 import { getPatternCSS } from "@/lib/utils"
 import { getProxiedImageUrl, quantizeImageWidth } from "@/lib/utils/image-proxy-utils"
+import { trackUnsplashDownload } from "@/lib/utils/unsplash-utils"
 import { Maximize2, X, Move } from "lucide-react"
 
 // ========================================
@@ -742,9 +743,10 @@ function InteractiveZoneWrapper({
     try {
       const rawData = e.dataTransfer.getData('application/json')
       let content = ''
+      let parsed: any = null
       if (rawData) {
-        const parsed = JSON.parse(rawData)
-        content = parsed.content || ''
+        parsed = JSON.parse(rawData)
+        content = parsed?.content || ''
       } else {
         content = e.dataTransfer.getData('text/plain') || ''
       }
@@ -753,6 +755,12 @@ function InteractiveZoneWrapper({
         setZoneContentOverride(zoneId, content)
         updateZoneContent(zoneId, content)
         setSelectedZoneId(zoneId)
+        if (parsed && (parsed.source === 'unsplash' || parsed.downloadLocation)) {
+          trackUnsplashDownload({
+            downloadLocation: parsed.downloadLocation,
+            photoId: parsed.photoId,
+          })
+        }
       }
     } catch (err) {
       console.error('Drop error:', err)

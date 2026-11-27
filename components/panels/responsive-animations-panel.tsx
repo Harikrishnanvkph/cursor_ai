@@ -249,20 +249,20 @@ export function ResponsiveAnimationsPanel() {
   const sliceLabels = chartData.labels || [];
 
   return (
-    <div className={isModern ? "space-y-2.5 mt-3" : "space-y-3 mt-4"}>
+    <div className={isModern ? "divide-y divide-slate-200/70" : "space-y-3 mt-4"}>
       {/* Quick Slice Filter - Only show when there are labels */}
       {sliceLabels.length > 0 && (
-        <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
+        <div className={isModern ? "py-0.5" : "space-y-0"}>
           <div
             className={
               isModern
-                ? cn(MODERN_PANEL_UI.cardHeader, sliceVisibilityOpen && MODERN_PANEL_UI.cardHeaderOpen)
+                ? "w-full flex items-center gap-2 py-2.5 px-0.5 text-left cursor-pointer hover:text-slate-900 transition-colors duration-150 select-none"
                 : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
             }
             onClick={() => setSliceVisibilityOpen(!sliceVisibilityOpen)}
           >
             {isModern ? (
-              <Filter className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <Filter className={cn("w-3.5 h-3.5 shrink-0 transition-colors duration-150", sliceVisibilityOpen ? "text-indigo-600" : "text-slate-600")} />
             ) : (
               <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
             )}
@@ -271,7 +271,7 @@ export function ResponsiveAnimationsPanel() {
               <ChevronDown
                 className={cn(
                   "w-4 h-4 transition-transform duration-150",
-                  isModern ? "text-slate-400" : "text-current",
+                  isModern ? "text-slate-500" : "text-current",
                   sliceVisibilityOpen && "rotate-180"
                 )}
               />
@@ -279,7 +279,7 @@ export function ResponsiveAnimationsPanel() {
           </div>
 
           {sliceVisibilityOpen && (
-            <div className={isModern ? MODERN_PANEL_UI.cardBodyMuted : "bg-blue-50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100"}>
+            <div className={isModern ? "pb-3 pt-1 space-y-2" : "bg-blue-50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100"}>
               <p className={isModern ? "text-[11px] text-slate-500" : "text-xs text-gray-600 mb-2"}>Click to hide/show slices from the chart</p>
               <div className="flex flex-wrap gap-1.5">
                 {sliceLabels.map((label: any, index: number) => {
@@ -319,17 +319,17 @@ export function ResponsiveAnimationsPanel() {
 
       {/* Quick Tools Section - Only for Single Mode */}
       {chartMode !== 'grouped' && (
-        <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
+        <div className={isModern ? "py-0.5" : "space-y-0"}>
           <div
             className={
               isModern
-                ? cn(MODERN_PANEL_UI.cardHeader, quickToolsOpen && MODERN_PANEL_UI.cardHeaderOpen)
+                ? "w-full flex items-center gap-2 py-2.5 px-0.5 text-left cursor-pointer hover:text-slate-900 transition-colors duration-150 select-none"
                 : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
             }
             onClick={() => setQuickToolsOpen(!quickToolsOpen)}
           >
             {isModern ? (
-              <Wrench className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <Wrench className={cn("w-3.5 h-3.5 shrink-0 transition-colors duration-150", quickToolsOpen ? "text-indigo-600" : "text-slate-600")} />
             ) : (
               <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
             )}
@@ -338,14 +338,14 @@ export function ResponsiveAnimationsPanel() {
               <ChevronDown
                 className={cn(
                   "w-4 h-4 transition-transform duration-150",
-                  isModern ? "text-slate-400" : "text-current",
+                  isModern ? "text-slate-500" : "text-current",
                   quickToolsOpen && "rotate-180"
                 )}
               />
             </div>
           </div>
           {quickToolsOpen && (
-            <div className={isModern ? cn(MODERN_PANEL_UI.cardBodyMuted, "space-y-3") : "bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100"}>
+            <div className={isModern ? "pb-3 pt-1 space-y-3" : "bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100"}>
               {/* Reordering Operations */}
               <div className="space-y-1.5">
                 <Label className={isModern ? "text-[11px] font-semibold text-slate-600 uppercase tracking-wider" : "text-xs font-semibold text-blue-900"}>
@@ -547,17 +547,17 @@ export function ResponsiveAnimationsPanel() {
       )}
 
       {/* Layout and Dimensions - Expanded by default */}
-      <div className={isModern ? MODERN_PANEL_UI.card : "space-y-0"}>
+      <div className={isModern ? "py-0.5" : "space-y-0"}>
         <div
           className={
             isModern
-              ? cn(MODERN_PANEL_UI.cardHeader, responsiveDropdownOpen && MODERN_PANEL_UI.cardHeaderOpen)
+              ? "w-full flex items-center gap-2 py-2.5 px-0.5 text-left cursor-pointer hover:text-slate-900 transition-colors duration-150 select-none"
               : "flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           }
           onClick={() => setResponsiveDropdownOpen(!responsiveDropdownOpen)}
         >
           {isModern ? (
-            <Maximize2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <Maximize2 className={cn("w-3.5 h-3.5 shrink-0 transition-colors duration-150", responsiveDropdownOpen ? "text-indigo-600" : "text-slate-600")} />
           ) : (
             <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           )}
@@ -566,14 +566,14 @@ export function ResponsiveAnimationsPanel() {
             <ChevronDown
               className={cn(
                 "w-4 h-4 transition-transform duration-150",
-                isModern ? "text-slate-400" : "text-current",
+                isModern ? "text-slate-500" : "text-current",
                 responsiveDropdownOpen && "rotate-180"
               )}
             />
           </div>
         </div>
         {responsiveDropdownOpen && (
-          <div className={isModern ? cn(MODERN_PANEL_UI.cardBodyMuted, "overflow-hidden min-w-0") : "bg-slate-50/70 rounded-b-lg p-2.5 space-y-2.5 border-x border-b border-slate-200/80 overflow-hidden min-w-0"}>
+          <div className={isModern ? "pb-3 pt-1.5 space-y-2.5 overflow-hidden min-w-0" : "bg-slate-50/70 rounded-b-lg p-2.5 space-y-2.5 border-x border-b border-slate-200/80 overflow-hidden min-w-0"}>
             {/* Template Mode Notice */}
             {isTemplateMode && (
               <div className="text-[11px] text-amber-700 bg-amber-50/90 p-2 rounded-md border border-amber-200">
@@ -627,10 +627,10 @@ export function ResponsiveAnimationsPanel() {
                     className={
                       isModern
                         ? cn(
-                            "rounded-lg border transition-colors cursor-pointer p-2.5",
+                            "rounded-lg border transition-colors duration-150 cursor-pointer p-2.5",
                             isFixedActive
-                              ? "bg-white border-indigo-400/80 shadow-sm"
-                              : "bg-white/70 border-slate-200/80 hover:bg-white hover:border-slate-300"
+                              ? "bg-indigo-50/20 border-indigo-400/90"
+                              : "bg-white border-slate-200/90 hover:border-slate-300"
                           )
                         : `rounded-lg border transition-all cursor-pointer p-2.5 ${
                             isFixedActive
@@ -801,10 +801,10 @@ export function ResponsiveAnimationsPanel() {
                         className={
                           isModern
                             ? cn(
-                                "rounded-lg border transition-colors cursor-pointer p-2.5",
+                                "rounded-lg border transition-colors duration-150 cursor-pointer p-2.5",
                                 isTemplateActive
-                                  ? "bg-white border-indigo-400/80 shadow-sm"
-                                  : "bg-white/70 border-slate-200/80 hover:bg-white hover:border-slate-300"
+                                  ? "bg-indigo-50/20 border-indigo-400/90"
+                                  : "bg-white border-slate-200/90 hover:border-slate-300"
                               )
                             : `rounded-lg border transition-all cursor-pointer p-2.5 ${
                                 isTemplateActive
@@ -878,10 +878,10 @@ export function ResponsiveAnimationsPanel() {
                       className={
                         isModern
                           ? cn(
-                              "rounded-lg border transition-colors cursor-pointer p-2.5",
+                              "rounded-lg border transition-colors duration-150 cursor-pointer p-2.5",
                               isOriginalActive
-                                ? "bg-white border-indigo-400/80 shadow-sm"
-                                : "bg-white/70 border-slate-200/80 hover:bg-white hover:border-slate-300"
+                                ? "bg-indigo-50/20 border-indigo-400/90"
+                                : "bg-white border-slate-200/90 hover:border-slate-300"
                             )
                           : `rounded-lg border transition-all cursor-pointer p-2.5 ${
                               isOriginalActive
@@ -940,7 +940,10 @@ export function ResponsiveAnimationsPanel() {
               })()}
             </div>
             {/* Padding Controls */}
-            <div className={`p-2.5 rounded-lg bg-white/70 border border-slate-200/80 space-y-2 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={cn(
+              isModern ? "p-2.5 rounded-lg bg-white border border-slate-200/90 space-y-2" : "p-2.5 rounded-lg bg-white/70 border border-slate-200/80 space-y-2",
+              isTemplateMode && "opacity-50 pointer-events-none"
+            )}>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-800">Chart Padding</span>
                 <span className="text-[10px] text-slate-400 font-medium">({unit})</span>
